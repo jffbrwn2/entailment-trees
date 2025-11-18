@@ -1,0 +1,10 @@
+# Note: Deploy the entire ai-simulations/ directory, not just tree_visualizer/
+# This allows the visualizer to access JSON files in sibling directories
+
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/tree_visualizer/*"
+  to = "/tree_visualizer/index.html"
+  status = 200

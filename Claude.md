@@ -15,6 +15,98 @@ These are the most important values for all work in this project.
   - How assumptions connect to implementation details
   - Things I do not know, with ideas for how to obtain that information if possible
 
+**Entailment Trees:**
+Every approach must have an entailment tree to make feasibility assessment rigorous and transparent.
+
+*What is an Entailment Tree?*
+- A hierarchical tree of claims where: if all child claims are true, then the parent claim is true
+- Each node has a score from 0 (False) to 10 (True), with 5 = Unsure
+- Scores come from simulations, literature, physical laws, or reasoning
+
+*Structure:*
+```
+┌─────────────────────────────────────────────┐
+│          HYPOTHESIS (top claim)              │
+│     Score: X | Evidence: [source]           │
+└─────────────────────────────────────────────┘
+                    ▲
+                    │
+          ┌─────────┴─────────┐
+          │    ENTAILMENT     │
+          │    (AND/OR)       │
+          └─────────┬─────────┘
+                    │
+    ┌───────────────┼───────────────┐
+    │               │               │
+┌───┴────┐    ┌────┴────┐    ┌────┴────┐
+│PREMISE1│    │PREMISE2 │    │PREMISE3 │
+│Score: X│    │Score: Y │    │Score: Z │
+│Evidence│    │Evidence │    │Evidence │
+└────────┘    └─────────┘    └─────────┘
+```
+
+*Score Propagation:*
+- **AND relationship**: Combined score = sum_i(-log(score_i/10))
+  - All premises must be true for parent to be true
+  - Lower combined score = better (less uncertainty)
+- **OR relationship**: Combined score = max_i(-log(score_i/10))
+  - Any premise being true makes parent true
+  - Generally prefer separate trees for different approaches rather than OR nodes
+
+*Documentation for Each Node:*
+- Score value (0-10)
+- Evidence source (simulation file:line, literature citation, physical law)
+- Reasoning for why this score was assigned
+- Uncertainties or assumptions affecting the score
+
+*Workflow Integration:*
+- Create initial tree BEFORE simulation (planning phase)
+- Update scores as evidence accumulates from simulations/research
+- Trees can be deeply nested - premises can have their own sub-premises
+- No depth limit - capture all logical dependencies
+
+*File Organization:*
+- One `entailment_tree.json` file per approach folder (machine-readable format)
+- Optional: `entailment_tree.md` for human-readable visualization
+- Update throughout the investigation as understanding evolves
+
+*JSON Structure:*
+Each entailment tree should be a structured JSON with:
+- `metadata`: Approach name, dates, version, description
+- `tree`: Hierarchical node structure with:
+  - `id`: Unique identifier for each node (required)
+  - `claim`: The claim being evaluated (required)
+  - `score`: 0-10 numerical score (required)
+  - `combined_score`: Calculated from children using propagation formula (auto-computed)
+  - `evidence`: Array of evidence items (required if leaf node)
+    - `type`: Must be "simulation", "literature", or "calculation"
+    - `source`: File path or citation reference
+    - `lines`: Line numbers if applicable
+    - `description`: What this evidence shows
+  - `reasoning`: Why this score was assigned (required)
+  - `uncertainties`: List of known unknowns affecting the score
+  - `tags`: Optional tags like ["CRITICAL_BLOCKER"]
+  - `children_relationship`: "AND" or "OR" (required if has children)
+  - `children`: Array of child nodes
+- `alternative_hypotheses`: Variants with different assumptions
+- `critical_unknowns`: Highest-priority information gaps
+- `conclusions`: Summary and verdicts
+
+*Allowed Evidence Types (ONLY):*
+- `simulation` - Results from simulation code
+- `literature` - Papers, citations, published data, standards, guidelines
+- `calculation` - Back-of-envelope math, analytical estimates
+
+*Type Checking:*
+Use `python typecheck_tree.py <file>` to validate structure and types.
+
+This structure enables:
+- Automated type checking and validation
+- Automated score calculations
+- Programmatic tree manipulation and updates
+- Multiple visualization formats from single source
+- Easy comparison between approaches
+
 **Central Focus: Noise and Interference**
 - Understanding how noise and the interference of many factors together is the CORE of whether ideas work
 - Incorporating noise and interference into simulations is THE central goal
@@ -60,12 +152,10 @@ Critical for understanding and maintaining the work.
 
 **Project Structure:**
 - Each sufficiently distinct approach goes in a separate folder
-- Each folder must contain a README describing:
-  - The idea
-  - My interpretation of the implementation
-- Within each folder:
-  - Simulations of varying resolution in separate scripts OR
-  - Distinct cells in Jupyter notebooks
+- Each folder must contain:
+  - README describing the idea and implementation interpretation
+  - `entailment_tree.md` with the feasibility logic and scoring
+  - Simulations of varying resolution in separate scripts OR distinct cells in Jupyter notebooks
 
 ### 3. Responsibility
 Given the latitude provided in this project:
@@ -80,9 +170,13 @@ Given the latitude provided in this project:
 ## Workflow
 1. Understand the neural recording concept
 2. Document assumptions and unknowns
-3. Design simulation with noise/interference as primary consideration
-4. Implement following organizational structure
-5. Test and validate
-6. Document results and learnings
+3. Create initial entailment tree with hypothesis and premises (initial scores can be marked as TBD)
+4. Design simulation with noise/interference as primary consideration
+5. Implement following organizational structure
+6. Test and validate
+7. Update entailment tree with scores based on simulation results and literature
+8. Document results and learnings
 
-IMPORTANT! At the end, I want a simulation that clearly establishes how the different parameters and assumptions interact to determine the feasibility of the idea.
+IMPORTANT! At the end, I want:
+- A simulation that clearly establishes how the different parameters and assumptions interact to determine feasibility
+- A complete entailment tree showing the logical structure and evidence-based scoring of the approach
