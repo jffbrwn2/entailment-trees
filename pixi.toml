@@ -1,0 +1,18 @@
+[workspace]
+authors = ["Jeff Lab <jdotcafe@gmail.com>"]
+channels = ["conda-forge"]
+name = "ai-simulations"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+viz = "streamlit run ultrasound_eeg_enhancement/interactive_visualizer.py"
+
+[dependencies]
+python = ">=3.10"
+numpy = ">=1.24,<2.0"
+matplotlib = ">=3.7"
+scipy = ">=1.10"
+streamlit = ">=1.28"
+plotly = ">=5.17"
+pandas = ">=2.0"
