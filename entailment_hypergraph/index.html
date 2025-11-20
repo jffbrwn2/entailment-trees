@@ -631,7 +631,7 @@
                                 const centroidY = allConnected.reduce((sum, n) => sum + n.y, 0) / allConnected.length;
 
                                 // Pull junction towards centroid
-                                const strength = 0.8 * alpha;
+                                const strength = 0.2 * alpha;
                                 node.vx += (centroidX - node.x) * strength;
                                 node.vy += (centroidY - node.y) * strength;
                             }
@@ -775,7 +775,7 @@
                                 if (currentGap < minGap) {
                                     // Subtrees are overlapping or too close
                                     const overlap = minGap - currentGap;
-                                    const strength = 1.2 * alpha; // Much stronger force
+                                    const strength = 0.3 * alpha; // Very gentle force
 
                                     // Push them apart proportional to overlap
                                     node1.vx -= overlap * strength;
@@ -795,7 +795,7 @@
                             const offset = idealCenterX - groupCenterX;
 
                             // Pull the whole group to center under conclusion
-                            const strength = 0.4 * alpha;
+                            const strength = 0.1 * alpha;
                             premiseNodes.forEach(p => {
                                 p.vx += offset * strength;
                             });
@@ -811,6 +811,8 @@
             }
 
             simulation = d3.forceSimulation(allNodes)
+                .velocityDecay(0.2) // Strong friction to prevent shaking (default: 0.4, lower = more damping)
+                .alphaDecay(0.05) // Faster cooldown (default: 0.0228)
                 .force('link', d3.forceLink(links).id(d => d.id).distance(200).strength(0.8))
                 .force('charge', d3.forceManyBody().strength(-100))
                 .force('x', d3.forceX(d => {
@@ -881,6 +883,7 @@
                 .join('g')
                 .attr('class', d => d.type === 'claim' ? 'claim-node' : 'junction-node')
                 .call(d3.drag()
+                    .clickDistance(5) // Must move 5px before it's considered a drag (prevents accidental restarts)
                     .on('start', dragstarted)
                     .on('drag', dragged)
                     .on('end', dragended));
@@ -1068,26 +1071,43 @@
                 node.attr('transform', d => `translate(${d.x},${d.y})`);
             });
 
+            // Stop simulation completely when it settles to prevent drift
+            simulation.on('end', () => {
+                console.log('Simulation settled');
+            });
+
             if (!physicsEnabled) {
                 simulation.stop();
             }
         }
 
+        let isDragging = false;
+
         function dragstarted(event, d) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
+            // Mark that we might be dragging
+            isDragging = false;
         }
 
         function dragged(event, d) {
+            // Actually dragging - pin node and restart simulation
+            if (!isDragging) {
+                isDragging = true;
+                d.fx = d.x;
+                d.fy = d.y;
+                if (!event.active) simulation.alphaTarget(0.05).restart();
+            }
             d.fx = event.x;
             d.fy = event.y;
         }
 
         function dragended(event, d) {
-            if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
+            // Only unpin if we actually dragged
+            if (isDragging) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+                isDragging = false;
+            }
         }
 
         function resetView() {
