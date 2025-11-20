@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "name": "Water Boiling Example",
+    "description": "Simple example demonstrating hypergraph entailment structure",
+    "created": "2024-11-18"
+  },
+  "claims": [
+    {
+      "id": "c1",
+      "text": "Liquid water can be heated to 100°C using available heat sources",
+      "score": 10,
+      "evidence_type": "literature",
+      "reasoning": "Common heat sources (stove, hot plate, etc.) can easily reach >100°C"
+    },
+    {
+      "id": "c2",
+      "text": "At standard pressure, water has a boiling point of 100°C",
+      "score": 10,
+      "evidence_type": "literature",
+      "reasoning": "Well-established physical constant (at 1 atm = 101.325 kPa)"
+    },
+    {
+      "id": "c3",
+      "text": "When liquid water reaches its boiling point, it transitions to gas phase",
+      "score": 10,
+      "evidence_type": "literature",
+      "reasoning": "Definition of boiling point - phase transition temperature"
+    },
+    {
+      "id": "c4",
+      "text": "I can raise the temperature of liquid water to 100°C AND it will turn into a gas phase",
+      "score": 10,
+      "evidence_type": "calculation",
+      "reasoning": "Follows from c1, c2, c3 via modus ponens"
+    }
+  ],
+  "implications": [
+    {
+      "id": "i1",
+      "premises": ["c1", "c2", "c3"],
+      "conclusion": "c4",
+      "type": "AND",
+      "reasoning": "If I can heat water to 100°C (c1), and 100°C is the boiling point (c2), and water transitions to gas at boiling point (c3), then heating water to 100°C will cause it to become gas (c4)"
+    }
+  ]
+}

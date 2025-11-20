@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entailment Hypergraph Visualizer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f1419;
+            --bg-secondary: #1a1f2e;
+            --bg-tertiary: #252b3b;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --border: #30363d;
+            --accent: #58a6ff;
+            --success: #3fb950;
+            --warning: #d29922;
+            --danger: #f85149;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        select, button {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        button:hover, select:hover {
+            border-color: var(--accent);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+        }
+
+        .viz-container {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 1rem;
+            position: relative;
+            min-height: 600px;
+        }
+
+        #graph {
+            width: 100%;
+            height: 600px;
+            border-radius: 6px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .panel-title {
+            color: var(--accent);
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .claim-card {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .claim-card:hover {
+            border-color: var(--accent);
+            background: #2d3548;
+        }
+
+        .claim-card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+        }
+
+        .claim-id {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+
+        .claim-text {
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 0.5rem;
+        }
+
+        .claim-score {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .score-high { background: rgba(63, 185, 80, 0.2); color: var(--success); }
+        .score-medium { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+        .score-low { background: rgba(248, 81, 73, 0.2); color: var(--danger); }
+
+        .implication-item {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: 4px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .impl-id {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .impl-formula {
+            font-family: 'SF Mono', Monaco, monospace;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .impl-reasoning {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-circle {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid;
+        }
+
+        .legend-line {
+            width: 30px;
+            height: 2px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Entailment Hypergraph Visualizer</h1>
+            <div class="subtitle">Atomic claims as nodes, implications as hyperedges</div>
+        </header>
+
+        <div class="controls">
+            <select id="example-select">
+                <option value="/entailment_hypergraph/water_boiling_example.json">Water Boiling (Simple)</option>
+                <option value="/entailment_hypergraph/steam_engine_example.json">Steam Engine Feasibility (Complex)</option>
+            </select>
+            <button id="reset-view">Reset View</button>
+            <button id="toggle-physics">Toggle Physics</button>
+            <button id="toggle-text">Full Text</button>
+            <button id="zoom-in">Zoom In</button>
+            <button id="zoom-out">Zoom Out</button>
+            <button id="zoom-reset">Reset Zoom</button>
+        </div>
+
+        <div class="main-content">
+            <div class="viz-container">
+                <svg id="graph"></svg>
+            </div>
+
+            <div class="sidebar">
+                <div class="panel">
+                    <div class="panel-title">Claims (Nodes)</div>
+                    <div id="claims-list"></div>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-circle" style="border-color: #3fb950; background: rgba(63, 185, 80, 0.2);"></div>
+                            <span>High (7.5-10)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-circle" style="border-color: #d29922; background: rgba(210, 153, 34, 0.2);"></div>
+                            <span>Medium (5-7.5)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-circle" style="border-color: #f85149; background: rgba(248, 81, 73, 0.2);"></div>
+                            <span>Low (0-5)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-title">Implications (Hyperedges)</div>
+                    <div id="implications-list"></div>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-circle" style="width: 12px; height: 12px; border-color: #58a6ff; background: #58a6ff;"></div>
+                            <span>AND junction (∧)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-line" style="background: #8b949e;"></div>
+                            <span>Premise edges</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-line" style="background: #58a6ff; height: 3px;"></div>
+                            <span>Conclusion edge</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        let hypergraph = null;
+        let selectedClaim = null;
+        let simulation = null;
+        let physicsEnabled = true;
+        let fullTextMode = false;
+        let zoom = null;
+        let svg = null;
+        let g = null;
+
+        // Collapse state
+        let collapsedNodes = new Set(); // Node IDs that are currently hidden
+        let conclusionToPremises = new Map(); // conclusion ID -> [premise IDs]
+
+        // Load initial example
+        loadExample('/entailment_hypergraph/water_boiling_example.json');
+
+        // Event listeners
+        document.getElementById('example-select').addEventListener('change', (e) => {
+            loadExample(e.target.value);
+        });
+
+        document.getElementById('reset-view').addEventListener('click', resetView);
+        document.getElementById('toggle-physics').addEventListener('click', togglePhysics);
+        document.getElementById('toggle-text').addEventListener('click', toggleTextMode);
+        document.getElementById('zoom-in').addEventListener('click', () => zoomBy(1.3));
+        document.getElementById('zoom-out').addEventListener('click', () => zoomBy(0.7));
+        document.getElementById('zoom-reset').addEventListener('click', resetZoom);
+
+        async function loadExample(path) {
+            try {
+                const response = await fetch(path);
+                hypergraph = await response.json();
+                collapsedNodes.clear(); // Reset collapse state
+                buildImplicationMap();
+                renderHypergraph();
+                renderSidebar();
+            } catch (error) {
+                console.error('Error loading example:', error);
+            }
+        }
+
+        function buildImplicationMap() {
+            conclusionToPremises.clear();
+            hypergraph.implications.forEach(impl => {
+                conclusionToPremises.set(impl.conclusion, impl.premises);
+            });
+        }
+
+        function isConclusion(nodeId) {
+            return conclusionToPremises.has(nodeId);
+        }
+
+        function arePremisesCollapsed(conclusionId) {
+            const premises = conclusionToPremises.get(conclusionId);
+            if (!premises || premises.length === 0) return false;
+            return premises.some(p => collapsedNodes.has(p));
+        }
+
+        function toggleCollapse(conclusionId) {
+            const premises = conclusionToPremises.get(conclusionId);
+            if (!premises) return; // Not a conclusion, nothing to collapse
+
+            const currentlyCollapsed = arePremisesCollapsed(conclusionId);
+
+            if (currentlyCollapsed) {
+                // Expand - show immediate premises only
+                premises.forEach(p => collapsedNodes.delete(p));
+            } else {
+                // Collapse - recursively hide all premises and their sub-premises
+                collapseRecursive(conclusionId);
+            }
+
+            // Re-render graph
+            renderHypergraph();
+        }
+
+        function collapseRecursive(nodeId) {
+            const premises = conclusionToPremises.get(nodeId);
+            if (!premises) return;
+
+            premises.forEach(premiseId => {
+                collapsedNodes.add(premiseId);
+                // Recursively collapse if this premise is also a conclusion
+                if (isConclusion(premiseId)) {
+                    collapseRecursive(premiseId);
+                }
+            });
+        }
+
+        function getScoreColor(score) {
+            if (score >= 7.5) return '#3fb950';
+            if (score >= 5) return '#d29922';
+            return '#f85149';
+        }
+
+        function getScoreClass(score) {
+            if (score >= 7.5) return 'score-high';
+            if (score >= 5) return 'score-medium';
+            return 'score-low';
+        }
+
+        function renderSidebar() {
+            // Render claims
+            const claimsList = document.getElementById('claims-list');
+            claimsList.innerHTML = hypergraph.claims.map(claim => `
+                <div class="claim-card" data-claim-id="${claim.id}">
+                    <div class="claim-id">${claim.id}</div>
+                    <div class="claim-text">${claim.text}</div>
+                    <span class="claim-score ${getScoreClass(claim.score)}">${claim.score}/10</span>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            document.querySelectorAll('.claim-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const claimId = card.dataset.claimId;
+                    selectClaim(claimId);
+                });
+            });
+
+            // Render implications
+            const implList = document.getElementById('implications-list');
+            implList.innerHTML = hypergraph.implications.map(impl => {
+                const premiseIds = impl.premises.join(', ');
+                const formula = `(${premiseIds}) → ${impl.conclusion}`;
+                return `
+                    <div class="implication-item">
+                        <div class="impl-id">${impl.id}</div>
+                        <div class="impl-formula">${formula}</div>
+                        <div class="impl-reasoning">${impl.reasoning}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectClaim(claimId) {
+            selectedClaim = claimId;
+
+            // Update UI
+            document.querySelectorAll('.claim-card').forEach(card => {
+                card.classList.toggle('selected', card.dataset.claimId === claimId);
+            });
+
+            // Highlight in graph
+            highlightClaim(claimId);
+        }
+
+        function highlightClaim(claimId) {
+            d3.selectAll('.claim-node')
+                .attr('opacity', d => d.id === claimId ? 1 : 0.3)
+                .attr('stroke-width', d => d.id === claimId ? 4 : 2);
+
+            d3.selectAll('.hyperedge')
+                .attr('opacity', d => {
+                    return d.premises.includes(claimId) || d.conclusion === claimId ? 1 : 0.2;
+                });
+        }
+
+        function renderHypergraph() {
+            const width = document.getElementById('graph').clientWidth;
+            const height = 600;
+
+            // Clear existing
+            d3.select('#graph').selectAll('*').remove();
+
+            svg = d3.select('#graph')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Create container group for zoom/pan
+            g = svg.append('g');
+
+            // Setup zoom behavior
+            zoom = d3.zoom()
+                .scaleExtent([0.1, 10])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+
+            svg.call(zoom);
+
+            // Create nodes: claims + junction nodes for implications
+            const claims = hypergraph.claims.map(c => ({...c, type: 'claim'}));
+            const junctions = hypergraph.implications.map((impl, i) => ({
+                id: `junction_${impl.id}`,
+                type: 'junction',
+                implication: impl
+            }));
+
+            // Filter out collapsed nodes
+            const visibleClaims = claims.filter(c => !collapsedNodes.has(c.id));
+            const visibleJunctions = junctions.filter(j => {
+                // Hide junction if any of its premises or conclusion are collapsed
+                const impl = j.implication;
+                return !collapsedNodes.has(impl.conclusion) &&
+                       !impl.premises.some(p => collapsedNodes.has(p));
+            });
+
+            const allNodes = [...visibleClaims, ...visibleJunctions];
+
+            // Create links
+            const links = [];
+
+            // Links from premises to junctions (only for visible nodes)
+            hypergraph.implications.forEach(impl => {
+                const junctionId = `junction_${impl.id}`;
+
+                // Skip if conclusion or any premise is collapsed
+                if (collapsedNodes.has(impl.conclusion) ||
+                    impl.premises.some(p => collapsedNodes.has(p))) {
+                    return;
+                }
+
+                impl.premises.forEach(premise => {
+                    links.push({
+                        source: premise,
+                        target: junctionId,
+                        type: 'premise-to-junction'
+                    });
+                });
+
+                // Link from junction to conclusion
+                links.push({
+                    source: junctionId,
+                    target: impl.conclusion,
+                    type: 'junction-to-conclusion'
+                });
+            });
+
+            simulation = d3.forceSimulation(allNodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(150))
+                .force('charge', d3.forceManyBody().strength(-500))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(d => d.type === 'claim' ? (fullTextMode ? 75 : 60) : 15));
+
+            // Add defs for markers and filters (to svg, not g)
+            const defs = svg.append('defs');
+
+            // Arrowhead marker
+            defs.append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 20)
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', '#58a6ff');
+
+            // Glow filter for smooth blending
+            const filter = defs.append('filter')
+                .attr('id', 'glow')
+                .attr('x', '-50%')
+                .attr('y', '-50%')
+                .attr('width', '200%')
+                .attr('height', '200%');
+
+            filter.append('feGaussianBlur')
+                .attr('stdDeviation', '2')
+                .attr('result', 'coloredBlur');
+
+            const feMerge = filter.append('feMerge');
+            feMerge.append('feMergeNode').attr('in', 'coloredBlur');
+            feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+            // Draw links as curved paths
+            const link = g.append('g')
+                .selectAll('path')
+                .data(links)
+                .join('path')
+                .attr('class', d => `hyperedge ${d.type}`)
+                .attr('stroke', d => d.type === 'junction-to-conclusion' ? '#58a6ff' : '#8b949e')
+                .attr('stroke-width', d => d.type === 'junction-to-conclusion' ? 3 : 2)
+                .attr('opacity', 0.7)
+                .attr('fill', 'none')
+                .attr('stroke-linecap', 'round')
+                .attr('stroke-linejoin', 'round')
+                .attr('filter', 'url(#glow)')
+                .attr('marker-end', d => d.type === 'junction-to-conclusion' ? 'url(#arrowhead)' : null);
+
+            // Draw all nodes
+            const node = g.append('g')
+                .selectAll('g')
+                .data(allNodes)
+                .join('g')
+                .attr('class', d => d.type === 'claim' ? 'claim-node' : 'junction-node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            // Render claim nodes
+            node.filter(d => d.type === 'claim')
+                .append('circle')
+                .attr('r', fullTextMode ? 65 : 50)
+                .attr('fill', d => getScoreColor(d.score))
+                .attr('fill-opacity', 0.2)
+                .attr('stroke', d => getScoreColor(d.score))
+                .attr('stroke-width', 2)
+                .attr('cursor', 'pointer')
+                .attr('class', 'claim-circle');
+
+            // Add claim text with wrapping
+            node.filter(d => d.type === 'claim')
+                .each(function(d) {
+                    const text = d3.select(this).append('text')
+                        .attr('text-anchor', 'middle')
+                        .attr('fill', '#e6edf3')
+                        .attr('font-size', fullTextMode ? '10px' : '11px')
+                        .attr('font-weight', '500')
+                        .attr('pointer-events', 'none')
+                        .attr('class', 'claim-text');
+
+                    // Wrap text to fit in circle
+                    const words = d.text.split(/\s+/);
+                    const maxWidth = fullTextMode ? 110 : 85;
+                    const lineHeight = fullTextMode ? 11 : 12;
+                    const maxLines = fullTextMode ? 10 : 4;
+
+                    let line = [];
+                    let lineNumber = 0;
+                    let tspan = text.append('tspan')
+                        .attr('x', 0)
+                        .attr('dy', 0);
+
+                    for (let i = 0; i < words.length; i++) {
+                        line.push(words[i]);
+                        tspan.text(line.join(' '));
+
+                        if (tspan.node().getComputedTextLength() > maxWidth) {
+                            if (!fullTextMode && lineNumber >= maxLines - 1) {
+                                // Last line - truncate with ellipsis in compact mode
+                                line.pop();
+                                tspan.text(line.join(' ') + '...');
+                                break;
+                            }
+                            line.pop();
+                            tspan.text(line.join(' '));
+                            line = [words[i]];
+                            lineNumber++;
+                            tspan = text.append('tspan')
+                                .attr('x', 0)
+                                .attr('dy', lineHeight)
+                                .text(words[i]);
+                        }
+                    }
+
+                    // Center the text block vertically
+                    const totalHeight = (lineNumber + 1) * lineHeight;
+                    text.attr('transform', `translate(0, ${-totalHeight / 2 + 5})`);
+                });
+
+            // Add expand/collapse indicator for conclusion nodes
+            node.filter(d => d.type === 'claim' && isConclusion(d.id))
+                .each(function(d) {
+                    const g = d3.select(this);
+                    const radius = fullTextMode ? 65 : 50;
+
+                    // Small circle for +/- indicator at bottom-right
+                    g.append('circle')
+                        .attr('cx', radius * 0.6)
+                        .attr('cy', radius * 0.6)
+                        .attr('r', 12)
+                        .attr('fill', '#58a6ff')
+                        .attr('stroke', '#e6edf3')
+                        .attr('stroke-width', 2)
+                        .attr('class', 'expand-indicator');
+
+                    // +/- symbol
+                    const isCollapsed = arePremisesCollapsed(d.id);
+                    g.append('text')
+                        .attr('x', radius * 0.6)
+                        .attr('y', radius * 0.6)
+                        .attr('text-anchor', 'middle')
+                        .attr('dy', '0.35em')
+                        .attr('fill', '#0f1419')
+                        .attr('font-size', '14px')
+                        .attr('font-weight', '700')
+                        .attr('pointer-events', 'none')
+                        .attr('class', 'expand-symbol')
+                        .text(isCollapsed ? '+' : '−');
+                });
+
+            // Render junction nodes (small diamonds/circles)
+            node.filter(d => d.type === 'junction')
+                .append('circle')
+                .attr('r', 8)
+                .attr('fill', '#58a6ff')
+                .attr('stroke', '#58a6ff')
+                .attr('stroke-width', 2)
+                .attr('opacity', 0.9);
+
+            node.filter(d => d.type === 'junction')
+                .append('text')
+                .text('∧')
+                .attr('text-anchor', 'middle')
+                .attr('dy', '0.35em')
+                .attr('fill', '#0f1419')
+                .attr('font-size', '12px')
+                .attr('font-weight', '700')
+                .attr('pointer-events', 'none');
+
+            // Tooltip on hover (shows ID and full text)
+            node.filter(d => d.type === 'claim')
+                .append('title')
+                .text(d => `${d.id}\n${d.text}\nScore: ${d.score}/10`);
+
+            node.filter(d => d.type === 'junction')
+                .append('title')
+                .text(d => `AND junction\n${d.implication.id}: ${d.implication.premises.join(' ∧ ')} → ${d.implication.conclusion}`);
+
+            // Click handler for claims
+            node.filter(d => d.type === 'claim')
+                .on('click', (event, d) => {
+                    // If this is a conclusion node, toggle collapse
+                    if (isConclusion(d.id)) {
+                        toggleCollapse(d.id);
+                    } else {
+                        // Otherwise, select it (highlight)
+                        selectClaim(d.id);
+                    }
+                });
+
+            // Helper function to create smooth, flowing curves
+            function createCurvePath(d) {
+                const sourceX = d.source.x;
+                const sourceY = d.source.y;
+                const targetX = d.target.x;
+                const targetY = d.target.y;
+
+                if (d.type === 'premise-to-junction') {
+                    // Create smooth S-curve that flows into junction
+                    const dx = targetX - sourceX;
+                    const dy = targetY - sourceY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    // Two control points for cubic bezier - creates flowing S-curve
+                    const tension = 0.4; // Controls curve tightness
+
+                    // First control point: start the curve from source
+                    const cp1X = sourceX + dx * 0.3;
+                    const cp1Y = sourceY + dy * 0.3;
+
+                    // Second control point: guide into junction smoothly
+                    const cp2X = targetX - dx * 0.2;
+                    const cp2Y = targetY - dy * 0.2;
+
+                    // Add subtle perpendicular pull for multiple edges
+                    const perpX = -dy / (dist || 1) * 20;
+                    const perpY = dx / (dist || 1) * 20;
+
+                    return `M ${sourceX},${sourceY} C ${cp1X + perpX * 0.5},${cp1Y + perpY * 0.5} ${cp2X + perpX * 0.3},${cp2Y + perpY * 0.3} ${targetX},${targetY}`;
+                } else {
+                    // Smooth curve for junction to conclusion
+                    const dx = targetX - sourceX;
+                    const dy = targetY - sourceY;
+
+                    // Control points for gentle arc
+                    const cp1X = sourceX + dx * 0.3;
+                    const cp1Y = sourceY + dy * 0.3 - 15;
+
+                    const cp2X = sourceX + dx * 0.7;
+                    const cp2Y = sourceY + dy * 0.7 - 15;
+
+                    return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
+                }
+            }
+
+            // Update positions on simulation tick
+            simulation.on('tick', () => {
+                link.attr('d', createCurvePath);
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            if (!physicsEnabled) {
+                simulation.stop();
+            }
+        }
+
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        function resetView() {
+            selectedClaim = null;
+            document.querySelectorAll('.claim-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            d3.selectAll('.claim-node')
+                .attr('opacity', 1)
+                .attr('stroke-width', 2);
+
+            d3.selectAll('.hyperedge')
+                .attr('opacity', 0.6);
+
+            if (simulation) {
+                simulation.alpha(1).restart();
+            }
+        }
+
+        function togglePhysics() {
+            physicsEnabled = !physicsEnabled;
+            if (physicsEnabled) {
+                simulation.restart();
+            } else {
+                simulation.stop();
+            }
+        }
+
+        function toggleTextMode() {
+            fullTextMode = !fullTextMode;
+            const button = document.getElementById('toggle-text');
+            button.textContent = fullTextMode ? 'Compact Text' : 'Full Text';
+
+            // Re-render the graph with new text mode
+            renderHypergraph();
+        }
+
+        function zoomBy(factor) {
+            if (!svg || !zoom) return;
+            svg.transition()
+                .duration(300)
+                .call(zoom.scaleBy, factor);
+        }
+
+        function resetZoom() {
+            if (!svg || !zoom) return;
+            svg.transition()
+                .duration(500)
+                .call(zoom.transform, d3.zoomIdentity);
+        }
+    </script>
+</body>
+</html>
