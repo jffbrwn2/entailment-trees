@@ -95,7 +95,7 @@
 
         #graph {
             width: 100%;
-            height: 600px;
+            height: 800px;
             border-radius: 6px;
         }
 
@@ -458,7 +458,7 @@
 
         function renderHypergraph() {
             const width = document.getElementById('graph').clientWidth;
-            const height = 600;
+            const height = 800;
 
             // Clear existing
             d3.select('#graph').selectAll('*').remove();
@@ -527,11 +527,305 @@
                 });
             });
 
+            // Calculate hierarchical levels for tree-like layout
+            // Start from root conclusions and work downward
+            const levels = new Map();
+
+            // Find root conclusions (nodes that are conclusions but not premises of anything)
+            const allPremises = new Set();
+            hypergraph.implications.forEach(impl => {
+                impl.premises.forEach(p => allPremises.add(p));
+            });
+
+            const rootConclusions = visibleClaims
+                .filter(c => conclusionToPremises.has(c.id)) // Is a conclusion
+                .filter(c => !allPremises.has(c.id)) // Not used as premise
+                .map(c => c.id);
+
+            // Start roots at level 0 (top)
+            rootConclusions.forEach(rootId => {
+                levels.set(rootId, 0);
+            });
+
+            // If no roots found (disconnected graph), use all conclusions
+            if (rootConclusions.length === 0) {
+                visibleClaims
+                    .filter(c => conclusionToPremises.has(c.id))
+                    .forEach(c => levels.set(c.id, 0));
+            }
+
+            // Iteratively assign levels working downward (from conclusions to premises)
+            let changed = true;
+            let iterations = 0;
+            while (changed && iterations < 20) {
+                changed = false;
+                iterations++;
+
+                hypergraph.implications.forEach(impl => {
+                    // Skip if conclusion or any premise is collapsed
+                    if (collapsedNodes.has(impl.conclusion) ||
+                        impl.premises.some(p => collapsedNodes.has(p))) {
+                        return;
+                    }
+
+                    const conclusionLevel = levels.get(impl.conclusion);
+
+                    if (conclusionLevel !== undefined) {
+                        const junctionId = `junction_${impl.id}`;
+                        const junctionLevel = conclusionLevel + 1;
+                        const premiseLevel = conclusionLevel + 2;
+
+                        // Set junction level
+                        if (!levels.has(junctionId)) {
+                            levels.set(junctionId, junctionLevel);
+                            changed = true;
+                        }
+
+                        // Set premise levels (or update if this path is deeper)
+                        impl.premises.forEach(premiseId => {
+                            if (!levels.has(premiseId) || levels.get(premiseId) < premiseLevel) {
+                                levels.set(premiseId, premiseLevel);
+                                changed = true;
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Assign y-positions based on levels (level 0 at top, increasing downward)
+            const maxLevel = Math.max(...Array.from(levels.values()), 0);
+            const levelSpacing = (height - 200) / (maxLevel + 1);
+
+            allNodes.forEach(node => {
+                const level = levels.get(node.id) || 0;
+                node.targetY = 100 + (level * levelSpacing); // Top to bottom
+
+                // Set initial x position to center if not already set
+                if (node.x === undefined) {
+                    node.x = width / 2 + (Math.random() - 0.5) * 100;
+                }
+                if (node.y === undefined) {
+                    node.y = node.targetY;
+                }
+            });
+
+            // Custom force to position junctions at the centroid of connected nodes
+            function junctionCentroidForce() {
+                let nodes;
+
+                function force(alpha) {
+                    nodes.forEach(node => {
+                        if (node.type === 'junction') {
+                            const impl = node.implication;
+
+                            // Find premise and conclusion nodes
+                            const premiseNodes = impl.premises
+                                .map(id => nodes.find(n => n.id === id))
+                                .filter(n => n);
+                            const conclusionNode = nodes.find(n => n.id === impl.conclusion);
+
+                            if (premiseNodes.length > 0 && conclusionNode) {
+                                // Calculate centroid of premises and conclusion
+                                const allConnected = [...premiseNodes, conclusionNode];
+                                const centroidX = allConnected.reduce((sum, n) => sum + n.x, 0) / allConnected.length;
+                                const centroidY = allConnected.reduce((sum, n) => sum + n.y, 0) / allConnected.length;
+
+                                // Pull junction towards centroid
+                                const strength = 0.8 * alpha;
+                                node.vx += (centroidX - node.x) * strength;
+                                node.vy += (centroidY - node.y) * strength;
+                            }
+                        }
+                    });
+                }
+
+                force.initialize = function(_) {
+                    nodes = _;
+                };
+
+                return force;
+            }
+
+            // Calculate subtree width for each node (only visible nodes)
+            const subtreeWidths = new Map();
+            const subtreeHalfWidths = new Map();
+
+            function calculateSubtreeWidth(nodeId, visited = new Set()) {
+                if (subtreeWidths.has(nodeId)) {
+                    return subtreeWidths.get(nodeId);
+                }
+
+                // Prevent infinite recursion in case of cycles
+                if (visited.has(nodeId)) {
+                    return 160;
+                }
+                visited.add(nodeId);
+
+                const premises = conclusionToPremises.get(nodeId);
+
+                // Filter out collapsed premises - only consider visible ones
+                const visiblePremises = premises
+                    ? premises.filter(p => !collapsedNodes.has(p))
+                    : [];
+
+                if (visiblePremises.length === 0) {
+                    // Leaf node or all premises hidden - just its own width
+                    const width = 160; // Node diameter + padding
+                    subtreeWidths.set(nodeId, width);
+                    subtreeHalfWidths.set(nodeId, width / 2);
+                    return width;
+                }
+
+                // Non-leaf - sum of visible children subtree widths + spacing
+                let totalWidth = 0;
+                visiblePremises.forEach(premiseId => {
+                    totalWidth += calculateSubtreeWidth(premiseId, visited);
+                });
+
+                // Add spacing between sibling subtrees
+                totalWidth += (visiblePremises.length - 1) * 100;
+
+                // Node's subtree is at least as wide as its children
+                const width = Math.max(160, totalWidth);
+                subtreeWidths.set(nodeId, width);
+                subtreeHalfWidths.set(nodeId, width / 2);
+                return width;
+            }
+
+            // Calculate widths only for visible nodes
+            visibleClaims.forEach(claim => {
+                calculateSubtreeWidth(claim.id);
+            });
+
+            // Calculate actual spatial extent (bounding box) of a subtree
+            function getSubtreeExtent(nodeId, nodes, visited = new Set()) {
+                if (visited.has(nodeId)) {
+                    return { minX: Infinity, maxX: -Infinity };
+                }
+                visited.add(nodeId);
+
+                const node = nodes.find(n => n.id === nodeId);
+                if (!node) {
+                    return { minX: Infinity, maxX: -Infinity };
+                }
+
+                const radius = node.type === 'claim' ? (fullTextMode ? 85 : 70) : 20;
+                let minX = node.x - radius;
+                let maxX = node.x + radius;
+
+                // Include all visible premises in the extent
+                const premises = conclusionToPremises.get(nodeId);
+                if (premises) {
+                    premises.forEach(premiseId => {
+                        if (!collapsedNodes.has(premiseId)) {
+                            const extent = getSubtreeExtent(premiseId, nodes, visited);
+                            minX = Math.min(minX, extent.minX);
+                            maxX = Math.max(maxX, extent.maxX);
+                        }
+                    });
+                }
+
+                return { minX, maxX };
+            }
+
+            // Custom force to prevent subtree overlap using actual spatial extents
+            function subtreeCollisionForce() {
+                let nodes;
+
+                function force(alpha) {
+                    // Cache extent calculations to avoid recomputation
+                    const extentCache = new Map();
+
+                    function getCachedExtent(nodeId) {
+                        if (!extentCache.has(nodeId)) {
+                            extentCache.set(nodeId, getSubtreeExtent(nodeId, nodes));
+                        }
+                        return extentCache.get(nodeId);
+                    }
+
+                    // For each implication, ensure sibling subtrees don't overlap
+                    hypergraph.implications.forEach(impl => {
+                        const conclusionNode = nodes.find(n => n.id === impl.conclusion);
+                        if (!conclusionNode) return;
+
+                        // Only consider visible premises (not collapsed)
+                        const premiseNodes = impl.premises
+                            .filter(id => !collapsedNodes.has(id))
+                            .map(id => nodes.find(n => n.id === id))
+                            .filter(n => n);
+
+                        if (premiseNodes.length < 2) return;
+
+                        // Sort premises by current x position
+                        premiseNodes.sort((a, b) => a.x - b.x);
+
+                        // Check ALL pairs of siblings for overlap (not just adjacent)
+                        for (let i = 0; i < premiseNodes.length; i++) {
+                            for (let j = i + 1; j < premiseNodes.length; j++) {
+                                const node1 = premiseNodes[i];
+                                const node2 = premiseNodes[j];
+
+                                // Get actual spatial extent of each subtree
+                                const extent1 = getCachedExtent(node1.id);
+                                const extent2 = getCachedExtent(node2.id);
+
+                                const minGap = 100; // Minimum spacing between subtrees
+                                const currentGap = extent2.minX - extent1.maxX;
+
+                                if (currentGap < minGap) {
+                                    // Subtrees are overlapping or too close
+                                    const overlap = minGap - currentGap;
+                                    const strength = 1.2 * alpha; // Much stronger force
+
+                                    // Push them apart proportional to overlap
+                                    node1.vx -= overlap * strength;
+                                    node2.vx += overlap * strength;
+                                }
+                            }
+                        }
+
+                        // Center the group of premises under the conclusion
+                        if (premiseNodes.length > 0) {
+                            const extents = premiseNodes.map(p => getCachedExtent(p.id));
+                            const minX = Math.min(...extents.map(e => e.minX));
+                            const maxX = Math.max(...extents.map(e => e.maxX));
+
+                            const groupCenterX = (minX + maxX) / 2;
+                            const idealCenterX = conclusionNode.x;
+                            const offset = idealCenterX - groupCenterX;
+
+                            // Pull the whole group to center under conclusion
+                            const strength = 0.4 * alpha;
+                            premiseNodes.forEach(p => {
+                                p.vx += offset * strength;
+                            });
+                        }
+                    });
+                }
+
+                force.initialize = function(_) {
+                    nodes = _;
+                };
+
+                return force;
+            }
+
             simulation = d3.forceSimulation(allNodes)
-                .force('link', d3.forceLink(links).id(d => d.id).distance(150))
-                .force('charge', d3.forceManyBody().strength(-500))
-                .force('center', d3.forceCenter(width / 2, height / 2))
-                .force('collision', d3.forceCollide().radius(d => d.type === 'claim' ? (fullTextMode ? 75 : 60) : 15));
+                .force('link', d3.forceLink(links).id(d => d.id).distance(200).strength(0.8))
+                .force('charge', d3.forceManyBody().strength(-100))
+                .force('x', d3.forceX(d => {
+                    // Root conclusions strongly anchored to center
+                    if (rootConclusions.includes(d.id)) return width / 2;
+                    return width / 2;
+                }).strength(d => {
+                    // Stronger centering for root conclusions
+                    if (d.type === 'claim' && rootConclusions.includes(d.id)) return 0.3;
+                    return 0.03;
+                }))
+                .force('y', d3.forceY(d => d.targetY).strength(0.9))
+                .force('collision', d3.forceCollide().radius(d => d.type === 'claim' ? (fullTextMode ? 85 : 70) : 20))
+                .force('junction-centroid', junctionCentroidForce())
+                .force('subtree-collision', subtreeCollisionForce());
 
             // Add defs for markers and filters (to svg, not g)
             const defs = svg.append('defs');
