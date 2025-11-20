@@ -242,7 +242,6 @@
                 <option value="/entailment_hypergraph/steam_engine_example.json">Steam Engine Feasibility (Complex)</option>
             </select>
             <button id="reset-view">Reset View</button>
-            <button id="toggle-physics">Toggle Physics</button>
             <button id="toggle-text">Full Text</button>
             <button id="zoom-in">Zoom In</button>
             <button id="zoom-out">Zoom Out</button>
@@ -300,16 +299,17 @@
     <script>
         let hypergraph = null;
         let selectedClaim = null;
-        let simulation = null;
-        let physicsEnabled = true;
         let fullTextMode = false;
         let zoom = null;
         let svg = null;
         let g = null;
 
         // Collapse state
-        let collapsedNodes = new Set(); // Node IDs that are currently hidden
-        let conclusionToPremises = new Map(); // conclusion ID -> [premise IDs]
+        let collapsedNodes = new Set();
+        let conclusionToPremises = new Map();
+
+        // Node positions (persistent across renders)
+        let nodePositions = new Map();
 
         // Load initial example
         loadExample('/entailment_hypergraph/water_boiling_example.json');
@@ -320,7 +320,6 @@
         });
 
         document.getElementById('reset-view').addEventListener('click', resetView);
-        document.getElementById('toggle-physics').addEventListener('click', togglePhysics);
         document.getElementById('toggle-text').addEventListener('click', toggleTextMode);
         document.getElementById('zoom-in').addEventListener('click', () => zoomBy(1.3));
         document.getElementById('zoom-out').addEventListener('click', () => zoomBy(0.7));
@@ -330,7 +329,8 @@
             try {
                 const response = await fetch(path);
                 hypergraph = await response.json();
-                collapsedNodes.clear(); // Reset collapse state
+                collapsedNodes.clear();
+                nodePositions.clear();
                 buildImplicationMap();
                 renderHypergraph();
                 renderSidebar();
@@ -358,20 +358,53 @@
 
         function toggleCollapse(conclusionId) {
             const premises = conclusionToPremises.get(conclusionId);
-            if (!premises) return; // Not a conclusion, nothing to collapse
+            if (!premises) return;
 
             const currentlyCollapsed = arePremisesCollapsed(conclusionId);
 
             if (currentlyCollapsed) {
-                // Expand - show immediate premises only
                 premises.forEach(p => collapsedNodes.delete(p));
             } else {
-                // Collapse - recursively hide all premises and their sub-premises
                 collapseRecursive(conclusionId);
             }
 
-            // Re-render graph
-            renderHypergraph();
+            // Just update visibility instead of full re-render
+            updateNodeVisibility();
+            updateExpandIndicators();
+        }
+
+        function updateNodeVisibility() {
+            // Hide/show claim nodes based on collapsed state
+            d3.selectAll('.claim-node')
+                .style('display', d => collapsedNodes.has(d.id) ? 'none' : null);
+
+            // Hide/show junction nodes based on their conclusion and premises
+            d3.selectAll('.junction-node')
+                .style('display', d => {
+                    const impl = d.implication;
+                    if (collapsedNodes.has(impl.conclusion)) return 'none';
+                    if (impl.premises.some(p => collapsedNodes.has(p))) return 'none';
+                    return null;
+                });
+
+            // Hide/show edges
+            d3.selectAll('.hyperedge')
+                .style('display', function(d) {
+                    if (collapsedNodes.has(d.conclusion)) return 'none';
+                    if (d.premises && d.premises.some(p => collapsedNodes.has(p))) return 'none';
+                    return null;
+                });
+        }
+
+        function updateExpandIndicators() {
+            // Update +/− symbols
+            d3.selectAll('.claim-node').each(function(d) {
+                if (isConclusion(d.id)) {
+                    const isCollapsed = arePremisesCollapsed(d.id);
+                    d3.select(this).select('.expand-symbol')
+                        .text(isCollapsed ? '+' : '−');
+                }
+            });
         }
 
         function collapseRecursive(nodeId) {
@@ -380,7 +413,6 @@
 
             premises.forEach(premiseId => {
                 collapsedNodes.add(premiseId);
-                // Recursively collapse if this premise is also a conclusion
                 if (isConclusion(premiseId)) {
                     collapseRecursive(premiseId);
                 }
@@ -400,7 +432,6 @@
         }
 
         function renderSidebar() {
-            // Render claims
             const claimsList = document.getElementById('claims-list');
             claimsList.innerHTML = hypergraph.claims.map(claim => `
                 <div class="claim-card" data-claim-id="${claim.id}">
@@ -410,15 +441,12 @@
                 </div>
             `).join('');
 
-            // Add click handlers
             document.querySelectorAll('.claim-card').forEach(card => {
                 card.addEventListener('click', () => {
-                    const claimId = card.dataset.claimId;
-                    selectClaim(claimId);
+                    selectClaim(card.dataset.claimId);
                 });
             });
 
-            // Render implications
             const implList = document.getElementById('implications-list');
             implList.innerHTML = hypergraph.implications.map(impl => {
                 const premiseIds = impl.premises.join(', ');
@@ -436,12 +464,10 @@
         function selectClaim(claimId) {
             selectedClaim = claimId;
 
-            // Update UI
             document.querySelectorAll('.claim-card').forEach(card => {
                 card.classList.toggle('selected', card.dataset.claimId === claimId);
             });
 
-            // Highlight in graph
             highlightClaim(claimId);
         }
 
@@ -456,105 +482,30 @@
                 });
         }
 
-        function renderHypergraph() {
-            const width = document.getElementById('graph').clientWidth;
-            const height = 800;
-
-            // Clear existing
-            d3.select('#graph').selectAll('*').remove();
-
-            svg = d3.select('#graph')
-                .attr('width', width)
-                .attr('height', height);
-
-            // Create container group for zoom/pan
-            g = svg.append('g');
-
-            // Setup zoom behavior
-            zoom = d3.zoom()
-                .scaleExtent([0.1, 10])
-                .on('zoom', (event) => {
-                    g.attr('transform', event.transform);
-                });
-
-            svg.call(zoom);
-
-            // Create nodes: claims + junction nodes for implications
-            const claims = hypergraph.claims.map(c => ({...c, type: 'claim'}));
-            const junctions = hypergraph.implications.map((impl, i) => ({
-                id: `junction_${impl.id}`,
-                type: 'junction',
-                implication: impl
-            }));
-
-            // Filter out collapsed nodes
-            const visibleClaims = claims.filter(c => !collapsedNodes.has(c.id));
-            const visibleJunctions = junctions.filter(j => {
-                // Hide junction if any of its premises or conclusion are collapsed
-                const impl = j.implication;
-                return !collapsedNodes.has(impl.conclusion) &&
-                       !impl.premises.some(p => collapsedNodes.has(p));
-            });
-
-            const allNodes = [...visibleClaims, ...visibleJunctions];
-
-            // Create links
-            const links = [];
-
-            // Links from premises to junctions (only for visible nodes)
-            hypergraph.implications.forEach(impl => {
-                const junctionId = `junction_${impl.id}`;
-
-                // Skip if conclusion or any premise is collapsed
-                if (collapsedNodes.has(impl.conclusion) ||
-                    impl.premises.some(p => collapsedNodes.has(p))) {
-                    return;
-                }
-
-                impl.premises.forEach(premise => {
-                    links.push({
-                        source: premise,
-                        target: junctionId,
-                        type: 'premise-to-junction'
-                    });
-                });
-
-                // Link from junction to conclusion
-                links.push({
-                    source: junctionId,
-                    target: impl.conclusion,
-                    type: 'junction-to-conclusion'
-                });
-            });
-
-            // Calculate hierarchical levels for tree-like layout
-            // Start from root conclusions and work downward
+        // ALGORITHMIC TREE LAYOUT - NO PHYSICS
+        function calculateTreeLayout(visibleClaims, width, height) {
             const levels = new Map();
 
-            // Find root conclusions (nodes that are conclusions but not premises of anything)
+            // Find root conclusions
             const allPremises = new Set();
             hypergraph.implications.forEach(impl => {
                 impl.premises.forEach(p => allPremises.add(p));
             });
 
             const rootConclusions = visibleClaims
-                .filter(c => conclusionToPremises.has(c.id)) // Is a conclusion
-                .filter(c => !allPremises.has(c.id)) // Not used as premise
+                .filter(c => conclusionToPremises.has(c.id))
+                .filter(c => !allPremises.has(c.id))
                 .map(c => c.id);
 
-            // Start roots at level 0 (top)
-            rootConclusions.forEach(rootId => {
-                levels.set(rootId, 0);
-            });
-
-            // If no roots found (disconnected graph), use all conclusions
             if (rootConclusions.length === 0) {
                 visibleClaims
                     .filter(c => conclusionToPremises.has(c.id))
-                    .forEach(c => levels.set(c.id, 0));
+                    .forEach(c => rootConclusions.push(c.id));
             }
 
-            // Iteratively assign levels working downward (from conclusions to premises)
+            // Calculate levels (distance from root)
+            rootConclusions.forEach(rootId => levels.set(rootId, 0));
+
             let changed = true;
             let iterations = 0;
             while (changed && iterations < 20) {
@@ -562,26 +513,22 @@
                 iterations++;
 
                 hypergraph.implications.forEach(impl => {
-                    // Skip if conclusion or any premise is collapsed
                     if (collapsedNodes.has(impl.conclusion) ||
                         impl.premises.some(p => collapsedNodes.has(p))) {
                         return;
                     }
 
                     const conclusionLevel = levels.get(impl.conclusion);
-
                     if (conclusionLevel !== undefined) {
                         const junctionId = `junction_${impl.id}`;
                         const junctionLevel = conclusionLevel + 1;
                         const premiseLevel = conclusionLevel + 2;
 
-                        // Set junction level
                         if (!levels.has(junctionId)) {
                             levels.set(junctionId, junctionLevel);
                             changed = true;
                         }
 
-                        // Set premise levels (or update if this path is deeper)
                         impl.premises.forEach(premiseId => {
                             if (!levels.has(premiseId) || levels.get(premiseId) < premiseLevel) {
                                 levels.set(premiseId, premiseLevel);
@@ -592,247 +539,201 @@
                 });
             }
 
-            // Assign y-positions based on levels (level 0 at top, increasing downward)
-            const maxLevel = Math.max(...Array.from(levels.values()), 0);
-            const levelSpacing = (height - 200) / (maxLevel + 1);
-
-            allNodes.forEach(node => {
-                const level = levels.get(node.id) || 0;
-                node.targetY = 100 + (level * levelSpacing); // Top to bottom
-
-                // Set initial x position to center if not already set
-                if (node.x === undefined) {
-                    node.x = width / 2 + (Math.random() - 0.5) * 100;
-                }
-                if (node.y === undefined) {
-                    node.y = node.targetY;
-                }
-            });
-
-            // Custom force to position junctions at the centroid of connected nodes
-            function junctionCentroidForce() {
-                let nodes;
-
-                function force(alpha) {
-                    nodes.forEach(node => {
-                        if (node.type === 'junction') {
-                            const impl = node.implication;
-
-                            // Find premise and conclusion nodes
-                            const premiseNodes = impl.premises
-                                .map(id => nodes.find(n => n.id === id))
-                                .filter(n => n);
-                            const conclusionNode = nodes.find(n => n.id === impl.conclusion);
-
-                            if (premiseNodes.length > 0 && conclusionNode) {
-                                // Calculate centroid of premises and conclusion
-                                const allConnected = [...premiseNodes, conclusionNode];
-                                const centroidX = allConnected.reduce((sum, n) => sum + n.x, 0) / allConnected.length;
-                                const centroidY = allConnected.reduce((sum, n) => sum + n.y, 0) / allConnected.length;
-
-                                // Pull junction towards centroid
-                                const strength = 0.2 * alpha;
-                                node.vx += (centroidX - node.x) * strength;
-                                node.vy += (centroidY - node.y) * strength;
-                            }
-                        }
-                    });
-                }
-
-                force.initialize = function(_) {
-                    nodes = _;
-                };
-
-                return force;
-            }
-
-            // Calculate subtree width for each node (only visible nodes)
+            // Calculate subtree widths recursively
             const subtreeWidths = new Map();
-            const subtreeHalfWidths = new Map();
 
             function calculateSubtreeWidth(nodeId, visited = new Set()) {
-                if (subtreeWidths.has(nodeId)) {
-                    return subtreeWidths.get(nodeId);
-                }
-
-                // Prevent infinite recursion in case of cycles
-                if (visited.has(nodeId)) {
-                    return 160;
-                }
+                if (subtreeWidths.has(nodeId)) return subtreeWidths.get(nodeId);
+                if (visited.has(nodeId)) return 150;
                 visited.add(nodeId);
 
                 const premises = conclusionToPremises.get(nodeId);
-
-                // Filter out collapsed premises - only consider visible ones
-                const visiblePremises = premises
-                    ? premises.filter(p => !collapsedNodes.has(p))
-                    : [];
+                const visiblePremises = premises ? premises.filter(p => !collapsedNodes.has(p)) : [];
 
                 if (visiblePremises.length === 0) {
-                    // Leaf node or all premises hidden - just its own width
-                    const width = 160; // Node diameter + padding
-                    subtreeWidths.set(nodeId, width);
-                    subtreeHalfWidths.set(nodeId, width / 2);
-                    return width;
+                    subtreeWidths.set(nodeId, 150);
+                    return 150;
                 }
 
-                // Non-leaf - sum of visible children subtree widths + spacing
                 let totalWidth = 0;
                 visiblePremises.forEach(premiseId => {
                     totalWidth += calculateSubtreeWidth(premiseId, visited);
                 });
+                totalWidth += (visiblePremises.length - 1) * 100; // Spacing
 
-                // Add spacing between sibling subtrees
-                totalWidth += (visiblePremises.length - 1) * 100;
-
-                // Node's subtree is at least as wide as its children
-                const width = Math.max(160, totalWidth);
+                const width = Math.max(150, totalWidth);
                 subtreeWidths.set(nodeId, width);
-                subtreeHalfWidths.set(nodeId, width / 2);
                 return width;
             }
 
-            // Calculate widths only for visible nodes
-            visibleClaims.forEach(claim => {
-                calculateSubtreeWidth(claim.id);
+            visibleClaims.forEach(c => calculateSubtreeWidth(c.id));
+
+            // Position nodes recursively
+            const positions = new Map();
+            const maxLevel = Math.max(...Array.from(levels.values()), 0);
+            const levelSpacing = (height - 200) / (maxLevel + 1);
+
+            function positionSubtree(nodeId, centerX, level) {
+                const y = 100 + level * levelSpacing;
+
+                // Check if node has a user-defined position already
+                if (nodePositions.has(nodeId)) {
+                    const userPos = nodePositions.get(nodeId);
+                    positions.set(nodeId, userPos);
+                } else {
+                    positions.set(nodeId, { x: centerX, y });
+                }
+
+                const premises = conclusionToPremises.get(nodeId);
+                const visiblePremises = premises ? premises.filter(p => !collapsedNodes.has(p)) : [];
+
+                if (visiblePremises.length === 0) return;
+
+                // Position junction
+                const impl = hypergraph.implications.find(i => i.conclusion === nodeId);
+                if (impl) {
+                    const junctionId = `junction_${impl.id}`;
+                    const junctionLevel = level + 1;
+                    const junctionY = 100 + junctionLevel * levelSpacing;
+
+                    if (nodePositions.has(junctionId)) {
+                        positions.set(junctionId, nodePositions.get(junctionId));
+                    } else {
+                        positions.set(junctionId, { x: centerX, y: junctionY });
+                    }
+                }
+
+                // Position child subtrees
+                const premiseLevel = level + 2;
+                const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 150);
+                const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * 100;
+
+                let currentX = centerX - totalWidth / 2;
+                visiblePremises.forEach((premiseId, i) => {
+                    const childCenterX = currentX + childWidths[i] / 2;
+                    positionSubtree(premiseId, childCenterX, premiseLevel);
+                    currentX += childWidths[i] + 100;
+                });
+            }
+
+            // Position each root tree
+            let totalRootWidth = 0;
+            rootConclusions.forEach(rootId => {
+                totalRootWidth += subtreeWidths.get(rootId) || 150;
+            });
+            totalRootWidth += (rootConclusions.length - 1) * 200;
+
+            let rootX = width / 2 - totalRootWidth / 2;
+            rootConclusions.forEach(rootId => {
+                const rootWidth = subtreeWidths.get(rootId) || 150;
+                positionSubtree(rootId, rootX + rootWidth / 2, 0);
+                rootX += rootWidth + 200;
             });
 
-            // Calculate actual spatial extent (bounding box) of a subtree
-            function getSubtreeExtent(nodeId, nodes, visited = new Set()) {
-                if (visited.has(nodeId)) {
-                    return { minX: Infinity, maxX: -Infinity };
-                }
-                visited.add(nodeId);
+            return { positions, levels };
+        }
 
-                const node = nodes.find(n => n.id === nodeId);
-                if (!node) {
-                    return { minX: Infinity, maxX: -Infinity };
-                }
+        function renderHypergraph() {
+            const width = document.getElementById('graph').clientWidth;
+            const height = 800;
 
-                const radius = node.type === 'claim' ? (fullTextMode ? 85 : 70) : 20;
-                let minX = node.x - radius;
-                let maxX = node.x + radius;
+            d3.select('#graph').selectAll('*').remove();
 
-                // Include all visible premises in the extent
-                const premises = conclusionToPremises.get(nodeId);
-                if (premises) {
-                    premises.forEach(premiseId => {
-                        if (!collapsedNodes.has(premiseId)) {
-                            const extent = getSubtreeExtent(premiseId, nodes, visited);
-                            minX = Math.min(minX, extent.minX);
-                            maxX = Math.max(maxX, extent.maxX);
-                        }
-                    });
-                }
+            svg = d3.select('#graph')
+                .attr('width', width)
+                .attr('height', height);
 
-                return { minX, maxX };
-            }
+            g = svg.append('g');
 
-            // Custom force to prevent subtree overlap using actual spatial extents
-            function subtreeCollisionForce() {
-                let nodes;
+            zoom = d3.zoom()
+                .scaleExtent([0.1, 10])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
 
-                function force(alpha) {
-                    // Cache extent calculations to avoid recomputation
-                    const extentCache = new Map();
-
-                    function getCachedExtent(nodeId) {
-                        if (!extentCache.has(nodeId)) {
-                            extentCache.set(nodeId, getSubtreeExtent(nodeId, nodes));
-                        }
-                        return extentCache.get(nodeId);
+            svg.call(zoom)
+                .on('dblclick.zoom', null) // Disable double-click zoom
+                .on('dblclick', () => {
+                    // Double-click background to unselect
+                    if (selectedClaim) {
+                        selectedClaim = null;
+                        document.querySelectorAll('.claim-card').forEach(card => {
+                            card.classList.remove('selected');
+                        });
+                        d3.selectAll('.claim-node')
+                            .attr('opacity', 1)
+                            .attr('stroke-width', 2);
+                        d3.selectAll('.hyperedge')
+                            .attr('opacity', 0.7);
                     }
+                });
 
-                    // For each implication, ensure sibling subtrees don't overlap
-                    hypergraph.implications.forEach(impl => {
-                        const conclusionNode = nodes.find(n => n.id === impl.conclusion);
-                        if (!conclusionNode) return;
+            // Create nodes (include ALL nodes, we'll hide collapsed ones with CSS)
+            const claims = hypergraph.claims.map(c => ({...c, type: 'claim'}));
+            const junctions = hypergraph.implications.map(impl => ({
+                id: `junction_${impl.id}`,
+                type: 'junction',
+                implication: impl
+            }));
 
-                        // Only consider visible premises (not collapsed)
-                        const premiseNodes = impl.premises
-                            .filter(id => !collapsedNodes.has(id))
-                            .map(id => nodes.find(n => n.id === id))
-                            .filter(n => n);
+            const allNodes = [...claims, ...junctions];
 
-                        if (premiseNodes.length < 2) return;
+            // Calculate layout (only for visible nodes)
+            const visibleClaims = claims.filter(c => !collapsedNodes.has(c.id));
+            const { positions, levels } = calculateTreeLayout(visibleClaims, width, height);
 
-                        // Sort premises by current x position
-                        premiseNodes.sort((a, b) => a.x - b.x);
+            // Apply positions to nodes
+            allNodes.forEach(node => {
+                const pos = positions.get(node.id);
+                if (pos) {
+                    node.x = pos.x;
+                    node.y = pos.y;
+                } else {
+                    node.x = width / 2;
+                    node.y = height / 2;
+                }
+            });
 
-                        // Check ALL pairs of siblings for overlap (not just adjacent)
-                        for (let i = 0; i < premiseNodes.length; i++) {
-                            for (let j = i + 1; j < premiseNodes.length; j++) {
-                                const node1 = premiseNodes[i];
-                                const node2 = premiseNodes[j];
+            // Create links
+            const links = [];
+            hypergraph.implications.forEach(impl => {
+                const junctionId = `junction_${impl.id}`;
 
-                                // Get actual spatial extent of each subtree
-                                const extent1 = getCachedExtent(node1.id);
-                                const extent2 = getCachedExtent(node2.id);
-
-                                const minGap = 100; // Minimum spacing between subtrees
-                                const currentGap = extent2.minX - extent1.maxX;
-
-                                if (currentGap < minGap) {
-                                    // Subtrees are overlapping or too close
-                                    const overlap = minGap - currentGap;
-                                    const strength = 0.3 * alpha; // Very gentle force
-
-                                    // Push them apart proportional to overlap
-                                    node1.vx -= overlap * strength;
-                                    node2.vx += overlap * strength;
-                                }
-                            }
-                        }
-
-                        // Center the group of premises under the conclusion
-                        if (premiseNodes.length > 0) {
-                            const extents = premiseNodes.map(p => getCachedExtent(p.id));
-                            const minX = Math.min(...extents.map(e => e.minX));
-                            const maxX = Math.max(...extents.map(e => e.maxX));
-
-                            const groupCenterX = (minX + maxX) / 2;
-                            const idealCenterX = conclusionNode.x;
-                            const offset = idealCenterX - groupCenterX;
-
-                            // Pull the whole group to center under conclusion
-                            const strength = 0.1 * alpha;
-                            premiseNodes.forEach(p => {
-                                p.vx += offset * strength;
-                            });
-                        }
-                    });
+                if (collapsedNodes.has(impl.conclusion) ||
+                    impl.premises.some(p => collapsedNodes.has(p))) {
+                    return;
                 }
 
-                force.initialize = function(_) {
-                    nodes = _;
-                };
+                impl.premises.forEach(premise => {
+                    const sourceNode = allNodes.find(n => n.id === premise);
+                    const targetNode = allNodes.find(n => n.id === junctionId);
+                    if (sourceNode && targetNode) {
+                        links.push({
+                            source: sourceNode,
+                            target: targetNode,
+                            type: 'premise-to-junction',
+                            premises: impl.premises,
+                            conclusion: impl.conclusion
+                        });
+                    }
+                });
 
-                return force;
-            }
+                const junctionNode = allNodes.find(n => n.id === junctionId);
+                const conclusionNode = allNodes.find(n => n.id === impl.conclusion);
+                if (junctionNode && conclusionNode) {
+                    links.push({
+                        source: junctionNode,
+                        target: conclusionNode,
+                        type: 'junction-to-conclusion',
+                        premises: impl.premises,
+                        conclusion: impl.conclusion
+                    });
+                }
+            });
 
-            simulation = d3.forceSimulation(allNodes)
-                .velocityDecay(0.2) // Strong friction to prevent shaking (default: 0.4, lower = more damping)
-                .alphaDecay(0.05) // Faster cooldown (default: 0.0228)
-                .force('link', d3.forceLink(links).id(d => d.id).distance(200).strength(0.8))
-                .force('charge', d3.forceManyBody().strength(-100))
-                .force('x', d3.forceX(d => {
-                    // Root conclusions strongly anchored to center
-                    if (rootConclusions.includes(d.id)) return width / 2;
-                    return width / 2;
-                }).strength(d => {
-                    // Stronger centering for root conclusions
-                    if (d.type === 'claim' && rootConclusions.includes(d.id)) return 0.3;
-                    return 0.03;
-                }))
-                .force('y', d3.forceY(d => d.targetY).strength(0.9))
-                .force('collision', d3.forceCollide().radius(d => d.type === 'claim' ? (fullTextMode ? 85 : 70) : 20))
-                .force('junction-centroid', junctionCentroidForce())
-                .force('subtree-collision', subtreeCollisionForce());
-
-            // Add defs for markers and filters (to svg, not g)
+            // Add defs for markers
             const defs = svg.append('defs');
 
-            // Arrowhead marker
             defs.append('marker')
                 .attr('id', 'arrowhead')
                 .attr('viewBox', '0 -5 10 10')
@@ -845,7 +746,6 @@
                 .attr('d', 'M0,-5L10,0L0,5')
                 .attr('fill', '#58a6ff');
 
-            // Glow filter for smooth blending
             const filter = defs.append('filter')
                 .attr('id', 'glow')
                 .attr('x', '-50%')
@@ -861,29 +761,63 @@
             feMerge.append('feMergeNode').attr('in', 'coloredBlur');
             feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
-            // Draw links as curved paths
+            // Draw links
+            function createCurvePath(d) {
+                const sourceX = d.source.x;
+                const sourceY = d.source.y;
+                const targetX = d.target.x;
+                const targetY = d.target.y;
+
+                const dx = targetX - sourceX;
+                const dy = targetY - sourceY;
+
+                if (d.type === 'premise-to-junction') {
+                    const cp1X = sourceX + dx * 0.3;
+                    const cp1Y = sourceY + dy * 0.3;
+                    const cp2X = targetX - dx * 0.2;
+                    const cp2Y = targetY - dy * 0.2;
+                    return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
+                } else {
+                    const cp1X = sourceX + dx * 0.3;
+                    const cp1Y = sourceY + dy * 0.3 - 15;
+                    const cp2X = sourceX + dx * 0.7;
+                    const cp2Y = sourceY + dy * 0.7 - 15;
+                    return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
+                }
+            }
+
             const link = g.append('g')
                 .selectAll('path')
                 .data(links)
                 .join('path')
                 .attr('class', d => `hyperedge ${d.type}`)
+                .attr('d', createCurvePath)
                 .attr('stroke', d => d.type === 'junction-to-conclusion' ? '#58a6ff' : '#8b949e')
-                .attr('stroke-width', d => d.type === 'junction-to-conclusion' ? 3 : 2)
+                .attr('stroke-width', d => {
+                    // Make vertical lines thicker so they're more visible
+                    const dx = Math.abs(d.target.x - d.source.x);
+                    const isVertical = dx < 5;
+                    const baseWidth = d.type === 'junction-to-conclusion' ? 3 : 2;
+                    return isVertical ? baseWidth + 1 : baseWidth;
+                })
                 .attr('opacity', 0.7)
                 .attr('fill', 'none')
                 .attr('stroke-linecap', 'round')
                 .attr('stroke-linejoin', 'round')
-                .attr('filter', 'url(#glow)')
                 .attr('marker-end', d => d.type === 'junction-to-conclusion' ? 'url(#arrowhead)' : null);
 
-            // Draw all nodes
+            // Draw nodes
             const node = g.append('g')
                 .selectAll('g')
                 .data(allNodes)
                 .join('g')
                 .attr('class', d => d.type === 'claim' ? 'claim-node' : 'junction-node')
+                .attr('transform', d => `translate(${d.x},${d.y})`)
                 .call(d3.drag()
-                    .clickDistance(5) // Must move 5px before it's considered a drag (prevents accidental restarts)
+                    .filter(function(event) {
+                        // Don't start drag if clicking on expand indicator
+                        return !event.target.closest('.expand-indicator');
+                    })
                     .on('start', dragstarted)
                     .on('drag', dragged)
                     .on('end', dragended));
@@ -896,10 +830,9 @@
                 .attr('fill-opacity', 0.2)
                 .attr('stroke', d => getScoreColor(d.score))
                 .attr('stroke-width', 2)
-                .attr('cursor', 'pointer')
-                .attr('class', 'claim-circle');
+                .attr('cursor', 'pointer');
 
-            // Add claim text with wrapping
+            // Add claim text
             node.filter(d => d.type === 'claim')
                 .each(function(d) {
                     const text = d3.select(this).append('text')
@@ -907,10 +840,8 @@
                         .attr('fill', '#e6edf3')
                         .attr('font-size', fullTextMode ? '10px' : '11px')
                         .attr('font-weight', '500')
-                        .attr('pointer-events', 'none')
-                        .attr('class', 'claim-text');
+                        .attr('pointer-events', 'none');
 
-                    // Wrap text to fit in circle
                     const words = d.text.split(/\s+/);
                     const maxWidth = fullTextMode ? 110 : 85;
                     const lineHeight = fullTextMode ? 11 : 12;
@@ -928,7 +859,6 @@
 
                         if (tspan.node().getComputedTextLength() > maxWidth) {
                             if (!fullTextMode && lineNumber >= maxLines - 1) {
-                                // Last line - truncate with ellipsis in compact mode
                                 line.pop();
                                 tspan.text(line.join(' ') + '...');
                                 break;
@@ -944,30 +874,39 @@
                         }
                     }
 
-                    // Center the text block vertically
                     const totalHeight = (lineNumber + 1) * lineHeight;
                     text.attr('transform', `translate(0, ${-totalHeight / 2 + 5})`);
                 });
 
-            // Add expand/collapse indicator for conclusion nodes
+            // Add expand/collapse indicator
             node.filter(d => d.type === 'claim' && isConclusion(d.id))
                 .each(function(d) {
-                    const g = d3.select(this);
+                    const parentG = d3.select(this);
                     const radius = fullTextMode ? 65 : 50;
 
-                    // Small circle for +/- indicator at bottom-right
-                    g.append('circle')
+                    // Create a group for the indicator button
+                    const indicatorG = parentG.append('g')
+                        .attr('class', 'expand-indicator')
+                        .attr('cursor', 'pointer')
+                        .on('click', function(event) {
+                            event.stopPropagation(); // Don't trigger parent click
+                            toggleCollapse(d.id);
+                        })
+                        .on('dblclick', function(event) {
+                            event.stopPropagation(); // Prevent zoom on double-click
+                        });
+
+                    indicatorG.append('circle')
                         .attr('cx', radius * 0.6)
                         .attr('cy', radius * 0.6)
                         .attr('r', 12)
                         .attr('fill', '#58a6ff')
                         .attr('stroke', '#e6edf3')
-                        .attr('stroke-width', 2)
-                        .attr('class', 'expand-indicator');
+                        .attr('stroke-width', 2);
 
-                    // +/- symbol
                     const isCollapsed = arePremisesCollapsed(d.id);
-                    g.append('text')
+                    indicatorG.append('text')
+                        .attr('class', 'expand-symbol')
                         .attr('x', radius * 0.6)
                         .attr('y', radius * 0.6)
                         .attr('text-anchor', 'middle')
@@ -976,11 +915,10 @@
                         .attr('font-size', '14px')
                         .attr('font-weight', '700')
                         .attr('pointer-events', 'none')
-                        .attr('class', 'expand-symbol')
                         .text(isCollapsed ? '+' : '−');
                 });
 
-            // Render junction nodes (small diamonds/circles)
+            // Render junction nodes
             node.filter(d => d.type === 'junction')
                 .append('circle')
                 .attr('r', 8)
@@ -999,7 +937,7 @@
                 .attr('font-weight', '700')
                 .attr('pointer-events', 'none');
 
-            // Tooltip on hover (shows ID and full text)
+            // Tooltips
             node.filter(d => d.type === 'claim')
                 .append('title')
                 .text(d => `${d.id}\n${d.text}\nScore: ${d.score}/10`);
@@ -1008,110 +946,69 @@
                 .append('title')
                 .text(d => `AND junction\n${d.implication.id}: ${d.implication.premises.join(' ∧ ')} → ${d.implication.conclusion}`);
 
-            // Click handler for claims
+            // Click handler - just select the claim (expand/collapse handled by +/- button)
             node.filter(d => d.type === 'claim')
                 .on('click', (event, d) => {
-                    // If this is a conclusion node, toggle collapse
-                    if (isConclusion(d.id)) {
-                        toggleCollapse(d.id);
-                    } else {
-                        // Otherwise, select it (highlight)
-                        selectClaim(d.id);
-                    }
+                    selectClaim(d.id);
                 });
 
-            // Helper function to create smooth, flowing curves
-            function createCurvePath(d) {
-                const sourceX = d.source.x;
-                const sourceY = d.source.y;
-                const targetX = d.target.x;
-                const targetY = d.target.y;
-
-                if (d.type === 'premise-to-junction') {
-                    // Create smooth S-curve that flows into junction
-                    const dx = targetX - sourceX;
-                    const dy = targetY - sourceY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    // Two control points for cubic bezier - creates flowing S-curve
-                    const tension = 0.4; // Controls curve tightness
-
-                    // First control point: start the curve from source
-                    const cp1X = sourceX + dx * 0.3;
-                    const cp1Y = sourceY + dy * 0.3;
-
-                    // Second control point: guide into junction smoothly
-                    const cp2X = targetX - dx * 0.2;
-                    const cp2Y = targetY - dy * 0.2;
-
-                    // Add subtle perpendicular pull for multiple edges
-                    const perpX = -dy / (dist || 1) * 20;
-                    const perpY = dx / (dist || 1) * 20;
-
-                    return `M ${sourceX},${sourceY} C ${cp1X + perpX * 0.5},${cp1Y + perpY * 0.5} ${cp2X + perpX * 0.3},${cp2Y + perpY * 0.3} ${targetX},${targetY}`;
-                } else {
-                    // Smooth curve for junction to conclusion
-                    const dx = targetX - sourceX;
-                    const dy = targetY - sourceY;
-
-                    // Control points for gentle arc
-                    const cp1X = sourceX + dx * 0.3;
-                    const cp1Y = sourceY + dy * 0.3 - 15;
-
-                    const cp2X = sourceX + dx * 0.7;
-                    const cp2Y = sourceY + dy * 0.7 - 15;
-
-                    return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
-                }
-            }
-
-            // Update positions on simulation tick
-            simulation.on('tick', () => {
-                link.attr('d', createCurvePath);
-                node.attr('transform', d => `translate(${d.x},${d.y})`);
-            });
-
-            // Stop simulation completely when it settles to prevent drift
-            simulation.on('end', () => {
-                console.log('Simulation settled');
-            });
-
-            if (!physicsEnabled) {
-                simulation.stop();
-            }
+            // Apply initial visibility based on collapsed state
+            updateNodeVisibility();
         }
 
-        let isDragging = false;
+        // Simple drag handlers - just update position and re-render
+        let draggedNode = null;
 
         function dragstarted(event, d) {
-            // Mark that we might be dragging
-            isDragging = false;
+            draggedNode = d;
+            d3.select(this).raise().attr('cursor', 'grabbing');
         }
 
         function dragged(event, d) {
-            // Actually dragging - pin node and restart simulation
-            if (!isDragging) {
-                isDragging = true;
-                d.fx = d.x;
-                d.fy = d.y;
-                if (!event.active) simulation.alphaTarget(0.05).restart();
-            }
-            d.fx = event.x;
-            d.fy = event.y;
+            d.x = event.x;
+            d.y = event.y;
+
+            // Store user-defined position
+            nodePositions.set(d.id, { x: d.x, y: d.y });
+
+            // Update this node's position
+            d3.select(this).attr('transform', `translate(${d.x},${d.y})`);
+
+            // Update connected links
+            d3.selectAll('.hyperedge').attr('d', function(linkData) {
+                const sourceX = linkData.source.x;
+                const sourceY = linkData.source.y;
+                const targetX = linkData.target.x;
+                const targetY = linkData.target.y;
+
+                const dx = targetX - sourceX;
+                const dy = targetY - sourceY;
+
+                if (linkData.type === 'premise-to-junction') {
+                    const cp1X = sourceX + dx * 0.3;
+                    const cp1Y = sourceY + dy * 0.3;
+                    const cp2X = targetX - dx * 0.2;
+                    const cp2Y = targetY - dy * 0.2;
+                    return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
+                } else {
+                    const cp1X = sourceX + dx * 0.3;
+                    const cp1Y = sourceY + dy * 0.3 - 15;
+                    const cp2X = sourceX + dx * 0.7;
+                    const cp2Y = sourceY + dy * 0.7 - 15;
+                    return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
+                }
+            });
         }
 
         function dragended(event, d) {
-            // Only unpin if we actually dragged
-            if (isDragging) {
-                if (!event.active) simulation.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
-                isDragging = false;
-            }
+            d3.select(this).attr('cursor', 'pointer');
+            draggedNode = null;
         }
 
         function resetView() {
             selectedClaim = null;
+            nodePositions.clear();
+
             document.querySelectorAll('.claim-card').forEach(card => {
                 card.classList.remove('selected');
             });
@@ -1123,26 +1020,13 @@
             d3.selectAll('.hyperedge')
                 .attr('opacity', 0.6);
 
-            if (simulation) {
-                simulation.alpha(1).restart();
-            }
-        }
-
-        function togglePhysics() {
-            physicsEnabled = !physicsEnabled;
-            if (physicsEnabled) {
-                simulation.restart();
-            } else {
-                simulation.stop();
-            }
+            renderHypergraph();
         }
 
         function toggleTextMode() {
             fullTextMode = !fullTextMode;
             const button = document.getElementById('toggle-text');
             button.textContent = fullTextMode ? 'Compact Text' : 'Full Text';
-
-            // Re-render the graph with new text mode
             renderHypergraph();
         }
 
