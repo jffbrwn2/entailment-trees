@@ -15,12 +15,14 @@
         {
           "type": "simulation",
           "source": "01_analytical_estimate.py",
-          "lines": "187-191"
+          "lines": "187-191",
+          "code": "# What if we reduce electrode noise?\nprint(\"\\n\" + \"=\"*70)\nprint(\"NOISE REDUCTION ANALYSIS\")\nprint(\"=\"*70)"
         },
         {
           "type": "simulation",
           "source": "interactive_visualizer.py",
-          "lines": "TODO: Add line numbers"
+          "lines": "TODO: Add line numbers",
+          "code": "TODO: Add code from simulation"
         }
       ],
       "reasoning": "While the physics works, signal strength is ~500\u00d7 below noise floor, requiring 28 days of averaging. This makes it impractical for real-time or near-real-time use.",
@@ -42,7 +44,8 @@
         {
           "type": "simulation",
           "source": "01_analytical_estimate.py",
-          "lines": "154-170"
+          "lines": "154-170",
+          "code": "print(f\"\\nTo achieve SNR = {target_SNR_dB} dB:\")\nprint(f\"  Required averages: N = {N_averages_required:.0f}\")\n\n# Time requirements\nstimulation_rate = 1.0  # Hz (typical EEG stimulation rate)\ntime_required = N_averages_required / stimulation_rate\n\nprint(f\"  At {stimulation_rate:.1f} Hz stimulation: {time_required/60:.1f} minutes\")\nprint(f\"                              = {time_required/3600:.2f} hours\")\n\n# ============================================================================\n# PARAMETER SENSITIVITY\n# ============================================================================\nprint(\"\\n6. PARAMETER SENSITIVITY\")\nprint(\"-\" * 70)"
         }
       ],
       "reasoning": "Modulated signal is ~40 nV vs 1 \u03bcV noise floor. Requires 625,000 averages for 0 dB SNR, or 2.4M averages for 10 dB SNR (~28 days at 1 Hz). This is not practical for real-time imaging.",
@@ -86,7 +89,8 @@
         {
           "type": "simulation",
           "source": "01_analytical_estimate.py",
-          "lines": "145-170"
+          "lines": "145-170",
+          "code": "print(f\"  Signal: {V_modulated*1e9:.2f} nV\")\nprint(f\"  Noise:  {V_noise_total*1e6:.2f} \u03bcV\")\nprint(f\"  SNR: {SNR_single:.2e} = {SNR_single_dB:.1f} dB\")\n\n# Required averaging for target SNR\ntarget_SNR_dB = 10  # 10 dB target\ntarget_SNR_linear = 10**(target_SNR_dB/20)\n\nN_averages_required = (target_SNR_linear / SNR_single)**2\n\nprint(f\"\\nTo achieve SNR = {target_SNR_dB} dB:\")\nprint(f\"  Required averages: N = {N_averages_required:.0f}\")\n\n# Time requirements\nstimulation_rate = 1.0  # Hz (typical EEG stimulation rate)\ntime_required = N_averages_required / stimulation_rate\n\nprint(f\"  At {stimulation_rate:.1f} Hz stimulation: {time_required/60:.1f} minutes\")\nprint(f\"                              = {time_required/3600:.2f} hours\")\n\n# ============================================================================\n# PARAMETER SENSITIVITY\n# ============================================================================\nprint(\"\\n6. PARAMETER SENSITIVITY\")\nprint(\"-\" * 70)"
         }
       ],
       "reasoning": "Natural neural currents produce ~1 mV local field potentials, which attenuate to ~50 \u03bcV at scalp. After 0.08% modulation: 50 \u03bcV \u00d7 8\u00d710\u207b\u2074 = 40 nV. This is 25\u00d7 BELOW the 1 \u03bcV thermal noise floor. Compare to published studies using INJECTED currents of 0.5-1 mA, which are ~1000\u00d7 stronger than natural neural currents. Those achieved 8-15 dB SNR.",
@@ -132,7 +136,8 @@
         {
           "type": "simulation",
           "source": "01_analytical_estimate.py",
-          "lines": "154-170"
+          "lines": "154-170",
+          "code": "print(f\"\\nTo achieve SNR = {target_SNR_dB} dB:\")\nprint(f\"  Required averages: N = {N_averages_required:.0f}\")\n\n# Time requirements\nstimulation_rate = 1.0  # Hz (typical EEG stimulation rate)\ntime_required = N_averages_required / stimulation_rate\n\nprint(f\"  At {stimulation_rate:.1f} Hz stimulation: {time_required/60:.1f} minutes\")\nprint(f\"                              = {time_required/3600:.2f} hours\")\n\n# ============================================================================\n# PARAMETER SENSITIVITY\n# ============================================================================\nprint(\"\\n6. PARAMETER SENSITIVITY\")\nprint(\"-\" * 70)"
         }
       ],
       "reasoning": "Signal = 40 nV, Noise = 1 \u03bcV (thermal). Single-shot SNR = -28 dB. To reach SNR = 0 dB: Need 625,000 averages. To reach SNR = 10 dB: Need 6.25M averages (~72 days). For practical SNR = 10 dB in 1 hour: Need signal improvement of ~700\u00d7. Improvement limited by: (1) Ultrasound pressure (safety-limited to ~2-3 MPa), (2) Neural current strength (fundamental limit), (3) Electrode noise (thermal physics limit).",
@@ -239,7 +244,8 @@
         {
           "type": "simulation",
           "source": "01_analytical_estimate.py",
-          "lines": "TODO: Add line numbers"
+          "lines": "TODO: Add line numbers",
+          "code": "TODO: Add code from simulation"
         }
       ],
       "reasoning": "At 2 MPa, intensity is ~125 mW/cm\u00b2, which is well below FDA diagnostic limit of 720 mW/cm\u00b2. However, MI = 2.0 slightly exceeds diagnostic MI < 1.9 limit. Bone heating is a concern for continuous operation.",
@@ -341,7 +347,8 @@
         {
           "type": "simulation",
           "source": "01_analytical_estimate.py",
-          "lines": "154-170"
+          "lines": "154-170",
+          "code": "print(f\"\\nTo achieve SNR = {target_SNR_dB} dB:\")\nprint(f\"  Required averages: N = {N_averages_required:.0f}\")\n\n# Time requirements\nstimulation_rate = 1.0  # Hz (typical EEG stimulation rate)\ntime_required = N_averages_required / stimulation_rate\n\nprint(f\"  At {stimulation_rate:.1f} Hz stimulation: {time_required/60:.1f} minutes\")\nprint(f\"                              = {time_required/3600:.2f} hours\")\n\n# ============================================================================\n# PARAMETER SENSITIVITY\n# ============================================================================\nprint(\"\\n6. PARAMETER SENSITIVITY\")\nprint(\"-\" * 70)"
         },
         {
           "type": "literature",

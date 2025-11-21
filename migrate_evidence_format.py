@@ -96,7 +96,7 @@ def migrate_evidence_item(item, claim_id, evidence_index, base_path=None):
                     issues.append(f"Needs 'reference_text' - exact quote from literature")
 
     elif evidence_type == 'simulation':
-        # Required: source, lines
+        # Required: source, lines, code
         if 'source' in item:
             new_item['source'] = item['source']
         else:
@@ -108,6 +108,25 @@ def migrate_evidence_item(item, claim_id, evidence_index, base_path=None):
         else:
             issues.append(f"Missing 'lines' for simulation")
             new_item['lines'] = "TODO: Add line numbers"
+
+        # Extract code from source file
+        if 'code' in item:
+            new_item['code'] = item['code']
+        else:
+            # Try to extract from source file
+            extracted = None
+            if 'source' in item and 'lines' in item and base_path:
+                source_file = base_path / item['source']
+                if source_file.exists():
+                    extracted = read_source_lines(source_file, item['lines'])
+                    if extracted:
+                        new_item['code'] = extracted
+                    else:
+                        issues.append(f"Could not read lines {item['lines']} from {item['source']}")
+
+            if not extracted:
+                new_item['code'] = "TODO: Add code from simulation"
+                issues.append(f"Needs 'code' - extract from {item.get('source', 'source file')}")
 
     elif evidence_type == 'calculation':
         # Required: equations, program

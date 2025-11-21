@@ -11,7 +11,8 @@ Validates:
 
 import json
 import sys
-from typing import Dict, List, Set, Any, Tuple
+from pathlib import Path
+from typing import Dict, List, Set, Any, Tuple, Optional
 
 
 # Allowed values
@@ -25,7 +26,7 @@ EVIDENCE_SCHEMAS = {
         'optional': []
     },
     'simulation': {
-        'required': ['source', 'lines'],
+        'required': ['source', 'lines', 'code'],
         'optional': []
     },
     'calculation': {
@@ -35,16 +36,53 @@ EVIDENCE_SCHEMAS = {
 }
 
 
+def read_source_lines(source_path: Path, lines_spec: str) -> Optional[str]:
+    """
+    Read specific lines from a source file.
+
+    Args:
+        source_path: Path to the file
+        lines_spec: Line specification like "3-18", "145-170", or "56-64, 152-156"
+
+    Returns:
+        Extracted text or None if file not found
+    """
+    try:
+        with open(source_path, 'r') as f:
+            all_lines = f.readlines()
+
+        result_lines = []
+
+        # Handle multiple ranges separated by commas
+        for range_spec in lines_spec.split(','):
+            range_spec = range_spec.strip()
+
+            if '-' in range_spec:
+                start, end = map(int, range_spec.split('-'))
+                # Convert to 0-indexed
+                selected_lines = all_lines[start-1:end]
+                result_lines.extend(selected_lines)
+            else:
+                # Single line
+                line_num = int(range_spec)
+                result_lines.append(all_lines[line_num-1])
+
+        return ''.join(result_lines).strip()
+    except (FileNotFoundError, IndexError, ValueError):
+        return None
+
+
 class TypeCheckError(Exception):
     """Custom exception for type checking errors."""
     pass
 
 
 class TreeTypeChecker:
-    def __init__(self):
+    def __init__(self, base_path: Optional[Path] = None):
         self.errors: List[str] = []
         self.warnings: List[str] = []
         self.node_ids: Set[str] = set()
+        self.base_path = base_path
 
     def error(self, path: str, message: str):
         """Record an error."""
@@ -139,6 +177,34 @@ class TreeTypeChecker:
                         f"Unexpected field '{field}' for evidence type '{evidence_type}'. "
                         f"Allowed fields: {', '.join(sorted(allowed_fields))}"
                     )
+
+            # Verify code/reference_text matches source file
+            if self.base_path and evidence_type in ('literature', 'simulation'):
+                source = item.get('source')
+                if source and not source.startswith('TODO'):
+                    source_file = self.base_path / source
+                    if source_file.exists():
+                        if evidence_type == 'literature' and 'lines' in item:
+                            # Verify reference_text matches source
+                            lines_spec = item['lines']
+                            expected = read_source_lines(source_file, lines_spec)
+                            actual = item.get('reference_text', '').strip()
+                            if expected and actual != expected:
+                                self.error(
+                                    item_path,
+                                    f"reference_text does not match source {source}:{lines_spec}"
+                                )
+                        elif evidence_type == 'simulation':
+                            # Verify code matches source
+                            lines_spec = item.get('lines')
+                            if lines_spec and not lines_spec.startswith('TODO'):
+                                expected = read_source_lines(source_file, lines_spec)
+                                actual = item.get('code', '').strip()
+                                if expected and actual != expected:
+                                    self.error(
+                                        item_path,
+                                        f"code does not match source {source}:{lines_spec}"
+                                    )
 
     def check_node(self, node: Dict[str, Any], path: str = "tree") -> None:
         """Recursively validate a node."""
@@ -297,14 +363,16 @@ def typecheck_tree(json_path: str) -> Tuple[List[str], List[str]]:
     Returns (errors, warnings).
     """
     try:
-        with open(json_path, 'r') as f:
+        json_path_obj = Path(json_path)
+        with open(json_path_obj, 'r') as f:
             tree_data = json.load(f)
     except json.JSONDecodeError as e:
         return [f"Invalid JSON: {e}"], []
     except FileNotFoundError:
         return [f"File not found: {json_path}"], []
 
-    checker = TreeTypeChecker()
+    base_path = json_path_obj.parent
+    checker = TreeTypeChecker(base_path=base_path)
     return checker.check_tree(tree_data)
 
 
