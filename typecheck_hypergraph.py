@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Dict, List, Set, Any, Tuple, Optional
 
 
-# Allowed values (must match typecheck_tree.py)
+# Allowed values for hypergraph validation
 ALLOWED_EVIDENCE_TYPES = {'simulation', 'literature', 'calculation'}
 ALLOWED_IMPLICATION_TYPES = {'AND', 'OR'}
 
