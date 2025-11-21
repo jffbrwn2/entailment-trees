@@ -637,14 +637,15 @@
             const currentlyCollapsed = arePremisesCollapsed(conclusionId);
 
             if (currentlyCollapsed) {
+                // Expanding - need to recalculate layout for newly visible nodes
                 premises.forEach(p => collapsedNodes.delete(p));
+                renderHypergraph();
             } else {
+                // Collapsing - just hide nodes for smooth interaction
                 collapseRecursive(conclusionId);
+                updateNodeVisibility();
+                updateExpandIndicators();
             }
-
-            // Just update visibility instead of full re-render
-            updateNodeVisibility();
-            updateExpandIndicators();
         }
 
         function updateNodeVisibility() {
