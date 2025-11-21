@@ -254,6 +254,11 @@
             </div>
 
             <div class="sidebar">
+                <div class="panel" id="details-panel" style="display: none;">
+                    <div class="panel-title">Selected Item</div>
+                    <div id="details-content"></div>
+                </div>
+
                 <div class="panel">
                     <div class="panel-title">Claims (Nodes)</div>
                     <div id="claims-list"></div>
@@ -298,7 +303,7 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script>
         let hypergraph = null;
-        let selectedClaim = null;
+        let selectedItem = null; // { type: 'claim' | 'implication', id: string }
         let fullTextMode = false;
         let zoom = null;
         let svg = null;
@@ -462,13 +467,26 @@
         }
 
         function selectClaim(claimId) {
-            selectedClaim = claimId;
+            selectedItem = { type: 'claim', id: claimId };
 
             document.querySelectorAll('.claim-card').forEach(card => {
                 card.classList.toggle('selected', card.dataset.claimId === claimId);
             });
 
             highlightClaim(claimId);
+            renderDetailsPanel();
+        }
+
+        function selectImplication(implId) {
+            selectedItem = { type: 'implication', id: implId };
+
+            // Clear claim selection in sidebar
+            document.querySelectorAll('.claim-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            highlightImplication(implId);
+            renderDetailsPanel();
         }
 
         function highlightClaim(claimId) {
@@ -479,7 +497,138 @@
             d3.selectAll('.hyperedge')
                 .attr('opacity', d => {
                     return d.premises.includes(claimId) || d.conclusion === claimId ? 1 : 0.2;
+                })
+                .attr('stroke-width', d => {
+                    const baseWidth = d.type === 'junction-to-conclusion' ? 3 : 2;
+                    return baseWidth;
                 });
+        }
+
+        function highlightImplication(implId) {
+            const impl = hypergraph.implications.find(i => i.id === implId);
+            if (!impl) return;
+
+            d3.selectAll('.claim-node')
+                .attr('opacity', d => {
+                    return impl.premises.includes(d.id) || d.id === impl.conclusion ? 1 : 0.3;
+                })
+                .attr('stroke-width', 2);
+
+            d3.selectAll('.hyperedge')
+                .attr('opacity', d => d.implId === implId ? 1 : 0.2)
+                .attr('stroke-width', d => {
+                    if (d.implId === implId) {
+                        return d.type === 'junction-to-conclusion' ? 5 : 4;
+                    }
+                    const baseWidth = d.type === 'junction-to-conclusion' ? 3 : 2;
+                    const dx = Math.abs(d.target.x - d.source.x);
+                    const isVertical = dx < 5;
+                    return isVertical ? baseWidth + 1 : baseWidth;
+                });
+        }
+
+        function renderDetailsPanel() {
+            const panel = document.getElementById('details-panel');
+            const content = document.getElementById('details-content');
+
+            if (!selectedItem) {
+                panel.style.display = 'none';
+                return;
+            }
+
+            panel.style.display = 'block';
+
+            if (selectedItem.type === 'claim') {
+                const claim = hypergraph.claims.find(c => c.id === selectedItem.id);
+                if (!claim) return;
+
+                content.innerHTML = `
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-family: 'SF Mono', Monaco, monospace; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                            ${claim.id}
+                        </div>
+                        <div style="font-size: 0.95rem; line-height: 1.5; margin-bottom: 0.75rem;">
+                            ${claim.text}
+                        </div>
+                        <div style="margin-bottom: 0.75rem;">
+                            <span style="display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600;"
+                                  class="${getScoreClass(claim.score)}">
+                                Score: ${claim.score}/10
+                            </span>
+                        </div>
+                        ${claim.tags && claim.tags.length > 0 ? `
+                            <div style="margin-top: 0.5rem;">
+                                ${claim.tags.map(tag => `
+                                    <span style="display: inline-block; padding: 0.2rem 0.5rem; background: rgba(248, 81, 73, 0.2); color: var(--danger); border-radius: 4px; font-size: 0.7rem; margin-right: 0.5rem; font-weight: 600;">
+                                        ${tag}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                    ${claim.reasoning ? `
+                        <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-bottom: 1rem;">
+                            <div style="font-weight: 600; margin-bottom: 0.5rem; color: var(--accent);">Reasoning</div>
+                            <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary);">
+                                ${claim.reasoning}
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${claim.evidence ? `
+                        <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-bottom: 1rem;">
+                            <div style="font-weight: 600; margin-bottom: 0.75rem; color: var(--accent);">Evidence</div>
+                            ${claim.evidence.map(e => `
+                                <div style="background: var(--bg-tertiary); border-left: 3px solid var(--accent); padding: 0.75rem; margin-bottom: 0.75rem; border-radius: 4px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                        <div style="font-family: 'SF Mono', Monaco, monospace; font-size: 0.7rem; color: var(--accent); font-weight: 600; text-transform: uppercase;">
+                                            ${e.type}
+                                        </div>
+                                    </div>
+                                    <div style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary); font-family: 'SF Mono', Monaco, monospace;">
+                                        ${e.source}${e.lines ? `:${e.lines}` : ''}
+                                    </div>
+                                    <div style="font-size: 0.85rem; line-height: 1.5;">
+                                        ${e.description}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    ${claim.uncertainties && claim.uncertainties.length > 0 ? `
+                        <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
+                            <div style="font-weight: 600; margin-bottom: 0.75rem; color: var(--warning);">Uncertainties</div>
+                            ${claim.uncertainties.map(u => `
+                                <div style="background: rgba(210, 153, 34, 0.1); border-left: 3px solid var(--warning); padding: 0.75rem; margin-bottom: 0.75rem; border-radius: 4px; font-size: 0.85rem; line-height: 1.5;">
+                                    ${u}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                `;
+            } else if (selectedItem.type === 'implication') {
+                const impl = hypergraph.implications.find(i => i.id === selectedItem.id);
+                if (!impl) return;
+
+                const premiseIds = impl.premises.join(', ');
+                const formula = `(${premiseIds}) → ${impl.conclusion}`;
+
+                content.innerHTML = `
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-family: 'SF Mono', Monaco, monospace; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                            ${impl.id}
+                        </div>
+                        <div style="font-family: 'SF Mono', Monaco, monospace; color: var(--accent); margin-bottom: 0.75rem; font-size: 0.9rem;">
+                            ${formula}
+                        </div>
+                    </div>
+                    <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.75rem; color: var(--accent);">Reasoning</div>
+                        <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary);">
+                            ${impl.reasoning}
+                        </div>
+                    </div>
+                `;
+            }
         }
 
         // ALGORITHMIC TREE LAYOUT - NO PHYSICS
@@ -655,8 +804,8 @@
                 .on('dblclick.zoom', null) // Disable double-click zoom
                 .on('dblclick', () => {
                     // Double-click background to unselect
-                    if (selectedClaim) {
-                        selectedClaim = null;
+                    if (selectedItem) {
+                        selectedItem = null;
                         document.querySelectorAll('.claim-card').forEach(card => {
                             card.classList.remove('selected');
                         });
@@ -664,7 +813,14 @@
                             .attr('opacity', 1)
                             .attr('stroke-width', 2);
                         d3.selectAll('.hyperedge')
-                            .attr('opacity', 0.7);
+                            .attr('opacity', 0.7)
+                            .attr('stroke-width', d => {
+                                const baseWidth = d.type === 'junction-to-conclusion' ? 3 : 2;
+                                const dx = Math.abs(d.target.x - d.source.x);
+                                const isVertical = dx < 5;
+                                return isVertical ? baseWidth + 1 : baseWidth;
+                            });
+                        renderDetailsPanel();
                     }
                 });
 
@@ -713,7 +869,8 @@
                             target: targetNode,
                             type: 'premise-to-junction',
                             premises: impl.premises,
-                            conclusion: impl.conclusion
+                            conclusion: impl.conclusion,
+                            implId: impl.id
                         });
                     }
                 });
@@ -726,7 +883,8 @@
                         target: conclusionNode,
                         type: 'junction-to-conclusion',
                         premises: impl.premises,
-                        conclusion: impl.conclusion
+                        conclusion: impl.conclusion,
+                        implId: impl.id
                     });
                 }
             });
@@ -804,7 +962,12 @@
                 .attr('fill', 'none')
                 .attr('stroke-linecap', 'round')
                 .attr('stroke-linejoin', 'round')
-                .attr('marker-end', d => d.type === 'junction-to-conclusion' ? 'url(#arrowhead)' : null);
+                .attr('marker-end', d => d.type === 'junction-to-conclusion' ? 'url(#arrowhead)' : null)
+                .attr('cursor', 'pointer')
+                .on('click', (event, d) => {
+                    event.stopPropagation();
+                    selectImplication(d.implId);
+                });
 
             // Draw nodes
             const node = g.append('g')
@@ -925,7 +1088,8 @@
                 .attr('fill', '#58a6ff')
                 .attr('stroke', '#58a6ff')
                 .attr('stroke-width', 2)
-                .attr('opacity', 0.9);
+                .attr('opacity', 0.9)
+                .attr('cursor', 'pointer');
 
             node.filter(d => d.type === 'junction')
                 .append('text')
@@ -936,6 +1100,13 @@
                 .attr('font-size', '12px')
                 .attr('font-weight', '700')
                 .attr('pointer-events', 'none');
+
+            // Click handler for junction nodes
+            node.filter(d => d.type === 'junction')
+                .on('click', (event, d) => {
+                    event.stopPropagation();
+                    selectImplication(d.implication.id);
+                });
 
             // Tooltips
             node.filter(d => d.type === 'claim')
@@ -1006,7 +1177,7 @@
         }
 
         function resetView() {
-            selectedClaim = null;
+            selectedItem = null;
             nodePositions.clear();
 
             document.querySelectorAll('.claim-card').forEach(card => {
@@ -1018,8 +1189,9 @@
                 .attr('stroke-width', 2);
 
             d3.selectAll('.hyperedge')
-                .attr('opacity', 0.6);
+                .attr('opacity', 0.7);
 
+            renderDetailsPanel();
             renderHypergraph();
         }
 
