@@ -637,15 +637,14 @@
             const currentlyCollapsed = arePremisesCollapsed(conclusionId);
 
             if (currentlyCollapsed) {
-                // Expanding - need to recalculate layout for newly visible nodes
                 premises.forEach(p => collapsedNodes.delete(p));
-                renderHypergraph();
             } else {
-                // Collapsing - just hide nodes for smooth interaction
                 collapseRecursive(conclusionId);
-                updateNodeVisibility();
-                updateExpandIndicators();
             }
+
+            // Just update visibility instead of full re-render
+            updateNodeVisibility();
+            updateExpandIndicators();
         }
 
         function updateNodeVisibility() {
@@ -1044,9 +1043,7 @@
                 }
 
                 const premises = conclusionToPremises.get(nodeId);
-                const visiblePremises = premises ? premises.filter(p => !collapsedNodes.has(p)) : [];
-
-                if (visiblePremises.length === 0) return;
+                if (!premises || premises.length === 0) return;
 
                 // Position junction
                 const impl = hypergraph.implications.find(i => i.conclusion === nodeId);
@@ -1064,6 +1061,9 @@
 
                 // Position child subtrees
                 const premiseLevel = level + 2;
+
+                // Use visible premises for spacing, but position ALL premises
+                const visiblePremises = premises.filter(p => !collapsedNodes.has(p));
                 const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 150);
                 const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * 100;
 
@@ -1072,6 +1072,14 @@
                     const childCenterX = currentX + childWidths[i] / 2;
                     positionSubtree(premiseId, childCenterX, premiseLevel);
                     currentX += childWidths[i] + 100;
+                });
+
+                // Position collapsed premises at their parent's position
+                // so they have a position ready when expanded
+                premises.filter(p => collapsedNodes.has(p)).forEach(premiseId => {
+                    if (!positions.has(premiseId)) {
+                        positionSubtree(premiseId, centerX, premiseLevel);
+                    }
                 });
             }
 
