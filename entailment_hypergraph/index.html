@@ -547,7 +547,8 @@
                 if (node.children && node.children.length > 0) {
                     const expandBtn = document.createElement('div');
                     expandBtn.className = 'outline-expand-btn';
-                    expandBtn.textContent = collapsedNodes.has(node.id) ? '+' : '−';
+                    const isCollapsed = arePremisesCollapsed(node.id);
+                    expandBtn.textContent = isCollapsed ? '+' : '−';
                     expandBtn.onclick = (e) => {
                         e.stopPropagation();
                         toggleOutlineCollapse(node.id);
@@ -581,7 +582,7 @@
                 container.appendChild(nodeDiv);
 
                 // Render children if not collapsed
-                if (node.children && node.children.length > 0 && !collapsedNodes.has(node.id)) {
+                if (node.children && node.children.length > 0 && !arePremisesCollapsed(node.id)) {
                     const relationship = document.createElement('div');
                     relationship.className = 'outline-relationship';
                     relationship.textContent = `${node.children_relationship || 'AND'} (all must be true)`;
@@ -589,7 +590,12 @@
 
                     const childrenDiv = document.createElement('div');
                     childrenDiv.className = 'outline-children';
-                    node.children.forEach(child => renderNode(child, childrenDiv));
+                    node.children.forEach(child => {
+                        // Only render children that aren't collapsed
+                        if (!collapsedNodes.has(child.id)) {
+                            renderNode(child, childrenDiv);
+                        }
+                    });
                     container.appendChild(childrenDiv);
                 }
             }
@@ -598,11 +604,19 @@
         }
 
         function toggleOutlineCollapse(nodeId) {
-            if (collapsedNodes.has(nodeId)) {
-                collapsedNodes.delete(nodeId);
+            const premises = conclusionToPremises.get(nodeId);
+            if (!premises) return;
+
+            const currentlyCollapsed = arePremisesCollapsed(nodeId);
+
+            if (currentlyCollapsed) {
+                // Expand: only remove immediate premises
+                premises.forEach(p => collapsedNodes.delete(p));
             } else {
-                collapsedNodes.add(nodeId);
+                // Collapse: recursively collapse all descendants
+                collapseRecursive(nodeId);
             }
+
             renderOutline();
         }
 
