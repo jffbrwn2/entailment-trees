@@ -93,9 +93,12 @@ Each entailment tree should be a structured JSON with:
 - `conclusions`: Summary and verdicts
 
 *Allowed Evidence Types (ONLY):*
-- `simulation` - Results from simulation code
 - `literature` - Papers, citations, published data, standards, guidelines
+  - Required fields: `type`, `source` (file or citation), `reference_text` (exact quote)
+- `simulation` - Results from simulation code
+  - Required fields: `type`, `source` (script path), `lines` (line numbers, e.g., "145-170")
 - `calculation` - Back-of-envelope math, analytical estimates
+  - Required fields: `type`, `equations` (LaTeX formulas), `program` (Python function)
 
 *Type Checking:*
 Use `python typecheck_tree.py <file>` to validate structure and types.

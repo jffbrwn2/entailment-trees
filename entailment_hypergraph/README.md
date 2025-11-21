@@ -127,6 +127,48 @@ The tree approach is better when:
 - Simpler visualization needs
 - Each claim is unique to its position in the argument
 
+## Type Checking
+
+Hypergraph files must follow strict validation rules. Use the type checker to validate:
+
+```bash
+# Check a single file
+python typecheck_hypergraph.py entailment_hypergraph/steam_engine_example.json
+
+# Check all JSON files in directory
+python typecheck_hypergraph.py entailment_hypergraph/
+```
+
+### Validation Rules
+
+**Required Evidence Types** (must be one of):
+- `literature` - Papers, citations, published data (requires: `source`, `reference_text`)
+- `simulation` - Results from simulation code (requires: `source`, `lines`)
+- `calculation` - Analytical estimates, equations (requires: `equations`, `program`)
+
+**Structure Requirements:**
+- All claim IDs must be unique
+- All implication IDs must be unique
+- Premise/conclusion references must exist
+- Scores must be 0-10
+- Implication types must be `AND` or `OR`
+
+**Exit Codes:**
+- `0` - Passed (or passed with warnings)
+- `1` - Failed with errors
+
+### Example Output
+
+```
+✓ Type checking PASSED!
+```
+
+```
+❌ Type checking FAILED with 1 error(s):
+  ERROR: claims[0].evidence[0]: Invalid evidence type 'experiment'.
+         Must be one of: calculation, literature, simulation
+```
+
 ## Future Extensions
 
 - **Score propagation**: Automatically compute conclusion scores from premises

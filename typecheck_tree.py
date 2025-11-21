@@ -18,6 +18,22 @@ from typing import Dict, List, Set, Any, Tuple
 ALLOWED_EVIDENCE_TYPES = {'simulation', 'literature', 'calculation'}
 ALLOWED_RELATIONSHIPS = {'AND', 'OR'}
 
+# Evidence type schemas - defines required fields for each type
+EVIDENCE_SCHEMAS = {
+    'literature': {
+        'required': ['source', 'reference_text'],
+        'optional': []
+    },
+    'simulation': {
+        'required': ['source', 'lines'],
+        'optional': []
+    },
+    'calculation': {
+        'required': ['equations', 'program'],
+        'optional': []
+    }
+}
+
 
 class TypeCheckError(Exception):
     """Custom exception for type checking errors."""
@@ -64,7 +80,7 @@ class TreeTypeChecker:
                 self.check_type(path, metadata[field], expected_type, field)
 
     def check_evidence(self, path: str, evidence: List[Dict[str, Any]]) -> None:
-        """Validate evidence array."""
+        """Validate evidence array with strict type schemas."""
         if not isinstance(evidence, list):
             self.error(path, "'evidence' must be a list")
             return
@@ -79,24 +95,50 @@ class TreeTypeChecker:
             # Check type field
             if 'type' not in item:
                 self.error(item_path, "Missing 'type' field")
-            else:
-                evidence_type = item['type']
-                if evidence_type not in ALLOWED_EVIDENCE_TYPES:
+                continue
+
+            evidence_type = item['type']
+            if evidence_type not in ALLOWED_EVIDENCE_TYPES:
+                self.error(
+                    item_path,
+                    f"Invalid evidence type '{evidence_type}'. "
+                    f"Must be one of: {', '.join(sorted(ALLOWED_EVIDENCE_TYPES))}"
+                )
+                continue
+
+            # Get schema for this evidence type
+            schema = EVIDENCE_SCHEMAS[evidence_type]
+
+            # Check required fields
+            for required_field in schema['required']:
+                if required_field not in item:
                     self.error(
                         item_path,
-                        f"Invalid evidence type '{evidence_type}'. "
-                        f"Must be one of: {', '.join(sorted(ALLOWED_EVIDENCE_TYPES))}"
+                        f"Missing required field '{required_field}' for evidence type '{evidence_type}'"
+                    )
+                elif not isinstance(item[required_field], str):
+                    self.error(
+                        item_path,
+                        f"Field '{required_field}' must be a string"
                     )
 
-            # Check source field
-            if 'source' not in item:
-                self.warning(item_path, "Missing 'source' field")
-            elif not isinstance(item['source'], str):
-                self.error(item_path, "'source' must be a string")
+            # Check optional fields if present
+            for optional_field in schema['optional']:
+                if optional_field in item and not isinstance(item[optional_field], str):
+                    self.error(
+                        item_path,
+                        f"Optional field '{optional_field}' must be a string"
+                    )
 
-            # Optional description
-            if 'description' in item and not isinstance(item['description'], str):
-                self.error(item_path, "'description' must be a string")
+            # Check for disallowed fields
+            allowed_fields = {'type'} | set(schema['required']) | set(schema['optional'])
+            for field in item.keys():
+                if field not in allowed_fields:
+                    self.warning(
+                        item_path,
+                        f"Unexpected field '{field}' for evidence type '{evidence_type}'. "
+                        f"Allowed fields: {', '.join(sorted(allowed_fields))}"
+                    )
 
     def check_node(self, node: Dict[str, Any], path: str = "tree") -> None:
         """Recursively validate a node."""

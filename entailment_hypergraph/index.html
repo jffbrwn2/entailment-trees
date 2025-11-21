@@ -240,6 +240,7 @@
             <select id="example-select">
                 <option value="/entailment_hypergraph/water_boiling_example.json">Water Boiling (Simple)</option>
                 <option value="/entailment_hypergraph/steam_engine_example.json">Steam Engine Feasibility (Complex)</option>
+                <option value="/entailment_hypergraph/ultrasound_eeg_enhancement.json">Ultrasound EEG Enhancement (Real Project)</option>
             </select>
             <button id="reset-view">Reset View</button>
             <button id="toggle-text">Full Text</button>
@@ -577,21 +578,52 @@
                     ${claim.evidence ? `
                         <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-bottom: 1rem;">
                             <div style="font-weight: 600; margin-bottom: 0.75rem; color: var(--accent);">Evidence</div>
-                            ${claim.evidence.map(e => `
-                                <div style="background: var(--bg-tertiary); border-left: 3px solid var(--accent); padding: 0.75rem; margin-bottom: 0.75rem; border-radius: 4px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                        <div style="font-family: 'SF Mono', Monaco, monospace; font-size: 0.7rem; color: var(--accent); font-weight: 600; text-transform: uppercase;">
-                                            ${e.type}
+                            ${claim.evidence.map(e => {
+                                let evidenceContent = '';
+
+                                if (e.type === 'literature') {
+                                    evidenceContent = `
+                                        <div style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary); font-family: 'SF Mono', Monaco, monospace;">
+                                            Source: ${e.source}
                                         </div>
+                                        <div style="font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap;">
+                                            ${e.reference_text || 'No reference text'}
+                                        </div>
+                                    `;
+                                } else if (e.type === 'simulation') {
+                                    evidenceContent = `
+                                        <div style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary); font-family: 'SF Mono', Monaco, monospace;">
+                                            ${e.source}:${e.lines || '?'}
+                                        </div>
+                                    `;
+                                } else if (e.type === 'calculation') {
+                                    evidenceContent = `
+                                        <div style="margin-bottom: 0.75rem;">
+                                            <div style="font-weight: 600; font-size: 0.75rem; margin-bottom: 0.5rem; color: var(--text-secondary);">EQUATIONS</div>
+                                            <div style="font-family: 'SF Mono', Monaco, monospace; font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap;">
+                                                ${e.equations || 'No equations'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight: 600; font-size: 0.75rem; margin-bottom: 0.5rem; color: var(--text-secondary);">PROGRAM</div>
+                                            <pre style="font-family: 'SF Mono', Monaco, monospace; font-size: 0.8rem; line-height: 1.4; background: var(--bg-primary); padding: 0.5rem; border-radius: 4px; overflow-x: auto;">${e.program || 'No program'}</pre>
+                                        </div>
+                                    `;
+                                } else {
+                                    evidenceContent = `<div style="color: var(--danger);">Unknown evidence type: ${e.type}</div>`;
+                                }
+
+                                return `
+                                    <div style="background: var(--bg-tertiary); border-left: 3px solid var(--accent); padding: 0.75rem; margin-bottom: 0.75rem; border-radius: 4px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                            <div style="font-family: 'SF Mono', Monaco, monospace; font-size: 0.7rem; color: var(--accent); font-weight: 600; text-transform: uppercase;">
+                                                ${e.type}
+                                            </div>
+                                        </div>
+                                        ${evidenceContent}
                                     </div>
-                                    <div style="font-size: 0.85rem; margin-bottom: 0.5rem; color: var(--text-secondary); font-family: 'SF Mono', Monaco, monospace;">
-                                        ${e.source}${e.lines ? `:${e.lines}` : ''}
-                                    </div>
-                                    <div style="font-size: 0.85rem; line-height: 1.5;">
-                                        ${e.description}
-                                    </div>
-                                </div>
-                            `).join('')}
+                                `;
+                            }).join('')}
                         </div>
                     ` : ''}
                     ${claim.uncertainties && claim.uncertainties.length > 0 ? `
