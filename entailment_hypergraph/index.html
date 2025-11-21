@@ -230,91 +230,98 @@
 
         /* Outline view styles */
         #outline {
+            padding: 1rem;
             overflow-y: auto;
             max-height: 800px;
-            padding: 1rem;
+            font-size: 0.9rem;
         }
 
         .outline-node {
             margin-bottom: 0.5rem;
+        }
+
+        .outline-claim {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
             padding: 0.75rem;
             background: var(--bg-tertiary);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-left: 3px solid;
+            border-radius: 4px;
             cursor: pointer;
             transition: all 0.2s ease;
         }
 
-        .outline-node:hover {
-            border-color: var(--accent);
+        .outline-claim:hover {
             background: #2d3548;
+            border-left-color: var(--accent);
         }
 
-        .outline-node.selected {
-            border-color: var(--accent);
+        .outline-claim.selected {
+            border-left-color: var(--accent);
             box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
         }
 
-        .outline-node-header {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .outline-expand-btn {
+        .outline-expand {
+            flex-shrink: 0;
             width: 20px;
             height: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--accent);
-            color: var(--bg-primary);
-            border-radius: 4px;
-            font-size: 12px;
+            font-size: 0.85rem;
             font-weight: 700;
+            color: var(--accent);
             cursor: pointer;
-            flex-shrink: 0;
+            user-select: none;
         }
 
-        .outline-expand-btn:hover {
-            background: #6eb8ff;
+        .outline-expand:hover {
+            color: var(--text-primary);
         }
 
-        .outline-node-id {
+        .outline-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .outline-id {
             font-family: 'SF Mono', Monaco, monospace;
             font-size: 0.7rem;
             color: var(--text-secondary);
-            flex-shrink: 0;
+            margin-bottom: 0.25rem;
         }
 
-        .outline-node-text {
-            font-size: 0.85rem;
-            line-height: 1.4;
-            flex: 1;
+        .outline-text {
+            line-height: 1.5;
+            margin-bottom: 0.5rem;
         }
 
-        .outline-node-score {
+        .outline-score {
             display: inline-block;
             padding: 0.2rem 0.5rem;
             border-radius: 12px;
             font-size: 0.7rem;
             font-weight: 600;
-            flex-shrink: 0;
         }
 
         .outline-children {
             margin-left: 2rem;
             margin-top: 0.5rem;
-            padding-left: 1rem;
             border-left: 2px solid var(--border);
+            padding-left: 1rem;
         }
 
-        .outline-relationship {
+        .outline-children.collapsed {
+            display: none;
+        }
+
+        .outline-implication {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
             font-family: 'SF Mono', Monaco, monospace;
-            font-size: 0.7rem;
-            color: var(--accent);
-            margin: 0.5rem 0 0.5rem 2rem;
-            font-weight: 600;
         }
     </style>
 </head>
@@ -331,7 +338,7 @@
                 <option value="/entailment_hypergraph/steam_engine_example.json">Steam Engine Feasibility (Complex)</option>
                 <option value="/entailment_hypergraph/ultrasound_eeg_enhancement.json">Ultrasound EEG Enhancement (Real Project)</option>
             </select>
-            <button id="toggle-view">📋 Outline View</button>
+            <button id="toggle-view-mode">View: Graph</button>
             <button id="reset-view">Reset View</button>
             <button id="toggle-text">Full Text</button>
             <button id="zoom-in">Zoom In</button>
@@ -401,18 +408,18 @@
         let svg = null;
         let g = null;
 
-        // View mode
-        let viewMode = 'graph'; // 'graph' or 'outline'
+        // View mode: 'graph' or 'outline'
+        let viewMode = 'graph';
 
-        // Collapse state
+        // Collapse state for graph view
         let collapsedNodes = new Set();
         let conclusionToPremises = new Map();
 
+        // Collapse state for outline view (separate from graph)
+        let outlineCollapsedNodes = new Set();
+
         // Node positions (persistent across renders)
         let nodePositions = new Map();
-
-        // Tree structure (for outline view)
-        let treeData = null;
 
         // Load initial example
         loadExample('/entailment_hypergraph/water_boiling_example.json');
@@ -422,7 +429,7 @@
             loadExample(e.target.value);
         });
 
-        document.getElementById('toggle-view').addEventListener('click', toggleViewMode);
+        document.getElementById('toggle-view-mode').addEventListener('click', toggleViewMode);
         document.getElementById('reset-view').addEventListener('click', resetView);
         document.getElementById('toggle-text').addEventListener('click', toggleTextMode);
         document.getElementById('zoom-in').addEventListener('click', () => zoomBy(1.3));
@@ -434,13 +441,43 @@
                 const response = await fetch(path);
                 hypergraph = await response.json();
                 collapsedNodes.clear();
+                outlineCollapsedNodes.clear();
                 nodePositions.clear();
                 buildImplicationMap();
-                buildTreeStructure();
                 renderCurrentView();
                 renderSidebar();
             } catch (error) {
                 console.error('Error loading example:', error);
+            }
+        }
+
+        function toggleViewMode() {
+            viewMode = viewMode === 'graph' ? 'outline' : 'graph';
+            const button = document.getElementById('toggle-view-mode');
+            button.textContent = viewMode === 'graph' ? 'View: Graph' : 'View: Outline';
+
+            // Clear selection when switching views
+            selectedItem = null;
+            document.querySelectorAll('.claim-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            renderDetailsPanel();
+
+            renderCurrentView();
+        }
+
+        function renderCurrentView() {
+            const graphEl = document.getElementById('graph');
+            const outlineEl = document.getElementById('outline');
+
+            if (viewMode === 'graph') {
+                graphEl.style.display = 'block';
+                outlineEl.style.display = 'none';
+                renderHypergraph();
+            } else {
+                graphEl.style.display = 'none';
+                outlineEl.style.display = 'block';
+                renderOutline();
             }
         }
 
@@ -449,175 +486,6 @@
             hypergraph.implications.forEach(impl => {
                 conclusionToPremises.set(impl.conclusion, impl.premises);
             });
-        }
-
-        function buildTreeStructure() {
-            // Find root nodes (conclusions that are not premises of any implication)
-            const allPremises = new Set();
-            hypergraph.implications.forEach(impl => {
-                impl.premises.forEach(p => allPremises.add(p));
-            });
-
-            const roots = hypergraph.claims
-                .filter(c => conclusionToPremises.has(c.id) && !allPremises.has(c.id))
-                .map(c => c.id);
-
-            // If no roots found, use all conclusions
-            if (roots.length === 0) {
-                hypergraph.claims
-                    .filter(c => conclusionToPremises.has(c.id))
-                    .forEach(c => roots.push(c.id));
-            }
-
-            // Build tree recursively
-            function buildNode(claimId) {
-                const claim = hypergraph.claims.find(c => c.id === claimId);
-                if (!claim) return null;
-
-                const node = { ...claim };
-                const premises = conclusionToPremises.get(claimId);
-
-                if (premises && premises.length > 0) {
-                    const impl = hypergraph.implications.find(i => i.conclusion === claimId);
-                    node.children_relationship = impl ? impl.type : 'AND';
-                    node.children = premises.map(p => buildNode(p)).filter(n => n !== null);
-                }
-
-                return node;
-            }
-
-            treeData = roots.map(rootId => buildNode(rootId)).filter(n => n !== null);
-        }
-
-        function renderCurrentView() {
-            if (viewMode === 'graph') {
-                document.getElementById('graph').style.display = 'block';
-                document.getElementById('outline').style.display = 'none';
-                renderHypergraph();
-            } else {
-                document.getElementById('graph').style.display = 'none';
-                document.getElementById('outline').style.display = 'block';
-                renderOutline();
-            }
-        }
-
-        function toggleViewMode() {
-            viewMode = viewMode === 'graph' ? 'outline' : 'graph';
-            const button = document.getElementById('toggle-view');
-
-            if (viewMode === 'outline') {
-                button.textContent = '🔗 Graph View';
-                // Hide zoom controls in outline mode
-                document.getElementById('zoom-in').style.display = 'none';
-                document.getElementById('zoom-out').style.display = 'none';
-                document.getElementById('zoom-reset').style.display = 'none';
-                document.getElementById('toggle-text').style.display = 'none';
-            } else {
-                button.textContent = '📋 Outline View';
-                document.getElementById('zoom-in').style.display = 'inline-block';
-                document.getElementById('zoom-out').style.display = 'inline-block';
-                document.getElementById('zoom-reset').style.display = 'inline-block';
-                document.getElementById('toggle-text').style.display = 'inline-block';
-            }
-
-            renderCurrentView();
-        }
-
-        function renderOutline() {
-            const outline = document.getElementById('outline');
-            outline.innerHTML = '';
-
-            if (!treeData || treeData.length === 0) {
-                outline.innerHTML = '<div style="color: var(--text-secondary); padding: 2rem; text-align: center;">No tree structure available</div>';
-                return;
-            }
-
-            function renderNode(node, container) {
-                const nodeDiv = document.createElement('div');
-                nodeDiv.className = 'outline-node';
-                nodeDiv.dataset.claimId = node.id;
-                if (selectedItem && selectedItem.type === 'claim' && selectedItem.id === node.id) {
-                    nodeDiv.classList.add('selected');
-                }
-
-                const header = document.createElement('div');
-                header.className = 'outline-node-header';
-
-                // Add expand button if has children
-                if (node.children && node.children.length > 0) {
-                    const expandBtn = document.createElement('div');
-                    expandBtn.className = 'outline-expand-btn';
-                    const isCollapsed = arePremisesCollapsed(node.id);
-                    expandBtn.textContent = isCollapsed ? '+' : '−';
-                    expandBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        toggleOutlineCollapse(node.id);
-                    };
-                    header.appendChild(expandBtn);
-                } else {
-                    // Spacer for alignment
-                    const spacer = document.createElement('div');
-                    spacer.style.width = '20px';
-                    header.appendChild(spacer);
-                }
-
-                const idSpan = document.createElement('div');
-                idSpan.className = 'outline-node-id';
-                idSpan.textContent = node.id;
-                header.appendChild(idSpan);
-
-                const textSpan = document.createElement('div');
-                textSpan.className = 'outline-node-text';
-                textSpan.textContent = node.text;
-                header.appendChild(textSpan);
-
-                const scoreSpan = document.createElement('span');
-                scoreSpan.className = `outline-node-score ${getScoreClass(node.score)}`;
-                scoreSpan.textContent = `${node.score}/10`;
-                header.appendChild(scoreSpan);
-
-                nodeDiv.appendChild(header);
-                nodeDiv.onclick = () => selectClaim(node.id);
-
-                container.appendChild(nodeDiv);
-
-                // Render children if not collapsed
-                if (node.children && node.children.length > 0 && !arePremisesCollapsed(node.id)) {
-                    const relationship = document.createElement('div');
-                    relationship.className = 'outline-relationship';
-                    relationship.textContent = `${node.children_relationship || 'AND'} (all must be true)`;
-                    container.appendChild(relationship);
-
-                    const childrenDiv = document.createElement('div');
-                    childrenDiv.className = 'outline-children';
-                    node.children.forEach(child => {
-                        // Only render children that aren't collapsed
-                        if (!collapsedNodes.has(child.id)) {
-                            renderNode(child, childrenDiv);
-                        }
-                    });
-                    container.appendChild(childrenDiv);
-                }
-            }
-
-            treeData.forEach(root => renderNode(root, outline));
-        }
-
-        function toggleOutlineCollapse(nodeId) {
-            const premises = conclusionToPremises.get(nodeId);
-            if (!premises) return;
-
-            const currentlyCollapsed = arePremisesCollapsed(nodeId);
-
-            if (currentlyCollapsed) {
-                // Expand: only remove immediate premises
-                premises.forEach(p => collapsedNodes.delete(p));
-            } else {
-                // Collapse: recursively collapse all descendants
-                collapseRecursive(nodeId);
-            }
-
-            renderOutline();
         }
 
         function isConclusion(nodeId) {
@@ -742,15 +610,7 @@
                 card.classList.toggle('selected', card.dataset.claimId === claimId);
             });
 
-            if (viewMode === 'graph') {
-                highlightClaim(claimId);
-            } else {
-                // Update outline selection
-                document.querySelectorAll('.outline-node').forEach(node => {
-                    node.classList.toggle('selected', node.dataset.claimId === claimId);
-                });
-            }
-
+            highlightClaim(claimId);
             renderDetailsPanel();
         }
 
@@ -1043,7 +903,9 @@
                 }
 
                 const premises = conclusionToPremises.get(nodeId);
-                if (!premises || premises.length === 0) return;
+                const visiblePremises = premises ? premises.filter(p => !collapsedNodes.has(p)) : [];
+
+                if (visiblePremises.length === 0) return;
 
                 // Position junction
                 const impl = hypergraph.implications.find(i => i.conclusion === nodeId);
@@ -1061,9 +923,6 @@
 
                 // Position child subtrees
                 const premiseLevel = level + 2;
-
-                // Use visible premises for spacing, but position ALL premises
-                const visiblePremises = premises.filter(p => !collapsedNodes.has(p));
                 const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 150);
                 const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * 100;
 
@@ -1072,14 +931,6 @@
                     const childCenterX = currentX + childWidths[i] / 2;
                     positionSubtree(premiseId, childCenterX, premiseLevel);
                     currentX += childWidths[i] + 100;
-                });
-
-                // Position collapsed premises at their parent's position
-                // so they have a position ready when expanded
-                premises.filter(p => collapsedNodes.has(p)).forEach(premiseId => {
-                    if (!positions.has(premiseId)) {
-                        positionSubtree(premiseId, centerX, premiseLevel);
-                    }
                 });
             }
 
@@ -1494,6 +1345,126 @@
             draggedNode = null;
         }
 
+        function renderOutline() {
+            const outlineEl = document.getElementById('outline');
+            outlineEl.innerHTML = '';
+
+            // Build tree structure
+            // Find root nodes (conclusions that are not premises)
+            const allPremises = new Set();
+            hypergraph.implications.forEach(impl => {
+                impl.premises.forEach(p => allPremises.add(p));
+            });
+
+            const rootClaims = hypergraph.claims
+                .filter(c => conclusionToPremises.has(c.id))
+                .filter(c => !allPremises.has(c.id));
+
+            if (rootClaims.length === 0) {
+                // If no clear roots, show all conclusions
+                rootClaims.push(...hypergraph.claims.filter(c => conclusionToPremises.has(c.id)));
+            }
+
+            // Render each root
+            rootClaims.forEach(claim => {
+                outlineEl.appendChild(renderOutlineNode(claim));
+            });
+
+            // Add event handlers
+            outlineEl.querySelectorAll('.outline-claim').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    if (!e.target.closest('.outline-expand')) {
+                        const claimId = el.dataset.claimId;
+                        selectClaim(claimId);
+
+                        // Update selection UI in outline
+                        outlineEl.querySelectorAll('.outline-claim').forEach(c => {
+                            c.classList.toggle('selected', c.dataset.claimId === claimId);
+                        });
+                    }
+                });
+            });
+
+            outlineEl.querySelectorAll('.outline-expand').forEach(el => {
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const claimId = el.dataset.claimId;
+                    toggleOutlineCollapse(claimId);
+                });
+            });
+        }
+
+        function renderOutlineNode(claim, visited = new Set()) {
+            // Prevent infinite recursion
+            if (visited.has(claim.id)) {
+                const node = document.createElement('div');
+                node.className = 'outline-node';
+                node.innerHTML = '<div style="color: var(--warning); font-size: 0.8rem;">↻ Circular reference</div>';
+                return node;
+            }
+            visited.add(claim.id);
+
+            const node = document.createElement('div');
+            node.className = 'outline-node';
+
+            const premises = conclusionToPremises.get(claim.id);
+            const hasPremises = premises && premises.length > 0;
+            const isCollapsed = outlineCollapsedNodes.has(claim.id);
+
+            const scoreColor = getScoreColor(claim.score);
+
+            node.innerHTML = `
+                <div class="outline-claim" data-claim-id="${claim.id}" style="border-left-color: ${scoreColor};">
+                    ${hasPremises ? `
+                        <div class="outline-expand" data-claim-id="${claim.id}">
+                            ${isCollapsed ? '+' : '−'}
+                        </div>
+                    ` : '<div style="width: 20px;"></div>'}
+                    <div class="outline-content">
+                        <div class="outline-id">${claim.id}</div>
+                        <div class="outline-text">${claim.text}</div>
+                        <span class="outline-score ${getScoreClass(claim.score)}">${claim.score}/10</span>
+                    </div>
+                </div>
+            `;
+
+            // Add children if not collapsed
+            if (hasPremises && !isCollapsed) {
+                const impl = hypergraph.implications.find(i => i.conclusion === claim.id);
+                if (impl) {
+                    const childrenDiv = document.createElement('div');
+                    childrenDiv.className = 'outline-children';
+
+                    // Add implication info
+                    const implDiv = document.createElement('div');
+                    implDiv.className = 'outline-implication';
+                    implDiv.textContent = `${impl.type} relationship: ${impl.reasoning}`;
+                    childrenDiv.appendChild(implDiv);
+
+                    // Render child nodes
+                    premises.forEach(premiseId => {
+                        const premiseClaim = hypergraph.claims.find(c => c.id === premiseId);
+                        if (premiseClaim) {
+                            childrenDiv.appendChild(renderOutlineNode(premiseClaim, new Set(visited)));
+                        }
+                    });
+
+                    node.appendChild(childrenDiv);
+                }
+            }
+
+            return node;
+        }
+
+        function toggleOutlineCollapse(claimId) {
+            if (outlineCollapsedNodes.has(claimId)) {
+                outlineCollapsedNodes.delete(claimId);
+            } else {
+                outlineCollapsedNodes.add(claimId);
+            }
+            renderOutline();
+        }
+
         function resetView() {
             selectedItem = null;
             nodePositions.clear();
@@ -1509,20 +1480,24 @@
 
                 d3.selectAll('.hyperedge')
                     .attr('opacity', 0.7);
-
-                renderHypergraph();
             } else {
-                renderOutline();
+                document.querySelectorAll('.outline-claim').forEach(el => {
+                    el.classList.remove('selected');
+                });
             }
 
             renderDetailsPanel();
+            renderCurrentView();
         }
 
         function toggleTextMode() {
             fullTextMode = !fullTextMode;
             const button = document.getElementById('toggle-text');
             button.textContent = fullTextMode ? 'Compact Text' : 'Full Text';
-            renderHypergraph();
+            if (viewMode === 'graph') {
+                renderHypergraph();
+            }
+            // Outline view doesn't use fullTextMode
         }
 
         function zoomBy(factor) {
