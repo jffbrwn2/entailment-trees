@@ -47,10 +47,12 @@ class HypergraphManager:
         self.approach_dir = Path(approach_dir)
         self.hypergraph_path = self.approach_dir / "hypergraph.json"
         self.simulations_dir = self.approach_dir / "simulations"
+        self.history_dir = self.approach_dir / ".hypergraph_history"
 
         # Ensure directories exist
         self.approach_dir.mkdir(parents=True, exist_ok=True)
         self.simulations_dir.mkdir(exist_ok=True)
+        self.history_dir.mkdir(exist_ok=True)
 
     def create_approach(self, name: str, initial_claim: str, description: str = "") -> Dict[str, Any]:
         """
@@ -100,10 +102,22 @@ class HypergraphManager:
             return json.load(f)
 
     def _save_hypergraph(self, hypergraph: Dict[str, Any]) -> None:
-        """Save hypergraph to JSON file with pretty formatting."""
+        """Save hypergraph to JSON file with pretty formatting and version history."""
         # Update last_updated timestamp
         hypergraph['metadata']['last_updated'] = datetime.now().strftime("%Y-%m-%d")
 
+        # Save to history before overwriting
+        if self.hypergraph_path.exists():
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            history_file = self.history_dir / f"hypergraph_{timestamp}.json"
+
+            # Copy current version to history
+            with open(self.hypergraph_path, 'r') as f:
+                current = json.load(f)
+            with open(history_file, 'w') as f:
+                json.dump(current, f, indent=2)
+
+        # Save new version
         with open(self.hypergraph_path, 'w') as f:
             json.dump(hypergraph, f, indent=2)
 
@@ -441,3 +455,61 @@ python -m http.server 8765
 
         next_num = max(numbers) + 1 if numbers else 1
         return f"{prefix}{next_num}"
+
+    def get_history(self) -> List[Dict[str, Any]]:
+        """
+        Get list of historical versions.
+
+        Returns:
+            List of dicts with 'timestamp', 'filename', and 'path' for each version
+        """
+        history_files = sorted(self.history_dir.glob("hypergraph_*.json"))
+
+        versions = []
+        for file_path in history_files:
+            # Parse timestamp from filename: hypergraph_20250122_143052_123456.json
+            filename = file_path.name
+            timestamp_str = filename.replace("hypergraph_", "").replace(".json", "")
+
+            # Convert to readable format
+            try:
+                dt = datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S_%f")
+                readable = dt.strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                readable = timestamp_str
+
+            versions.append({
+                "timestamp": readable,
+                "filename": filename,
+                "path": str(file_path)
+            })
+
+        return versions
+
+    def restore_version(self, history_filename: str) -> Dict[str, Any]:
+        """
+        Restore a historical version of the hypergraph.
+
+        Args:
+            history_filename: Filename from history (e.g., "hypergraph_20250122_143052_123456.json")
+
+        Returns:
+            The restored hypergraph data
+
+        Raises:
+            FileNotFoundError: If history file doesn't exist
+        """
+        history_file = self.history_dir / history_filename
+
+        if not history_file.exists():
+            raise FileNotFoundError(f"History file not found: {history_filename}")
+
+        # Load historical version
+        with open(history_file, 'r') as f:
+            historical_hypergraph = json.load(f)
+
+        # Save current version to history first (so we don't lose it)
+        # Then overwrite with historical version
+        self._save_hypergraph(historical_hypergraph)
+
+        return historical_hypergraph

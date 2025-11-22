@@ -35,6 +35,8 @@ class AgentCLI:
         print("  /status    - Show current approach status")
         print("  /validate  - Validate current hypergraph")
         print("  /cleanup   - Remove unreachable nodes from hypergraph")
+        print("  /history   - View hypergraph version history")
+        print("  /restore   - Restore a previous hypergraph version")
         print("  /viz       - Instructions for viewing hypergraph")
         print("  /quit      - Exit")
         print()
@@ -50,6 +52,8 @@ class AgentCLI:
         print("  /status    - Show current approach status and stats")
         print("  /validate  - Run type checker on hypergraph")
         print("  /cleanup   - Remove unreachable nodes from hypergraph")
+        print("  /history   - View hypergraph version history")
+        print("  /restore   - Restore a previous hypergraph version")
         print("  /viz       - Show how to visualize the hypergraph")
         print("  /quit      - Exit the CLI")
         print()
@@ -292,6 +296,89 @@ class AgentCLI:
 
         print()
 
+    def show_history(self):
+        """Show version history of hypergraph."""
+        status = self.orchestrator.get_status()
+        if not status['active']:
+            print("\nNo active approach.")
+            return
+
+        print("\nHypergraph Version History:")
+        print("-" * 70)
+
+        try:
+            versions = self.orchestrator.hypergraph_mgr.get_history()
+
+            if not versions:
+                print("No history found. History is saved every time the hypergraph changes.")
+                print()
+                return
+
+            for i, version in enumerate(reversed(versions), 1):
+                print(f"{i}. {version['timestamp']}")
+                print(f"   File: {version['filename']}")
+                print()
+
+            print(f"Total versions: {len(versions)}")
+            print("Use /restore to revert to a previous version")
+
+        except Exception as e:
+            print(f"Error reading history: {e}")
+
+        print()
+
+    def restore_version(self):
+        """Restore a previous version of the hypergraph."""
+        status = self.orchestrator.get_status()
+        if not status['active']:
+            print("\nNo active approach.")
+            return
+
+        try:
+            versions = self.orchestrator.hypergraph_mgr.get_history()
+
+            if not versions:
+                print("\nNo history available to restore.")
+                return
+
+            print("\nAvailable Versions:")
+            for i, version in enumerate(reversed(versions), 1):
+                print(f"{i}. {version['timestamp']}")
+
+            print()
+            selection = input("Select version number to restore (or press Enter to cancel): ").strip()
+
+            if not selection:
+                print("Cancelled.")
+                return
+
+            idx = int(selection) - 1
+            if idx < 0 or idx >= len(versions):
+                print("Invalid selection.")
+                return
+
+            # Get the selected version (reverse index)
+            selected = list(reversed(versions))[idx]
+
+            # Confirm
+            confirm = input(f"Restore version from {selected['timestamp']}? (y/n): ").strip().lower()
+            if confirm != 'y':
+                print("Cancelled.")
+                return
+
+            # Restore
+            self.orchestrator.hypergraph_mgr.restore_version(selected['filename'])
+
+            print(f"\n✓ Restored hypergraph to version from {selected['timestamp']}")
+            print("💡 Refresh your browser to see restored visualization")
+
+        except ValueError:
+            print("Invalid number.")
+        except Exception as e:
+            print(f"Error restoring version: {e}")
+
+        print()
+
     def show_viz_instructions(self):
         """Show how to visualize hypergraph."""
         status = self.orchestrator.get_status()
@@ -342,6 +429,10 @@ class AgentCLI:
             self.validate_hypergraph()
         elif command == "/cleanup":
             self.cleanup_hypergraph()
+        elif command == "/history":
+            self.show_history()
+        elif command == "/restore":
+            self.restore_version()
         elif command == "/viz":
             self.show_viz_instructions()
         else:
