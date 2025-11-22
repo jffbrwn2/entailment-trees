@@ -314,7 +314,7 @@ The hook will automatically validate after you save hypergraph.json and alert yo
 An unreachable node is a claim that has **no directed path to the hypothesis**. The cleanup operation performs backward reachability analysis from the hypothesis node - only claims that can be reached by following implications backward from the hypothesis are kept.
 
 To clean up the hypergraph, you can:
-- Use Python directly: `from agent_system.hypergraph_manager import HypergraphManager; mgr = HypergraphManager(Path('.')); unreachable = mgr.remove_unreachable_nodes(); print(f"Removed: {unreachable}")`
+- Use Python directly: `from agent_system.hypergraph_manager import HypergraphManager; mgr = HypergraphManager(Path('.')); unreachable = mgr.remove_unreachable_nodes(); print(f"Removed: {{unreachable}}")`
 - Or tell the user you'd like to run cleanup
 
 Cleanup will:
