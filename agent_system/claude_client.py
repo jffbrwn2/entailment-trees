@@ -79,18 +79,17 @@ entailment_server = create_sdk_mcp_server(
 # Hook that runs at end of Claude's turn
 async def post_hypergraph_edit_hook(
     input_data: Dict[str, Any],
-    tool_use_id: Optional[str],
-    context: HookContext
+    tool_use_id: Optional[str] = None,
+    context: Optional[HookContext] = None
 ) -> Dict[str, Any]:
     """
-    Auto-validate entailment and cleanup orphans after Claude's turn completes.
+    Auto-validate entailment after Claude's turn completes.
 
     Checks if any hypergraph.json files were modified during the turn, and if so,
-    runs cleanup and validation once.
-    """
-    # Import HypergraphManager here to avoid circular imports
-    from .hypergraph_manager import HypergraphManager
+    runs entailment validation once.
 
+    NOTE: Cleanup is NOT automatic - it must be manually invoked by agent or user.
+    """
     # Get cwd to check for hypergraph files
     cwd = input_data.get("cwd", ".")
     cwd_path = Path(cwd)
@@ -103,16 +102,8 @@ async def post_hypergraph_edit_hook(
     # Resolve to absolute path
     absolute_path = hypergraph_path.resolve()
 
-    print(f"\n[AUTO-CLEANUP] Processing {absolute_path}...")
-
-    # Remove unreachable nodes
-    mgr = HypergraphManager(absolute_path.parent)
-    unreachable = mgr.remove_unreachable_nodes()
-    if unreachable:
-        print(f"[AUTO-CLEANUP] Removed {len(unreachable)} unreachable node(s): {', '.join(unreachable)}")
-
     # Run entailment check
-    print(f"[ENTAILMENT CHECK] Validating implications...")
+    print(f"\n[ENTAILMENT CHECK] Validating implications in {absolute_path}...")
     result = check_entailment_impl(str(absolute_path))
 
     # If there are errors, inject message for Claude to see
@@ -178,8 +169,7 @@ class ClaudeCodeClient:
     async def _query_async(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None,
-        resume_conversation: bool = False
+        system_prompt: Optional[str] = None
     ) -> ClaudeResponse:
         """
         Send a query to Claude Code (async implementation).
@@ -187,7 +177,6 @@ class ClaudeCodeClient:
         Args:
             prompt: User message/prompt
             system_prompt: Optional system instructions
-            resume_conversation: Whether to resume previous conversation
 
         Returns:
             ClaudeResponse with content and metadata
@@ -274,7 +263,7 @@ class ClaudeCodeClient:
             ClaudeResponse with content and metadata
         """
         return self._run_async(
-            self._query_async(prompt, system_prompt, resume_session is not None)
+            self._query_async(prompt, system_prompt)
         )
 
     def start_conversation(

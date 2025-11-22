@@ -307,17 +307,21 @@ This tool checks whether "if all premises are true, then conclusion is true" for
 
 The hook will automatically validate after you save hypergraph.json and alert you to any issues.
 
-## Automatic Cleanup
+## Cleanup Operations
 
-**Unreachable nodes are automatically removed** after your turn completes.
+**Cleanup is a manual operation** - you can perform it when needed.
 
-An unreachable node is a claim that has **no directed path to the hypothesis**. The system performs backward reachability analysis from the hypothesis node - only claims that can be reached by following implications backward from the hypothesis are kept.
+An unreachable node is a claim that has **no directed path to the hypothesis**. The cleanup operation performs backward reachability analysis from the hypothesis node - only claims that can be reached by following implications backward from the hypothesis are kept.
 
-When your turn completes, the system will:
+To clean up the hypergraph, you can:
+- Use Python directly: `from agent_system.hypergraph_manager import HypergraphManager; mgr = HypergraphManager(Path('.')); unreachable = mgr.remove_unreachable_nodes(); print(f"Removed: {unreachable}")`
+- Or tell the user you'd like to run cleanup
+
+Cleanup will:
 1. Perform reachability analysis from the hypothesis
 2. Remove all unreachable claims
-3. Print which nodes were removed
-4. Validate remaining implications
+3. Remove implications that conclude to unreachable claims
+4. Return a list of removed node IDs
 
 This keeps the hypergraph clean and focused on logical chains that actually support the hypothesis.
 To keep a claim, ensure it's connected to the hypothesis through a chain of implications.

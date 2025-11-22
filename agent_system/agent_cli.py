@@ -34,6 +34,7 @@ class AgentCLI:
         print("  /new       - Start a new approach")
         print("  /status    - Show current approach status")
         print("  /validate  - Validate current hypergraph")
+        print("  /cleanup   - Remove unreachable nodes from hypergraph")
         print("  /viz       - Instructions for viewing hypergraph")
         print("  /quit      - Exit")
         print()
@@ -48,6 +49,7 @@ class AgentCLI:
         print("  /new       - Start a new approach")
         print("  /status    - Show current approach status and stats")
         print("  /validate  - Run type checker on hypergraph")
+        print("  /cleanup   - Remove unreachable nodes from hypergraph")
         print("  /viz       - Show how to visualize the hypergraph")
         print("  /quit      - Exit the CLI")
         print()
@@ -266,6 +268,29 @@ class AgentCLI:
 
         print()
 
+    def cleanup_hypergraph(self):
+        """Remove unreachable nodes from hypergraph."""
+        status = self.orchestrator.get_status()
+        if not status['active']:
+            print("\nNo active approach to clean up.")
+            return
+
+        print("\nRunning cleanup (removing unreachable nodes)...")
+
+        try:
+            unreachable = self.orchestrator.hypergraph_mgr.remove_unreachable_nodes()
+
+            if unreachable:
+                print(f"✓ Removed {len(unreachable)} unreachable node(s):")
+                for node_id in unreachable:
+                    print(f"  - {node_id}")
+            else:
+                print("✓ No unreachable nodes found. Hypergraph is clean!")
+        except Exception as e:
+            print(f"Error during cleanup: {e}")
+
+        print()
+
     def show_viz_instructions(self):
         """Show how to visualize hypergraph."""
         status = self.orchestrator.get_status()
@@ -314,6 +339,8 @@ class AgentCLI:
             self.show_status()
         elif command == "/validate":
             self.validate_hypergraph()
+        elif command == "/cleanup":
+            self.cleanup_hypergraph()
         elif command == "/viz":
             self.show_viz_instructions()
         else:
