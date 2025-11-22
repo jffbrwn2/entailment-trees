@@ -39,6 +39,15 @@ class TestHypergraphCreation:
         assert (test_approach_dir / "README.md").exists()
         assert (test_approach_dir / "simulations").exists()
 
+        # Check catalog updated
+        catalog_path = Path(__file__).parent.parent / "entailment_hypergraph" / "hypergraph_catalog.json"
+        if catalog_path.exists():
+            with open(catalog_path) as f:
+                catalog = json.load(f)
+            # Should have added our test approach
+            approach_names = [a['name'] for a in catalog.get('approaches', [])]
+            assert "Test Approach" in approach_names
+
     def test_create_approach_updates_timestamp(self, test_approach_dir):
         """Test that timestamps are set correctly."""
         mgr = HypergraphManager(test_approach_dir)

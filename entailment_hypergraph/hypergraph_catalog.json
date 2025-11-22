@@ -1,0 +1,31 @@
+{
+  "examples": [
+    {
+      "name": "Water Boiling (Simple)",
+      "path": "/entailment_hypergraph/water_boiling_example.json",
+      "category": "example"
+    },
+    {
+      "name": "Steam Engine Feasibility (Complex)",
+      "path": "/entailment_hypergraph/steam_engine_example.json",
+      "category": "example"
+    },
+    {
+      "name": "Ultrasound EEG Enhancement (Real Project)",
+      "path": "/entailment_hypergraph/ultrasound_eeg_enhancement.json",
+      "category": "example"
+    }
+  ],
+  "approaches": [
+    {
+      "name": "Record Neural Activity with Tardigrades",
+      "path": "/approaches/record-neural-activity-with-tardigrades/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "Test Approach",
+      "path": "/approaches/test_approach/hypergraph.json",
+      "category": "approach"
+    }
+  ]
+}

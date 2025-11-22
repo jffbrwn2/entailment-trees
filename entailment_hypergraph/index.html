@@ -334,9 +334,7 @@
 
         <div class="controls">
             <select id="example-select">
-                <option value="/entailment_hypergraph/water_boiling_example.json">Water Boiling (Simple)</option>
-                <option value="/entailment_hypergraph/steam_engine_example.json">Steam Engine Feasibility (Complex)</option>
-                <option value="/entailment_hypergraph/ultrasound_eeg_enhancement.json">Ultrasound EEG Enhancement (Real Project)</option>
+                <option value="">Loading...</option>
             </select>
             <button id="toggle-view-mode">View: Graph</button>
             <button id="reset-view">Reset View</button>
@@ -433,15 +431,66 @@
         const urlParams = new URLSearchParams(window.location.search);
         const graphParam = urlParams.get('graph');
 
+        // Load catalog and populate dropdown
+        async function loadCatalog() {
+            try {
+                const response = await fetch('/entailment_hypergraph/hypergraph_catalog.json');
+                const catalog = await response.json();
+
+                const select = document.getElementById('example-select');
+                select.innerHTML = '';
+
+                // Add examples section
+                if (catalog.examples && catalog.examples.length > 0) {
+                    const exampleGroup = document.createElement('optgroup');
+                    exampleGroup.label = 'Examples';
+                    catalog.examples.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.path;
+                        option.textContent = item.name;
+                        exampleGroup.appendChild(option);
+                    });
+                    select.appendChild(exampleGroup);
+                }
+
+                // Add approaches section
+                if (catalog.approaches && catalog.approaches.length > 0) {
+                    const approachGroup = document.createElement('optgroup');
+                    approachGroup.label = 'Your Approaches';
+                    catalog.approaches.forEach(item => {
+                        const option = document.createElement('option');
+                        option.value = item.path;
+                        option.textContent = item.name;
+                        approachGroup.appendChild(option);
+                    });
+                    select.appendChild(approachGroup);
+                }
+
+                // Set selected value if we have a current path
+                if (currentGraphPath) {
+                    select.value = currentGraphPath;
+                }
+            } catch (error) {
+                console.error('Failed to load catalog:', error);
+                // Fallback to hardcoded examples
+                const select = document.getElementById('example-select');
+                select.innerHTML = `
+                    <option value="/entailment_hypergraph/water_boiling_example.json">Water Boiling (Simple)</option>
+                    <option value="/entailment_hypergraph/steam_engine_example.json">Steam Engine Feasibility (Complex)</option>
+                    <option value="/entailment_hypergraph/ultrasound_eeg_enhancement.json">Ultrasound EEG Enhancement (Real Project)</option>
+                `;
+            }
+        }
+
         // Load initial example (from URL param or default)
         if (graphParam) {
             currentGraphPath = '/' + graphParam;
-            loadExample(currentGraphPath);
+            loadCatalog().then(() => loadExample(currentGraphPath));
             // Start auto-reload for user-created graphs
             startAutoReload();
         } else {
             currentGraphPath = '/entailment_hypergraph/water_boiling_example.json';
-            loadExample(currentGraphPath);
+            loadCatalog().then(() => loadExample(currentGraphPath));
         }
 
         // Auto-reload function
@@ -977,13 +1026,14 @@
                 // Position child subtrees
                 const premiseLevel = level + 2;
                 const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 150);
-                const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * 100;
+                const premiseSpacing = 50; // Gap between premise nodes
+                const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * premiseSpacing;
 
                 let currentX = centerX - totalWidth / 2;
                 visiblePremises.forEach((premiseId, i) => {
                     const childCenterX = currentX + childWidths[i] / 2;
                     positionSubtree(premiseId, childCenterX, premiseLevel);
-                    currentX += childWidths[i] + 100;
+                    currentX += childWidths[i] + premiseSpacing;
                 });
             }
 
