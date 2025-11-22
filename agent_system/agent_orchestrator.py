@@ -12,6 +12,7 @@ from datetime import datetime
 
 from .hypergraph_manager import HypergraphManager
 from .config import AgentConfig
+from .claude_client import ClaudeCodeClient, ClaudeResponse
 
 
 @dataclass
@@ -45,6 +46,7 @@ class AgentOrchestrator:
         self.config = config or AgentConfig()
         self.current_session: Optional[Session] = None
         self.hypergraph_mgr: Optional[HypergraphManager] = None
+        self.claude_client: Optional[ClaudeCodeClient] = None
 
     def start_approach(
         self,
@@ -83,6 +85,13 @@ class AgentOrchestrator:
             description=description
         )
 
+        # Initialize Claude Code client with approach directory as working dir
+        self.claude_client = ClaudeCodeClient(
+            working_dir=approach_dir,
+            allowed_tools=["Write", "Read", "Edit", "Bash", "WebSearch", "Glob", "Grep"],
+            verbose=False
+        )
+
         return {
             "session": {
                 "name": name,
@@ -92,6 +101,48 @@ class AgentOrchestrator:
             "hypergraph": hypergraph,
             "system_prompt": self.get_system_prompt()
         }
+
+    def process_user_input(self, user_input: str) -> ClaudeResponse:
+        """
+        Process user input by sending to Claude Code.
+
+        Args:
+            user_input: User's message/question
+
+        Returns:
+            Claude's response
+
+        Raises:
+            RuntimeError: If no active session
+        """
+        if not self.current_session or not self.claude_client:
+            raise RuntimeError("No active session. Call start_approach() first.")
+
+        # First turn - start conversation with system prompt
+        if self.current_session.turn_count == 0:
+            response = self.claude_client.start_conversation(
+                initial_prompt=user_input,
+                system_prompt=self.get_system_prompt()
+            )
+        else:
+            # Continue existing conversation
+            response = self.claude_client.continue_conversation(user_input)
+
+        # Increment turn counter
+        self.increment_turn()
+
+        # Validate hypergraph if it might have been modified
+        # (Claude might have edited hypergraph.json)
+        if self.config.auto_validate:
+            try:
+                errors, warnings = self.hypergraph_mgr.validate()
+                if errors:
+                    # Append validation errors to response
+                    response.content += f"\n\n⚠️  Hypergraph validation failed:\n" + "\n".join(errors)
+            except Exception:
+                pass  # Validation might fail if hypergraph doesn't exist yet
+
+        return response
 
     def get_system_prompt(self) -> str:
         """

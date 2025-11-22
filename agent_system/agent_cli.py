@@ -227,17 +227,29 @@ class AgentCLI:
                         break
                     continue
 
-                # For now, just acknowledge non-command input
-                # TODO: This is where we'll integrate Headless Claude Code
+                # Process input with Claude Code agent
+                status = self.orchestrator.get_status()
+                if not status['active']:
+                    print("\nNo active approach. Use /new to start one.")
+                    continue
+
                 print()
-                print("Note: Full agent conversation not yet implemented.")
-                print("      This will integrate with Headless Claude Code soon.")
-                print()
-                print("For now, you can:")
-                print("  - Manually edit hypergraph.json in your approach folder")
-                print("  - Write simulations in the simulations/ folder")
-                print("  - Use /validate to check your hypergraph")
-                print("  - Use /viz to view it interactively")
+                print("Agent: ", end="", flush=True)
+
+                try:
+                    response = self.orchestrator.process_user_input(user_input)
+                    print(response.content)
+
+                    # Show cost if available
+                    if response.cost_usd:
+                        print(f"\n(Cost: ${response.cost_usd:.4f})")
+
+                except Exception as e:
+                    print(f"\nError: {e}")
+                    print("\nTry:")
+                    print("  - Check that 'claude' CLI is available")
+                    print("  - Verify your approach was created with /new")
+
                 print()
 
             except KeyboardInterrupt:

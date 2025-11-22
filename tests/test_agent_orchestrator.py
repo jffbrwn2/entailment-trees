@@ -4,7 +4,7 @@ Tests for AgentOrchestrator.
 
 import pytest
 from pathlib import Path
-from agent_system.agent_orchestrator import AgentOrchestrator, Session
+from agent_system.agent_orchestrator import AgentOrchestrator
 from agent_system.config import AgentConfig
 
 
