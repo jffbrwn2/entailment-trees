@@ -21,11 +21,6 @@
       "name": "Record Neural Activity with Tardigrades",
       "path": "/approaches/record-neural-activity-with-tardigrades/hypergraph.json",
       "category": "approach"
-    },
-    {
-      "name": "Test Approach",
-      "path": "/approaches/test_approach/hypergraph.json",
-      "category": "approach"
     }
   ]
 }
