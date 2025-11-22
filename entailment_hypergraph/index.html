@@ -386,6 +386,10 @@
                             <span>AND junction (∧)</span>
                         </div>
                         <div class="legend-item">
+                            <div class="legend-circle" style="width: 12px; height: 12px; border-color: #d29922; background: #d29922;"></div>
+                            <span>OR junction (∨)</span>
+                        </div>
+                        <div class="legend-item">
                             <div class="legend-line" style="background: #8b949e;"></div>
                             <span>Premise edges</span>
                         </div>
@@ -457,6 +461,7 @@
 
         // Event listeners
         document.getElementById('example-select').addEventListener('change', (e) => {
+            stopAutoReload(); // Stop auto-reload when manually switching examples
             loadExample(e.target.value);
         });
 
@@ -467,16 +472,33 @@
         document.getElementById('zoom-out').addEventListener('click', () => zoomBy(0.7));
         document.getElementById('zoom-reset').addEventListener('click', resetZoom);
 
-        async function loadExample(path) {
+        async function loadExample(path, isAutoReload = false) {
             try {
+                // Save current view state if auto-reloading
+                let savedTransform = null;
+                if (isAutoReload && svg) {
+                    const currentTransform = d3.zoomTransform(svg.node());
+                    savedTransform = currentTransform;
+                }
+
                 const response = await fetch(path);
                 hypergraph = await response.json();
-                collapsedNodes.clear();
-                outlineCollapsedNodes.clear();
-                nodePositions.clear();
+
+                // Only clear state on manual example changes, not auto-reload
+                if (!isAutoReload) {
+                    collapsedNodes.clear();
+                    outlineCollapsedNodes.clear();
+                    nodePositions.clear();
+                }
+
                 buildImplicationMap();
                 renderCurrentView();
                 renderSidebar();
+
+                // Restore view state after rendering
+                if (isAutoReload && savedTransform && svg) {
+                    svg.call(zoom.transform, savedTransform);
+                }
             } catch (error) {
                 console.error('Error loading example:', error);
             }
@@ -1045,8 +1067,16 @@
                     node.x = pos.x;
                     node.y = pos.y;
                 } else {
-                    node.x = width / 2;
-                    node.y = height / 2;
+                    // Check if user dragged this node to a custom position
+                    const savedPos = nodePositions.get(node.id);
+                    if (savedPos) {
+                        node.x = savedPos.x;
+                        node.y = savedPos.y;
+                    } else {
+                        // Default position for orphan nodes
+                        node.x = width / 2;
+                        node.y = height / 2;
+                    }
                 }
             });
 
@@ -1285,15 +1315,15 @@
             node.filter(d => d.type === 'junction')
                 .append('circle')
                 .attr('r', 8)
-                .attr('fill', '#58a6ff')
-                .attr('stroke', '#58a6ff')
+                .attr('fill', d => d.implication.type === 'OR' ? '#d29922' : '#58a6ff')
+                .attr('stroke', d => d.implication.type === 'OR' ? '#d29922' : '#58a6ff')
                 .attr('stroke-width', 2)
                 .attr('opacity', 0.9)
                 .attr('cursor', 'pointer');
 
             node.filter(d => d.type === 'junction')
                 .append('text')
-                .text('∧')
+                .text(d => d.implication.type === 'OR' ? '∨' : '∧')
                 .attr('text-anchor', 'middle')
                 .attr('dy', '0.35em')
                 .attr('fill', '#0f1419')
@@ -1315,7 +1345,11 @@
 
             node.filter(d => d.type === 'junction')
                 .append('title')
-                .text(d => `AND junction\n${d.implication.id}: ${d.implication.premises.join(' ∧ ')} → ${d.implication.conclusion}`);
+                .text(d => {
+                    const type = d.implication.type || 'AND';
+                    const symbol = type === 'OR' ? '∨' : '∧';
+                    return `${type} junction\n${d.implication.id}: ${d.implication.premises.join(` ${symbol} `)} → ${d.implication.conclusion}`;
+                });
 
             // Click handler - just select the claim (expand/collapse handled by +/- button)
             node.filter(d => d.type === 'claim')
