@@ -123,15 +123,22 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
         except Exception as e:
             return False, f"Entailment check failed: {str(e)}", []
 
-    def check_hypergraph(self, hypergraph_path: Path, force_check: bool = False) -> Tuple[List[str], List[str]]:
+    def check_hypergraph(
+        self,
+        hypergraph_path: Path,
+        force_check: bool = False,
+        implication_ids: Optional[List[str]] = None
+    ) -> Tuple[List[str], List[str]]:
         """
         Check implications in a hypergraph that need checking.
 
         Args:
             hypergraph_path: Path to hypergraph.json
-            force_check: If True, check all implications. If False, only check
-                        implications that haven't been checked or where premises
-                        have been modified since last check.
+            force_check: If True, check all implications (or all in implication_ids).
+                        If False, only check implications that haven't been checked
+                        or where premises have been modified since last check.
+            implication_ids: Optional list of specific implication IDs to check.
+                            If provided, only checks these implications.
 
         Returns:
             (errors, warnings) - lists of validation messages
@@ -157,6 +164,10 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
             premise_ids = impl.get('premises', [])
             conclusion_id = impl.get('conclusion')
             impl_type = impl.get('type', 'AND')
+
+            # Filter by specific implication IDs if provided
+            if implication_ids is not None and impl_id not in implication_ids:
+                continue  # Skip this implication
 
             # Determine if this implication needs checking
             needs_checking = force_check
@@ -252,12 +263,18 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
         return errors, warnings
 
 
-def check_entailment_skill(hypergraph_path: str) -> str:
+def check_entailment_skill(
+    hypergraph_path: str,
+    force_check: bool = False,
+    implication_ids: Optional[str] = None
+) -> str:
     """
     Skill function for Claude to check entailment.
 
     Args:
         hypergraph_path: Path to hypergraph.json file
+        force_check: If True, re-check all implications even if already checked
+        implication_ids: Comma-separated list of specific implication IDs to check (e.g., "i1,i3,i5")
 
     Returns:
         Validation results as formatted string
@@ -268,7 +285,12 @@ def check_entailment_skill(hypergraph_path: str) -> str:
     if not path.exists():
         return f"❌ Hypergraph not found: {hypergraph_path}"
 
-    errors, warnings = checker.check_hypergraph(path)
+    # Parse implication_ids if provided
+    ids_list = None
+    if implication_ids:
+        ids_list = [id.strip() for id in implication_ids.split(',')]
+
+    errors, warnings = checker.check_hypergraph(path, force_check=force_check, implication_ids=ids_list)
 
     if not errors and not warnings:
         return "✓ All implications passed entailment checking!"

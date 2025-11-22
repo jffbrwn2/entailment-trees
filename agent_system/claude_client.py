@@ -45,23 +45,34 @@ class ClaudeResponse:
     name="check_entailment",
     description="Check if implications in the hypergraph are logically valid. "
                 "Validates that 'if all premises are true, then conclusion is true' for each implication. "
-                "Returns validation errors and suggestions for fixing invalid entailments.",
-    input_schema={"hypergraph_path": str}
+                "Returns validation errors and suggestions for fixing invalid entailments. "
+                "By default only checks implications that haven't been checked or where premises changed. "
+                "Use force_check=true to re-check all, or implication_ids to check specific ones.",
+    input_schema={
+        "hypergraph_path": str,
+        "force_check": {"type": "boolean", "default": False},
+        "implication_ids": {"type": "string", "default": None}
+    }
 )
 async def check_entailment_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     """
     Tool for checking entailment in hypergraphs.
 
     Args:
-        args: Dictionary with 'hypergraph_path' key
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+            - force_check: Re-check all implications even if already checked
+            - implication_ids: Comma-separated IDs to check (e.g., "i1,i3,i5")
 
     Returns:
         Tool response with validation results
     """
     hypergraph_path = args.get("hypergraph_path", "")
+    force_check = args.get("force_check", False)
+    implication_ids = args.get("implication_ids", None)
 
     # Call the actual implementation
-    result = check_entailment_impl(hypergraph_path)
+    result = check_entailment_impl(hypergraph_path, force_check, implication_ids)
 
     return {
         "content": [{"type": "text", "text": result}]

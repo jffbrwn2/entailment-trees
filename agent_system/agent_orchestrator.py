@@ -280,7 +280,14 @@ Check the hypergraph for existing IDs to avoid duplicates.
 
 You have access to an **entailment checker tool** that validates logical implications:
 
-**Tool**: `mcp__entailment__check_entailment(hypergraph_path: str)`
+**Tool**: `mcp__entailment__check_entailment(hypergraph_path: str, force_check: bool = False, implication_ids: str = None)`
+
+Parameters:
+- `hypergraph_path`: Path to hypergraph.json (required)
+- `force_check`: Set to `true` to re-check all implications even if already checked (optional)
+- `implication_ids`: Comma-separated list like "i1,i3,i5" to check only specific implications (optional)
+
+By default, only checks implications that haven't been checked or where premises have changed since last check.
 
 This tool checks whether "if all premises are TRUE, then conclusion is necessarily TRUE" for each implication.
 
