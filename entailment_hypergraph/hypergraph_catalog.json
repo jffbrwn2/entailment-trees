@@ -18,8 +18,8 @@
   ],
   "approaches": [
     {
-      "name": "acousto-optic-neuro",
-      "path": "/approaches/acousto-optic-neuro/hypergraph.json",
+      "name": "opto-acoustic-neuro",
+      "path": "/approaches/opto-acoustic-neuro/hypergraph.json",
       "category": "approach"
     },
     {

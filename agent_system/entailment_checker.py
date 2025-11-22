@@ -123,12 +123,15 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
         except Exception as e:
             return False, f"Entailment check failed: {str(e)}", []
 
-    def check_hypergraph(self, hypergraph_path: Path) -> Tuple[List[str], List[str]]:
+    def check_hypergraph(self, hypergraph_path: Path, force_check: bool = False) -> Tuple[List[str], List[str]]:
         """
-        Check all implications in a hypergraph.
+        Check implications in a hypergraph that need checking.
 
         Args:
             hypergraph_path: Path to hypergraph.json
+            force_check: If True, check all implications. If False, only check
+                        implications that haven't been checked or where premises
+                        have been modified since last check.
 
         Returns:
             (errors, warnings) - lists of validation messages
@@ -145,12 +148,39 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
         # Build claim lookup
         claims = {c['id']: c for c in hypergraph.get('claims', [])}
 
+        # Track which implications were checked (for updating timestamps)
+        implications_checked = []
+
         # Check each implication
         for impl in hypergraph.get('implications', []):
             impl_id = impl.get('id', 'unknown')
             premise_ids = impl.get('premises', [])
             conclusion_id = impl.get('conclusion')
             impl_type = impl.get('type', 'AND')
+
+            # Determine if this implication needs checking
+            needs_checking = force_check
+            if not needs_checking:
+                last_checked = impl.get('last_checked')
+                if last_checked is None:
+                    # Never been checked
+                    needs_checking = True
+                else:
+                    # Check if any premise has been modified since last check
+                    from dateutil import parser
+                    last_checked_dt = parser.isoparse(last_checked)
+
+                    for pid in premise_ids + [conclusion_id]:
+                        if pid in claims:
+                            modified_at = claims[pid].get('modified_at')
+                            if modified_at:
+                                modified_dt = parser.isoparse(modified_at)
+                                if modified_dt > last_checked_dt:
+                                    needs_checking = True
+                                    break
+
+            if not needs_checking:
+                continue  # Skip this implication
 
             # Validate references exist
             missing_premises = [pid for pid in premise_ids if pid not in claims]
@@ -177,6 +207,9 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
                 impl_type
             )
 
+            # Mark as checked
+            implications_checked.append(impl_id)
+
             if not is_valid:
                 errors.append(
                     f"Implication {impl_id} ({impl_type}): Entailment check failed\n"
@@ -199,6 +232,22 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
                     warnings.append(
                         f"Implication {impl_id}: {explanation.split('SUGGESTIONS:')[1].strip()}"
                     )
+
+        # Update last_checked timestamps for implications that were checked
+        if implications_checked:
+            from datetime import datetime
+            timestamp = datetime.now().isoformat()
+
+            for impl in hypergraph.get('implications', []):
+                if impl.get('id') in implications_checked:
+                    impl['last_checked'] = timestamp
+
+            # Save updated hypergraph
+            try:
+                with open(hypergraph_path, 'w') as f:
+                    json.dump(hypergraph, f, indent=2)
+            except Exception as e:
+                warnings.append(f"Failed to update last_checked timestamps: {e}")
 
         return errors, warnings
 

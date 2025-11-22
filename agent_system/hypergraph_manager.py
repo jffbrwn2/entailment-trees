@@ -125,11 +125,14 @@ class HypergraphManager:
             raise ValueError(f"Claim ID '{claim.id}' already exists")
 
         # Convert to dict, excluding None values
+        timestamp = datetime.now().isoformat()
         claim_dict = {
             "id": claim.id,
             "text": claim.text,
             "score": claim.score,
-            "reasoning": claim.reasoning
+            "reasoning": claim.reasoning,
+            "created_at": timestamp,
+            "modified_at": timestamp
         }
 
         if claim.evidence:
@@ -169,6 +172,9 @@ class HypergraphManager:
             if value is not None:
                 claim[key] = value
 
+        # Update modified timestamp
+        claim['modified_at'] = datetime.now().isoformat()
+
         self._save_hypergraph(hypergraph)
 
     def add_implication(self, implication: Implication) -> str:
@@ -197,12 +203,15 @@ class HypergraphManager:
             raise ValueError(f"Conclusion claim '{implication.conclusion}' does not exist")
 
         # Add implication
+        timestamp = datetime.now().isoformat()
         impl_dict = {
             "id": implication.id,
             "premises": implication.premises,
             "conclusion": implication.conclusion,
             "type": implication.type,
-            "reasoning": implication.reasoning
+            "reasoning": implication.reasoning,
+            "created_at": timestamp,
+            "last_checked": None  # Will be set when first checked
         }
 
         hypergraph['implications'].append(impl_dict)
