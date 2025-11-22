@@ -76,32 +76,32 @@ entailment_server = create_sdk_mcp_server(
 )
 
 
-# Hook that runs after Edit/Write on hypergraph.json
+# Hook that runs at end of Claude's turn
 async def post_hypergraph_edit_hook(
     input_data: Dict[str, Any],
     tool_use_id: Optional[str],
     context: HookContext
 ) -> Dict[str, Any]:
     """
-    Auto-validate entailment and cleanup orphans after hypergraph modifications.
+    Auto-validate entailment and cleanup orphans after Claude's turn completes.
 
-    Runs after Edit or Write tools modify hypergraph.json.
+    Checks if any hypergraph.json files were modified during the turn, and if so,
+    runs cleanup and validation once.
     """
-    tool_name = input_data.get("tool_name", "")
-    tool_input = input_data.get("tool_input", {})
-
-    # Check if this was a hypergraph edit
-    file_path = tool_input.get("file_path", "")
-    if "hypergraph.json" not in file_path:
-        return {}  # Not a hypergraph edit, skip
-
     # Import HypergraphManager here to avoid circular imports
     from .hypergraph_manager import HypergraphManager
 
-    # Convert to absolute path (relative to cwd from context)
+    # Get cwd to check for hypergraph files
     cwd = input_data.get("cwd", ".")
-    absolute_path = Path(cwd) / file_path
-    absolute_path = absolute_path.resolve()
+    cwd_path = Path(cwd)
+
+    # Check if there's a hypergraph.json in the working directory
+    hypergraph_path = cwd_path / "hypergraph.json"
+    if not hypergraph_path.exists():
+        return {}  # No hypergraph in this directory
+
+    # Resolve to absolute path
+    absolute_path = hypergraph_path.resolve()
 
     print(f"\n[AUTO-CLEANUP] Processing {absolute_path}...")
 
@@ -204,7 +204,7 @@ class ClaudeCodeClient:
                 cwd=str(self.working_dir),
                 mcp_servers={"entailment": entailment_server},
                 hooks={
-                    "PostToolUse": [
+                    "PostMessageFinish": [
                         HookMatcher(hooks=[post_hypergraph_edit_hook])
                     ]
                 }
