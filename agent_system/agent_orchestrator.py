@@ -259,6 +259,23 @@ This tool checks whether "if all premises are true, then conclusion is true" for
 
 The hook will automatically validate after you save hypergraph.json and alert you to any issues.
 
+## Automatic Cleanup
+
+**Orphan nodes are automatically removed** after each hypergraph edit.
+
+An orphan node is a claim that is:
+- NOT a premise in any implication
+- NOT a conclusion in any implication
+- NOT the hypothesis (root node)
+
+When you save hypergraph.json, the system will:
+1. Remove all orphan claims
+2. Print which nodes were removed
+3. Validate remaining implications
+
+This keeps the hypergraph clean and focused on connected logical chains.
+If you want to keep a claim temporarily, add it as a premise to an implication.
+
 ## Workflow
 
 1. **Read current hypergraph** - Always start by reading hypergraph.json to see current state

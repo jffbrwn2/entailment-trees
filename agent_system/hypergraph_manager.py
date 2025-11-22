@@ -345,6 +345,46 @@ python -m http.server 8765
             with open(catalog_path, 'w') as f:
                 json.dump(catalog, f, indent=2)
 
+    def remove_orphan_nodes(self) -> List[str]:
+        """
+        Remove claims that aren't connected to any implications.
+
+        A claim is an orphan if it's not:
+        - A premise in any implication
+        - A conclusion in any implication
+        - The hypothesis (root node)
+
+        Returns:
+            List of removed claim IDs
+        """
+        hypergraph = self.load_hypergraph()
+
+        # Collect all claims referenced in implications
+        referenced_claims = set()
+        for impl in hypergraph.get('implications', []):
+            referenced_claims.update(impl.get('premises', []))
+            referenced_claims.add(impl.get('conclusion'))
+
+        # Keep hypothesis even if orphaned (it's the root)
+        referenced_claims.add('hypothesis')
+
+        # Find orphans
+        orphans = []
+        claims = hypergraph.get('claims', [])
+        for claim in claims:
+            claim_id = claim.get('id')
+            if claim_id not in referenced_claims:
+                orphans.append(claim_id)
+
+        # Remove orphans
+        if orphans:
+            hypergraph['claims'] = [
+                c for c in claims if c.get('id') not in orphans
+            ]
+            self._save_hypergraph(hypergraph)
+
+        return orphans
+
     def generate_next_id(self, prefix: str) -> str:
         """
         Generate next available ID with given prefix.

@@ -82,7 +82,7 @@ async def post_hypergraph_edit_hook(
     context: HookContext
 ) -> Dict[str, Any]:
     """
-    Auto-validate entailment after hypergraph modifications.
+    Auto-validate entailment and cleanup orphans after hypergraph modifications.
 
     Runs after Edit or Write tools modify hypergraph.json.
     """
@@ -94,9 +94,19 @@ async def post_hypergraph_edit_hook(
     if "hypergraph.json" not in file_path:
         return {}  # Not a hypergraph edit, skip
 
-    print(f"\n[ENTAILMENT CHECK] Validating {file_path}...")
+    # Import HypergraphManager here to avoid circular imports
+    from .hypergraph_manager import HypergraphManager
+
+    print(f"\n[AUTO-CLEANUP] Processing {file_path}...")
+
+    # Remove orphan nodes
+    mgr = HypergraphManager(Path(file_path).parent)
+    orphans = mgr.remove_orphan_nodes()
+    if orphans:
+        print(f"[AUTO-CLEANUP] Removed {len(orphans)} orphan node(s): {', '.join(orphans)}")
 
     # Run entailment check
+    print(f"[ENTAILMENT CHECK] Validating implications...")
     result = check_entailment_impl(file_path)
 
     # If there are errors, inject message for Claude to see
