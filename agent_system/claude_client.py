@@ -22,6 +22,7 @@ from claude_agent_sdk import (
 )
 
 from .entailment_checker import check_entailment_skill as check_entailment_impl
+from .claim_evaluator import evaluate_claim_skill as evaluate_claim_impl
 
 
 @dataclass
@@ -79,11 +80,60 @@ async def check_entailment_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-# Create MCP server with entailment tool
+# Define claim evaluator as SDK tool
+@tool(
+    name="evaluate_claim",
+    description="Evaluate a claim by assigning a score based on evidence. "
+                "This is Phase 2 after building the logical structure - gather evidence "
+                "(simulations, literature, calculations) and assign scores to show whether "
+                "requirements are actually met. Scores: 0=false, 10=true, 5=unsure.",
+    input_schema={
+        "hypergraph_path": str,
+        "claim_id": str,
+        "score": float,
+        "reasoning": str,
+        "evidence": {"type": "string", "default": None},
+        "uncertainties": {"type": "string", "default": None},
+        "tags": {"type": "string", "default": None}
+    }
+)
+async def evaluate_claim_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for evaluating claims with evidence and scoring.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+            - claim_id: ID of claim to evaluate (e.g., "c1")
+            - score: Score 0-10
+            - reasoning: Why this score was assigned
+            - evidence: JSON array string of evidence items (optional)
+            - uncertainties: Comma-separated uncertainties (optional)
+            - tags: Comma-separated tags like "CRITICAL_BLOCKER" (optional)
+
+    Returns:
+        Tool response with confirmation or error
+    """
+    result = evaluate_claim_impl(
+        args.get("hypergraph_path", ""),
+        args.get("claim_id", ""),
+        args.get("score", 5.0),
+        args.get("reasoning", ""),
+        args.get("evidence", None),
+        args.get("uncertainties", None),
+        args.get("tags", None)
+    )
+
+    return {
+        "content": [{"type": "text", "text": result}]
+    }
+
+
+# Create MCP server with both tools
 entailment_server = create_sdk_mcp_server(
     name="entailment",
     version="1.0.0",
-    tools=[check_entailment_tool]
+    tools=[check_entailment_tool, evaluate_claim_tool]
 )
 
 
@@ -194,9 +244,10 @@ class ClaudeCodeClient:
         """
         # Initialize SDK client if not already done or if system prompt changed
         if self.sdk_client is None or (system_prompt and system_prompt != self.current_system_prompt):
-            # Build allowed tools list (include built-in tools + entailment tool)
+            # Build allowed tools list (include built-in tools + MCP tools)
             allowed = self.allowed_tools.copy() if self.allowed_tools else []
             allowed.append("mcp__entailment__check_entailment")
+            allowed.append("mcp__entailment__evaluate_claim")
 
             options = ClaudeAgentOptions(
                 system_prompt=system_prompt or "claude_code",

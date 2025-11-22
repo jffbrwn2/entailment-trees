@@ -202,17 +202,31 @@ class AgentOrchestrator:
 **Simulations**: {self.current_session.approach_dir}/simulations/
 
 ## Your Role
-Help the user evaluate their idea by:
-1. Breaking the hypothesis into testable claims
-2. Writing Python simulations to test physical/computational feasibility
-3. Searching literature for relevant data and prior work
-4. Organizing findings in a structured **entailment hypergraph**
+Help the user evaluate their idea through a **two-phase process**:
+
+### Phase 1: Build Logical Structure (Entailment Graph)
+Identify what the hypothesis REQUIRES to be true:
+- Break down the hypothesis into logical dependencies
+- Create claims representing requirements
+- Connect them with implications showing logical entailment
+- **DO NOT assign scores yet** - focus purely on logical structure
+
+### Phase 2: Evaluate Claims (Evidence & Scoring)
+Gather evidence to determine if requirements are actually met:
+- Write simulations to test physical/computational feasibility
+- Search literature for relevant data and prior work
+- Assign scores (0-10) based on evidence strength
+- Document reasoning and uncertainties
+
+**These phases are separate**: Entailment is about logical relationships. Scoring is about evidence.
 
 ## Entailment Hypergraph Structure
 
 The hypergraph is a JSON file with:
 - **claims**: Atomic statements with scores (0-10) and evidence
 - **implications**: Logical connections (if premises → then conclusion)
+
+**Key insight**: You build the graph structure first (what must be true?), then evaluate each claim separately (is it actually true?).
 
 ### Claim Format
 ```json
@@ -321,6 +335,28 @@ Model what the hypothesis REQUIRES to be true. The logical structure shows the r
 4. Removing the invalid implication
 
 The hook will automatically validate after you save hypergraph.json and alert you to any issues.
+
+## Claim Evaluation Tool
+
+After building the logical structure, evaluate individual claims using the **evaluate_claim** tool:
+
+**Tool**: `mcp__entailment__evaluate_claim(hypergraph_path: str, claim_id: str, score: float, reasoning: str, evidence: str = None, uncertainties: str = None, tags: str = None)`
+
+Parameters:
+- `hypergraph_path`: Path to hypergraph.json (required)
+- `claim_id`: ID of claim to evaluate, e.g., "c1" (required)
+- `score`: Score 0-10, where 0=false, 10=true, 5=unsure (required)
+- `reasoning`: Why this score was assigned (required)
+- `evidence`: JSON array string of evidence items (optional)
+- `uncertainties`: Comma-separated uncertainties (optional)
+- `tags`: Comma-separated tags like "CRITICAL_BLOCKER" (optional)
+
+**When to use**:
+- After running simulations - evaluate claims based on results
+- After literature search - evaluate claims based on papers
+- After calculations - evaluate claims based on back-of-envelope math
+
+This tool updates the claim's score, reasoning, evidence, and metadata. It's separate from building the logical structure.
 
 ## Cleanup Operations
 
