@@ -9,7 +9,18 @@ from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from pathlib import Path
 
-from claude_agent_sdk import ClaudeSDKClient, ClaudeAgentOptions, AssistantMessage, TextBlock
+from claude_agent_sdk import (
+    ClaudeSDKClient,
+    ClaudeAgentOptions,
+    AssistantMessage,
+    TextBlock,
+    tool,
+    create_sdk_mcp_server,
+    HookMatcher,
+    HookContext
+)
+
+from .entailment_checker import check_entailment_skill as check_entailment_impl
 
 
 @dataclass
@@ -26,6 +37,80 @@ class ClaudeResponse:
     session_id: Optional[str] = None
     cost_usd: Optional[float] = None
     raw_output: Optional[Dict[str, Any]] = None
+
+
+# Define entailment checker as SDK tool
+@tool(
+    name="check_entailment",
+    description="Check if implications in the hypergraph are logically valid. "
+                "Validates that 'if all premises are true, then conclusion is true' for each implication. "
+                "Returns validation errors and suggestions for fixing invalid entailments.",
+    input_schema={"hypergraph_path": str}
+)
+async def check_entailment_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for checking entailment in hypergraphs.
+
+    Args:
+        args: Dictionary with 'hypergraph_path' key
+
+    Returns:
+        Tool response with validation results
+    """
+    hypergraph_path = args.get("hypergraph_path", "")
+
+    # Call the actual implementation
+    result = check_entailment_impl(hypergraph_path)
+
+    return {
+        "content": [{"type": "text", "text": result}]
+    }
+
+
+# Create MCP server with entailment tool
+entailment_server = create_sdk_mcp_server(
+    name="entailment",
+    version="1.0.0",
+    tools=[check_entailment_tool]
+)
+
+
+# Hook that runs after Edit/Write on hypergraph.json
+async def post_hypergraph_edit_hook(
+    input_data: Dict[str, Any],
+    tool_use_id: Optional[str],
+    context: HookContext
+) -> Dict[str, Any]:
+    """
+    Auto-validate entailment after hypergraph modifications.
+
+    Runs after Edit or Write tools modify hypergraph.json.
+    """
+    tool_name = input_data.get("name", "")
+    tool_input = input_data.get("input", {})
+
+    # Check if this was a hypergraph edit
+    file_path = tool_input.get("file_path", "")
+    if "hypergraph.json" not in file_path:
+        return {}  # Not a hypergraph edit, skip
+
+    print(f"\n[ENTAILMENT CHECK] Validating {file_path}...")
+
+    # Run entailment check
+    result = check_entailment_impl(file_path)
+
+    # If there are errors, inject message for Claude to see
+    if "❌" in result:
+        print(result)
+        return {
+            "inject_message": {
+                "role": "user",
+                "content": f"⚠️  Entailment validation failed:\n\n{result}\n\nPlease fix the invalid implications."
+            }
+        }
+
+    print("✓ All implications passed entailment checking")
+    return {}
 
 
 class ClaudeCodeClient:
@@ -93,10 +178,20 @@ class ClaudeCodeClient:
         """
         # Initialize SDK client if not already done or if system prompt changed
         if self.sdk_client is None or (system_prompt and system_prompt != self.current_system_prompt):
+            # Build allowed tools list (include built-in tools + entailment tool)
+            allowed = self.allowed_tools.copy() if self.allowed_tools else []
+            allowed.append("mcp__entailment__check_entailment")
+
             options = ClaudeAgentOptions(
                 system_prompt=system_prompt or "claude_code",
-                allowed_tools=self.allowed_tools if self.allowed_tools else None,
-                cwd=str(self.working_dir)
+                allowed_tools=allowed if allowed else None,
+                cwd=str(self.working_dir),
+                mcp_servers={"entailment": entailment_server},
+                hooks={
+                    "PostToolUse": [
+                        HookMatcher(hooks=[post_hypergraph_edit_hook])
+                    ]
+                }
             )
 
             # Close existing client if changing system prompt

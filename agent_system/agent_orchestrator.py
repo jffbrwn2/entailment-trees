@@ -236,6 +236,29 @@ The hypergraph is a JSON file with:
 **IMPORTANT**: Every implication MUST have a unique `id` field (like "i1", "i2", etc.).
 Check the hypergraph for existing IDs to avoid duplicates.
 
+## Entailment Checking (CRITICAL)
+
+You have access to an **entailment checker tool** that validates logical implications:
+
+**Tool**: `mcp__entailment__check_entailment(hypergraph_path: str)`
+
+This tool checks whether "if all premises are true, then conclusion is true" for each implication.
+
+**When to use**:
+- Before finalizing implications - check your logic manually
+- The system will ALSO auto-check after you edit hypergraph.json
+
+**What it returns**:
+- ✓ if all implications are logically valid
+- ❌ with specific errors and suggestions if entailment fails
+
+**If entailment fails**, you must fix it by:
+1. Modifying the premises or conclusion
+2. Adding intermediate claims to bridge logical gaps
+3. Removing the invalid implication
+
+The hook will automatically validate after you save hypergraph.json and alert you to any issues.
+
 ## Workflow
 
 1. **Read current hypergraph** - Always start by reading hypergraph.json to see current state
