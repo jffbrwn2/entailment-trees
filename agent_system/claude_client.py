@@ -87,8 +87,8 @@ async def post_hypergraph_edit_hook(
 
     Runs after Edit or Write tools modify hypergraph.json.
     """
-    tool_name = input_data.get("name", "")
-    tool_input = input_data.get("input", {})
+    tool_name = input_data.get("tool_name", "")
+    tool_input = input_data.get("tool_input", {})
 
     # Check if this was a hypergraph edit
     file_path = tool_input.get("file_path", "")
