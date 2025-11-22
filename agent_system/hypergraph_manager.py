@@ -335,11 +335,15 @@ python -m http.server 8765
 
     def remove_unreachable_nodes(self) -> List[str]:
         """
-        Remove claims that don't have a directed path to the hypothesis.
+        Remove claims that are not in the causal chain leading to the hypothesis.
 
-        Uses backward reachability from the hypothesis node. A claim is kept only if:
+        A claim is kept only if:
         - It is the hypothesis itself, OR
-        - It can be reached by traversing backward through implications from the hypothesis
+        - It is used as a premise in the chain leading to the hypothesis
+
+        This removes both:
+        1. Completely disconnected claims
+        2. "Dangling conclusions" - claims that can be derived but are never used
 
         Returns:
             List of removed claim IDs
@@ -357,38 +361,46 @@ python -m http.server 8765
                 conclusion_to_premises[conclusion].extend(premises)
 
         # Perform backward reachability search from hypothesis
-        reachable = set()
+        # ONLY traverse through premises, not conclusions
+        needed = set()
         to_visit = ['hypothesis']
 
         while to_visit:
             current = to_visit.pop()
-            if current in reachable:
+            if current in needed:
                 continue
 
-            reachable.add(current)
+            needed.add(current)
 
             # Add all premises that support this conclusion
             if current in conclusion_to_premises:
                 for premise in conclusion_to_premises[current]:
-                    if premise not in reachable:
+                    if premise not in needed:
                         to_visit.append(premise)
 
-        # Find unreachable claims
-        unreachable = []
+        # Find unneeded claims
+        unneeded = []
         claims = hypergraph.get('claims', [])
         for claim in claims:
             claim_id = claim.get('id')
-            if claim_id not in reachable:
-                unreachable.append(claim_id)
+            if claim_id not in needed:
+                unneeded.append(claim_id)
 
-        # Remove unreachable claims
-        if unreachable:
+        # Remove unneeded claims and their implications
+        if unneeded:
             hypergraph['claims'] = [
-                c for c in claims if c.get('id') not in unreachable
+                c for c in claims if c.get('id') not in unneeded
             ]
+
+            # Also remove implications that conclude to unneeded claims
+            hypergraph['implications'] = [
+                i for i in hypergraph.get('implications', [])
+                if i.get('conclusion') not in unneeded
+            ]
+
             self._save_hypergraph(hypergraph)
 
-        return unreachable
+        return unneeded
 
     def generate_next_id(self, prefix: str) -> str:
         """
