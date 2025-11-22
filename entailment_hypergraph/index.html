@@ -538,6 +538,30 @@
                     collapsedNodes.clear();
                     outlineCollapsedNodes.clear();
                     nodePositions.clear();
+                } else {
+                    // On auto-reload, clean up stale positions for deleted nodes
+                    const currentNodeIds = new Set(hypergraph.claims.map(c => c.id));
+                    const currentJunctionIds = new Set(hypergraph.implications.map(i => `junction_${i.id}`));
+
+                    // Remove positions for nodes that no longer exist
+                    for (const nodeId of nodePositions.keys()) {
+                        if (!currentNodeIds.has(nodeId) && !currentJunctionIds.has(nodeId)) {
+                            nodePositions.delete(nodeId);
+                        }
+                    }
+
+                    // Remove collapsed state for deleted nodes
+                    for (const nodeId of collapsedNodes.keys()) {
+                        if (!currentNodeIds.has(nodeId)) {
+                            collapsedNodes.delete(nodeId);
+                        }
+                    }
+
+                    for (const nodeId of outlineCollapsedNodes.keys()) {
+                        if (!currentNodeIds.has(nodeId)) {
+                            outlineCollapsedNodes.delete(nodeId);
+                        }
+                    }
                 }
 
                 buildImplicationMap();
