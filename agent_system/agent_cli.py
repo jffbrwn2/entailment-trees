@@ -204,11 +204,13 @@ class AgentCLI:
             print()
 
             # Show current stats
-            stats = self.orchestrator.get_stats()['stats']
-            print(f"Current state:")
-            print(f"  Claims: {stats['num_claims']}")
-            print(f"  Implications: {stats['num_implications']}")
-            print()
+            status = self.orchestrator.get_status()
+            if status.get('stats'):
+                stats = status['stats']
+                print(f"Current state:")
+                print(f"  Claims: {stats['num_claims']}")
+                print(f"  Implications: {stats['num_implications']}")
+                print()
 
         except ValueError:
             print("Invalid number.")
