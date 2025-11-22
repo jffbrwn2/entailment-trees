@@ -46,9 +46,9 @@ class EntailmentChecker:
             (is_valid, explanation, redundant_premises) - whether entailment holds,
             why, and list of redundant premise IDs (for AND only)
         """
-        # Build prompt for Claude
+        # Build prompt for Claude (WITHOUT scores - only logical relationships matter)
         premise_texts = "\n".join([
-            f"- [{p['id']}] {p['text']} (Score: {p.get('score', 'N/A')}/10)"
+            f"- [{p['id']}] {p['text']}"
             for p in premises
         ])
 
@@ -72,14 +72,14 @@ REDUNDANT_PREMISES: [comma-separated list of premise IDs that are redundant, or 
 {premise_texts}
 
 **Proposed Conclusion:**
-[{conclusion['id']}] {conclusion['text']} (Score: {conclusion.get('score', 'N/A')}/10)
+[{conclusion['id']}] {conclusion['text']}
 
-**Question:** If all the premises are true, must the conclusion be true?
+**Question:** If all the premises are TRUE, must the conclusion be TRUE?
 
 For AND relationships: All premises must be true for the conclusion to follow.
 For OR relationships: At least one premise must be true for the conclusion to follow.
 
-**Scoring context:** Scores represent confidence/truth (0=false, 10=true, 5=unsure).
+**Important:** Ignore any scores or evidence. Focus ONLY on the logical relationship between the claim statements themselves.
 
 Analyze this carefully:
 1. Does the conclusion logically follow from the premises?

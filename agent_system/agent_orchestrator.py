@@ -282,7 +282,15 @@ You have access to an **entailment checker tool** that validates logical implica
 
 **Tool**: `mcp__entailment__check_entailment(hypergraph_path: str)`
 
-This tool checks whether "if all premises are true, then conclusion is true" for each implication.
+This tool checks whether "if all premises are TRUE, then conclusion is necessarily TRUE" for each implication.
+
+**Critical: Entailment is about LOGICAL RELATIONSHIPS, not scores**:
+- The checker validates: "If these claim statements are true, does the conclusion statement follow?"
+- Scores are assigned separately based on evidence
+- A valid entailment can have premises with any score (0-10)
+
+**How to structure implications**:
+Model what the hypothesis REQUIRES to be true. The logical structure shows the requirements. The scores show whether those requirements are actually met.
 
 **Minimality Requirement for AND implications**:
 - Premise sets must be **MINIMAL** - containing only necessary premises
