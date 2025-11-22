@@ -317,10 +317,16 @@ This tool checks whether "if all premises are TRUE, then conclusion is necessari
 **How to structure implications**:
 Model what the hypothesis REQUIRES to be true. The logical structure shows the requirements. The scores show whether those requirements are actually met.
 
-**Minimality Requirement for AND implications**:
-- Premise sets must be **MINIMAL** - containing only necessary premises
-- A premise is redundant if removing it doesn't break the entailment
-- The checker will flag any redundant premises as errors
+**Requirements for AND implications**:
+1. **MINIMAL premise set**: Contains only necessary premises
+   - A premise is redundant if removing it doesn't break the entailment
+   - The checker will flag redundant premises as errors
+
+2. **NON-DEGENERATE entailment**: Premises must be MORE SPECIFIC than conclusion
+   - Premises should decompose/refine the conclusion, not restate it
+   - If conclusion → premise (backward direction), that's degenerate
+   - This prevents trivial entailments like "C → C" or "C ∧ D → C"
+   - Forces the graph to actually break down ideas into deeper requirements
 
 **When to use**:
 - Before finalizing implications - check your logic manually

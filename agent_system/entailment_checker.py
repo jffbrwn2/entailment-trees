@@ -54,17 +54,24 @@ class EntailmentChecker:
 
         operator = "AND" if implication_type == "AND" else "OR"
 
-        # For AND relationships, check minimality
+        # For AND relationships, check minimality and non-degeneracy
         minimality_instruction = ""
         if implication_type == "AND":
             minimality_instruction = """
-**CRITICAL for AND relationships:** Check if the premise set is MINIMAL.
-- A premise is redundant if removing it doesn't break the entailment
-- The premise set should contain ONLY necessary premises
-- If any premise can be removed while still reaching the conclusion, flag it
+**CRITICAL for AND relationships:** Check two properties:
+
+1. **MINIMAL premise set**: A premise is redundant if removing it doesn't break the entailment
+   - The premise set should contain ONLY necessary premises
+   - If any premise can be removed while still reaching the conclusion, flag it
+
+2. **NON-DEGENERATE entailment**: Premises must be MORE SPECIFIC than conclusion
+   - Check if conclusion entails any individual premise (if C → Pi, that's degenerate)
+   - Premises should decompose/refine the conclusion, not restate it
+   - This prevents trivial entailments like "C → C" or "C ∧ D → C"
 
 Include in your response:
-REDUNDANT_PREMISES: [comma-separated list of premise IDs that are redundant, or "None"]"""
+REDUNDANT_PREMISES: [comma-separated list of premise IDs that are redundant, or "None"]
+DEGENERATE_PREMISES: [comma-separated list of premise IDs where conclusion → premise, or "None"]"""
 
         prompt = f"""You are a logic checker. Your job is to determine whether a logical entailment is valid.
 
@@ -105,20 +112,36 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
             # Parse response
             is_valid = "VALID: YES" in response_text
 
-            # Parse redundant premises for AND relationships
+            # Parse redundant and degenerate premises for AND relationships
             redundant = []
-            if implication_type == "AND" and "REDUNDANT_PREMISES:" in response_text:
-                redundant_line = [
-                    line for line in response_text.split('\n')
-                    if line.startswith('REDUNDANT_PREMISES:')
-                ]
-                if redundant_line:
-                    redundant_text = redundant_line[0].split(':', 1)[1].strip()
-                    if redundant_text and redundant_text != "None":
-                        # Parse comma-separated IDs
-                        redundant = [r.strip() for r in redundant_text.split(',')]
+            degenerate = []
 
-            return is_valid, response_text, redundant
+            if implication_type == "AND":
+                # Parse redundant premises
+                if "REDUNDANT_PREMISES:" in response_text:
+                    redundant_line = [
+                        line for line in response_text.split('\n')
+                        if line.startswith('REDUNDANT_PREMISES:')
+                    ]
+                    if redundant_line:
+                        redundant_text = redundant_line[0].split(':', 1)[1].strip()
+                        if redundant_text and redundant_text != "None":
+                            redundant = [r.strip() for r in redundant_text.split(',')]
+
+                # Parse degenerate premises
+                if "DEGENERATE_PREMISES:" in response_text:
+                    degenerate_line = [
+                        line for line in response_text.split('\n')
+                        if line.startswith('DEGENERATE_PREMISES:')
+                    ]
+                    if degenerate_line:
+                        degenerate_text = degenerate_line[0].split(':', 1)[1].strip()
+                        if degenerate_text and degenerate_text != "None":
+                            degenerate = [d.strip() for d in degenerate_text.split(',')]
+
+            # Combine redundant and degenerate into single list for error reporting
+            all_problematic = redundant + degenerate
+            return is_valid, response_text, all_problematic
 
         except Exception as e:
             return False, f"Entailment check failed: {str(e)}", []
@@ -229,12 +252,12 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
                     f"  {explanation}"
                 )
             else:
-                # Check for redundant premises (minimality violation)
+                # Check for problematic premises (redundant or degenerate)
                 if redundant_premises:
                     errors.append(
-                        f"Implication {impl_id} ({impl_type}): Premise set is not minimal\n"
-                        f"  Redundant premises: {redundant_premises}\n"
-                        f"  These premises can be removed without breaking the entailment.\n"
+                        f"Implication {impl_id} ({impl_type}): Premise set has issues\n"
+                        f"  Problematic premises: {redundant_premises}\n"
+                        f"  (May be redundant or degenerate - check explanation)\n"
                         f"  {explanation}"
                     )
 
