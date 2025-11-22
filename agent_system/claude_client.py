@@ -303,7 +303,7 @@ class ClaudeCodeClient:
             raise RuntimeError("No active session. Call start_conversation() first.")
 
         # Pass resume flag to maintain conversation context
-        return self.query(prompt, resume_session="active")
+        return self.query(prompt, _resume_session="active")
 
     def end_conversation(self):
         """End the current conversation session."""
