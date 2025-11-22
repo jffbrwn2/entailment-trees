@@ -421,8 +421,39 @@
         // Node positions (persistent across renders)
         let nodePositions = new Map();
 
-        // Load initial example
-        loadExample('/entailment_hypergraph/water_boiling_example.json');
+        // Auto-reload interval (check for updates every 3 seconds)
+        let autoReloadInterval = null;
+        let currentGraphPath = null;
+
+        // Check URL parameter for graph file
+        const urlParams = new URLSearchParams(window.location.search);
+        const graphParam = urlParams.get('graph');
+
+        // Load initial example (from URL param or default)
+        if (graphParam) {
+            currentGraphPath = '/' + graphParam;
+            loadExample(currentGraphPath);
+            // Start auto-reload for user-created graphs
+            startAutoReload();
+        } else {
+            currentGraphPath = '/entailment_hypergraph/water_boiling_example.json';
+            loadExample(currentGraphPath);
+        }
+
+        // Auto-reload function
+        function startAutoReload() {
+            if (autoReloadInterval) clearInterval(autoReloadInterval);
+            autoReloadInterval = setInterval(() => {
+                loadExample(currentGraphPath, true); // silent reload
+            }, 3000); // 3 seconds
+        }
+
+        function stopAutoReload() {
+            if (autoReloadInterval) {
+                clearInterval(autoReloadInterval);
+                autoReloadInterval = null;
+            }
+        }
 
         // Event listeners
         document.getElementById('example-select').addEventListener('change', (e) => {

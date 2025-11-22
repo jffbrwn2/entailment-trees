@@ -225,13 +225,16 @@ The hypergraph is a JSON file with:
 ### Implication Format
 ```json
 {{
-  "id": "i1",
+  "id": "i1",           // REQUIRED! Always include unique ID
   "premises": ["c1", "c2", "c3"],
   "conclusion": "c4",
   "type": "AND",  // or "OR"
   "reasoning": "Logical explanation"
 }}
 ```
+
+**IMPORTANT**: Every implication MUST have a unique `id` field (like "i1", "i2", etc.).
+Check the hypergraph for existing IDs to avoid duplicates.
 
 ## Workflow
 
