@@ -29,6 +29,9 @@ class AgentCLI:
         print()
         print("Commands:")
         print("  /help      - Show available commands")
+        print("  /list      - List existing approaches")
+        print("  /load      - Load an existing approach")
+        print("  /new       - Start a new approach")
         print("  /status    - Show current approach status")
         print("  /validate  - Validate current hypergraph")
         print("  /viz       - Instructions for viewing hypergraph")
@@ -40,6 +43,9 @@ class AgentCLI:
         print()
         print("Available Commands:")
         print("  /help      - Show this help message")
+        print("  /list      - List all existing approaches")
+        print("  /load      - Load an existing approach")
+        print("  /new       - Start a new approach")
         print("  /status    - Show current approach status and stats")
         print("  /validate  - Run type checker on hypergraph")
         print("  /viz       - Show how to visualize the hypergraph")
@@ -49,8 +55,6 @@ class AgentCLI:
         print("  - Describe what you want to investigate")
         print("  - Ask questions about the current hypergraph")
         print("  - Request simulations to test claims")
-        print()
-        print("(Note: Full agent integration with Claude Code coming soon!)")
         print()
 
     def start_new_approach(self):
@@ -100,6 +104,124 @@ class AgentCLI:
             print()
         except Exception as e:
             print(f"Error creating approach: {e}")
+
+    def list_approaches(self):
+        """List all existing approaches."""
+        approaches_dir = self.orchestrator.config.approaches_dir
+
+        if not approaches_dir.exists():
+            print("\nNo approaches directory found.")
+            return
+
+        approaches = []
+        for approach_dir in approaches_dir.iterdir():
+            if not approach_dir.is_dir():
+                continue
+
+            hypergraph_file = approach_dir / "hypergraph.json"
+            if hypergraph_file.exists():
+                try:
+                    import json
+                    with open(hypergraph_file) as f:
+                        data = json.load(f)
+                        name = data.get("metadata", {}).get("name", approach_dir.name)
+                        description = data.get("metadata", {}).get("description", "")
+                        last_updated = data.get("metadata", {}).get("last_updated", "")
+                        approaches.append({
+                            "folder": approach_dir.name,
+                            "name": name,
+                            "description": description,
+                            "last_updated": last_updated
+                        })
+                except Exception:
+                    continue
+
+        if not approaches:
+            print("\nNo approaches found.")
+            print("Use /new to start a new approach.")
+            return
+
+        print("\nExisting Approaches:")
+        print("-" * 70)
+        for i, approach in enumerate(sorted(approaches, key=lambda a: a['last_updated'], reverse=True), 1):
+            print(f"{i}. {approach['name']}")
+            print(f"   Folder: {approach['folder']}")
+            if approach['description']:
+                print(f"   Description: {approach['description'][:60]}...")
+            print(f"   Last updated: {approach['last_updated']}")
+            print()
+
+    def load_approach(self):
+        """Load an existing approach."""
+        approaches_dir = self.orchestrator.config.approaches_dir
+
+        if not approaches_dir.exists():
+            print("\nNo approaches directory found.")
+            return
+
+        # Get list of approaches
+        approaches = []
+        for approach_dir in approaches_dir.iterdir():
+            if not approach_dir.is_dir():
+                continue
+
+            hypergraph_file = approach_dir / "hypergraph.json"
+            if hypergraph_file.exists():
+                approaches.append(approach_dir)
+
+        if not approaches:
+            print("\nNo approaches found.")
+            print("Use /new to start a new approach.")
+            return
+
+        # Show list
+        print("\nAvailable Approaches:")
+        for i, approach_dir in enumerate(sorted(approaches, key=lambda d: d.name), 1):
+            print(f"{i}. {approach_dir.name}")
+
+        # Get selection
+        print()
+        try:
+            selection = input("Select approach number (or press Enter to cancel): ").strip()
+            if not selection:
+                print("Cancelled.")
+                return
+
+            idx = int(selection) - 1
+            if idx < 0 or idx >= len(approaches):
+                print("Invalid selection.")
+                return
+
+            selected = sorted(approaches, key=lambda d: d.name)[idx]
+
+            # Load the approach
+            import json
+            from .hypergraph_manager import HypergraphManager
+
+            hypergraph_mgr = HypergraphManager(selected)
+            hypergraph = hypergraph_mgr.load_hypergraph()
+
+            # Get hypothesis from hypergraph
+            hypothesis_claim = next((c for c in hypergraph['claims'] if c['id'] == 'hypothesis'), None)
+            initial_claim = hypothesis_claim['text'] if hypothesis_claim else "Unknown"
+
+            # Set up session
+            result = self.orchestrator.start_approach(
+                name=hypergraph['metadata'].get('name', selected.name),
+                initial_claim=initial_claim,
+                description=hypergraph['metadata'].get('description', '')
+            )
+
+            print()
+            print(f"✓ Loaded approach: {result['session']['name']}")
+            print(f"  Folder: {result['session']['folder']}")
+            print(f"  Path: {result['session']['path']}")
+            print()
+
+        except ValueError:
+            print("Invalid number.")
+        except Exception as e:
+            print(f"Error loading approach: {e}")
 
     def show_status(self):
         """Show current status."""
@@ -188,6 +310,10 @@ class AgentCLI:
             return False
         elif command == "/help":
             self.print_help()
+        elif command == "/list":
+            self.list_approaches()
+        elif command == "/load":
+            self.load_approach()
         elif command == "/new":
             self.start_new_approach()
         elif command == "/status":
