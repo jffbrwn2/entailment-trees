@@ -4,3 +4,23 @@
 
 # Server logs
 server.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# User-generated approaches (each user creates their own)
+approaches/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+
+# Jupyter
+.ipynb_checkpoints/
