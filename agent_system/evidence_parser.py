@@ -29,9 +29,15 @@ def parse_simulation_evidence(
     # Read the specified lines from the simulation
     code = read_lines_from_file(sim_path, lines)
 
+    # Try to make path relative to cwd, otherwise use absolute
+    try:
+        source_path = str(sim_path.relative_to(Path.cwd()))
+    except ValueError:
+        source_path = str(sim_path)
+
     evidence = {
         "type": "simulation",
-        "source": str(sim_path.relative_to(Path.cwd())),
+        "source": source_path,
         "lines": lines,
         "code": code
     }
