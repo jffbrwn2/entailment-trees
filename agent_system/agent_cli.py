@@ -194,28 +194,20 @@ class AgentCLI:
 
             selected = sorted(approaches, key=lambda d: d.name)[idx]
 
-            # Load the approach
-            import json
-            from .hypergraph_manager import HypergraphManager
-
-            hypergraph_mgr = HypergraphManager(selected)
-            hypergraph = hypergraph_mgr.load_hypergraph()
-
-            # Get hypothesis from hypergraph
-            hypothesis_claim = next((c for c in hypergraph['claims'] if c['id'] == 'hypothesis'), None)
-            initial_claim = hypothesis_claim['text'] if hypothesis_claim else "Unknown"
-
-            # Set up session
-            result = self.orchestrator.start_approach(
-                name=hypergraph['metadata'].get('name', selected.name),
-                initial_claim=initial_claim,
-                description=hypergraph['metadata'].get('description', '')
-            )
+            # Load the approach (this won't overwrite the existing hypergraph)
+            result = self.orchestrator.load_approach(selected)
 
             print()
             print(f"✓ Loaded approach: {result['session']['name']}")
             print(f"  Folder: {result['session']['folder']}")
             print(f"  Path: {result['session']['path']}")
+            print()
+
+            # Show current stats
+            stats = self.orchestrator.get_stats()['stats']
+            print(f"Current state:")
+            print(f"  Claims: {stats['num_claims']}")
+            print(f"  Implications: {stats['num_implications']}")
             print()
 
         except ValueError:

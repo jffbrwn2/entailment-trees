@@ -102,6 +102,46 @@ class AgentOrchestrator:
             "system_prompt": self.get_system_prompt()
         }
 
+    def load_approach(self, approach_dir: Path) -> Dict[str, Any]:
+        """
+        Load an existing approach session.
+
+        Args:
+            approach_dir: Path to existing approach directory
+
+        Returns:
+            Session info and initial context
+        """
+        # Initialize hypergraph manager
+        self.hypergraph_mgr = HypergraphManager(approach_dir)
+
+        # Load existing hypergraph
+        hypergraph = self.hypergraph_mgr.load_hypergraph()
+        name = hypergraph['metadata'].get('name', approach_dir.name)
+
+        # Create session
+        self.current_session = Session(
+            approach_name=name,
+            approach_dir=approach_dir
+        )
+
+        # Initialize Claude Code client with approach directory as working dir
+        self.claude_client = ClaudeCodeClient(
+            working_dir=approach_dir,
+            allowed_tools=["Write", "Read", "Edit", "Bash", "WebSearch", "Glob", "Grep"],
+            verbose=False
+        )
+
+        return {
+            "session": {
+                "name": name,
+                "folder": str(approach_dir.name),
+                "path": str(approach_dir)
+            },
+            "hypergraph": hypergraph,
+            "system_prompt": self.get_system_prompt()
+        }
+
     def process_user_input(self, user_input: str) -> ClaudeResponse:
         """
         Process user input by sending to Claude Code.
