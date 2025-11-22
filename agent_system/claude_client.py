@@ -79,8 +79,8 @@ entailment_server = create_sdk_mcp_server(
 # Hook that runs at end of Claude's turn
 async def post_hypergraph_edit_hook(
     input_data: Dict[str, Any],
-    tool_use_id: Optional[str] = None,
-    context: Optional[HookContext] = None
+    _tool_use_id: Optional[str] = None,
+    _context: Optional[HookContext] = None
 ) -> Dict[str, Any]:
     """
     Auto-validate entailment after Claude's turn completes.
@@ -249,7 +249,7 @@ class ClaudeCodeClient:
         self,
         prompt: str,
         system_prompt: Optional[str] = None,
-        resume_session: Optional[str] = None
+        _resume_session: Optional[str] = None
     ) -> ClaudeResponse:
         """
         Send a query to Claude Code (sync wrapper).
@@ -257,7 +257,7 @@ class ClaudeCodeClient:
         Args:
             prompt: User message/prompt
             system_prompt: Optional system instructions
-            resume_session: Optional session ID (kept for compatibility)
+            _resume_session: Optional session ID (kept for compatibility, unused)
 
         Returns:
             ClaudeResponse with content and metadata
