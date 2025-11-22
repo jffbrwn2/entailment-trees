@@ -336,6 +336,8 @@ To keep a claim, ensure it's connected to the hypothesis through a chain of impl
    - Use realistic parameters from literature
    - Include noise and interference (CRITICAL!)
    - Print clear results
+   - **NEVER use plt.show()** - use plt.savefig() instead or just print results
+   - Interactive plots block execution and require manual closing
 
 4. **Add claims + evidence** - After running simulations:
    - Add claims to hypergraph

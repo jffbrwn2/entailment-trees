@@ -338,7 +338,7 @@
             </select>
             <button id="toggle-view-mode">View: Graph</button>
             <button id="reset-view">Reset View</button>
-            <button id="toggle-text">Full Text</button>
+            <button id="toggle-text">Compact Text</button>
             <button id="zoom-in">Zoom In</button>
             <button id="zoom-out">Zoom Out</button>
             <button id="zoom-reset">Reset Zoom</button>
@@ -405,7 +405,7 @@
     <script>
         let hypergraph = null;
         let selectedItem = null; // { type: 'claim' | 'implication', id: string }
-        let fullTextMode = false;
+        let fullTextMode = true;
         let zoom = null;
         let svg = null;
         let g = null;
