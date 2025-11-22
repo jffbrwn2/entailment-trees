@@ -204,7 +204,7 @@ class ClaudeCodeClient:
                 cwd=str(self.working_dir),
                 mcp_servers={"entailment": entailment_server},
                 hooks={
-                    "PostMessageFinish": [
+                    "Stop": [
                         HookMatcher(hooks=[post_hypergraph_edit_hook])
                     ]
                 }
