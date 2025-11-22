@@ -19,3 +19,6 @@ pandas = ">=2.0"
 pytest = ">=9.0.1,<10"
 pip = ">=25.3,<26"
 python-dateutil = ">=2.9.0.post0,<3"
+
+[pypi-dependencies]
+edison-client = ">=0.1.0"

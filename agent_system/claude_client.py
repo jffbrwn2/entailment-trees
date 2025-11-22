@@ -5,6 +5,7 @@ Provides Python interface to the Claude Agent SDK for programmatic interaction.
 """
 
 import asyncio
+import os
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from pathlib import Path
@@ -23,6 +24,13 @@ from claude_agent_sdk import (
 
 from .entailment_checker import check_entailment_skill as check_entailment_impl
 from .claim_evaluator import evaluate_claim_skill as evaluate_claim_impl
+
+try:
+    from edison_client import EdisonClient, JobNames
+    EDISON_AVAILABLE = True
+except ImportError:
+    EDISON_AVAILABLE = False
+    print("⚠️  edison-client not available. Edison tools will be disabled.")
 
 
 @dataclass
@@ -129,7 +137,91 @@ async def evaluate_claim_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-# Create MCP server with both tools
+# Edison Scientific tools (only if edison-client is available)
+if EDISON_AVAILABLE:
+    # Initialize Edison client with API key from environment
+    _edison_client = None
+
+    def _get_edison_client():
+        global _edison_client
+        if _edison_client is None:
+            api_key = os.getenv("EDISON_API_KEY")
+            if not api_key:
+                raise ValueError("EDISON_API_KEY environment variable not set")
+            _edison_client = EdisonClient(api_key=api_key)
+        return _edison_client
+
+    @tool(
+        name="literature_search",
+        description="Search scientific literature and get cited answers to research questions. "
+                    "Uses Edison's PaperQA3 to query scientific databases. Returns answers with proper citations. "
+                    "Perfect for gathering evidence for entailment tree claims.",
+        input_schema={
+            "query": str,
+        }
+    )
+    async def edison_literature_search(args: Dict[str, Any]) -> Dict[str, Any]:
+        """Search scientific literature with Edison."""
+        query = args.get("query", "")
+
+        try:
+            client = _get_edison_client()
+            task_data = {"name": JobNames.LITERATURE, "query": query}
+            response = await client.arun_tasks_until_done(task_data)
+
+            # Handle list response
+            if isinstance(response, list):
+                if len(response) != 1:
+                    raise ValueError(f"Expected single response, got {len(response)}")
+                response = response[0]
+
+            result_text = f"**Answer:**\n{response.answer}\n\n**Status:** {response.status}"
+
+            return {"content": [{"type": "text", "text": result_text}]}
+        except Exception as e:
+            return {"content": [{"type": "text", "text": f"❌ Edison literature search failed: {str(e)}"}]}
+
+    @tool(
+        name="precedent_search",
+        description="Check if a scientific concept or approach has been previously explored. "
+                    "Uses Edison to search for prior work in scientific literature. "
+                    "Useful for assessing novelty and finding related approaches.",
+        input_schema={
+            "query": str,
+        }
+    )
+    async def edison_precedent_search(args: Dict[str, Any]) -> Dict[str, Any]:
+        """Search for precedents in scientific literature with Edison."""
+        query = args.get("query", "")
+
+        try:
+            client = _get_edison_client()
+            task_data = {"name": JobNames.PRECEDENT, "query": query}
+            response = await client.arun_tasks_until_done(task_data)
+
+            # Handle list response
+            if isinstance(response, list):
+                if len(response) != 1:
+                    raise ValueError(f"Expected single response, got {len(response)}")
+                response = response[0]
+
+            result_text = f"**Answer:**\n{response.answer}\n\n**Status:** {response.status}"
+
+            return {"content": [{"type": "text", "text": result_text}]}
+        except Exception as e:
+            return {"content": [{"type": "text", "text": f"❌ Edison precedent search failed: {str(e)}"}]}
+
+    # Create Edison MCP server
+    edison_server = create_sdk_mcp_server(
+        name="edison",
+        version="1.0.0",
+        tools=[edison_literature_search, edison_precedent_search]
+    )
+else:
+    edison_server = None
+
+
+# Create MCP server with entailment tools
 entailment_server = create_sdk_mcp_server(
     name="entailment",
     version="1.0.0",
@@ -285,11 +377,21 @@ class ClaudeCodeClient:
             allowed.append("mcp__entailment__check_entailment")
             allowed.append("mcp__entailment__evaluate_claim")
 
+            # Add Edison tools if available
+            if EDISON_AVAILABLE and edison_server:
+                allowed.append("mcp__edison__literature_search")
+                allowed.append("mcp__edison__precedent_search")
+
+            # Build MCP servers dict
+            mcp_servers_dict = {"entailment": entailment_server}
+            if EDISON_AVAILABLE and edison_server:
+                mcp_servers_dict["edison"] = edison_server
+
             options = ClaudeAgentOptions(
                 system_prompt=system_prompt or "claude_code",
                 allowed_tools=allowed if allowed else None,
                 cwd=str(self.working_dir),
-                mcp_servers={"entailment": entailment_server},
+                mcp_servers=mcp_servers_dict,
                 hooks={
                     "Stop": [
                         HookMatcher(hooks=[post_hypergraph_edit_hook])

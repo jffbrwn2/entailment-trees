@@ -1,0 +1,271 @@
+{
+  "metadata": {
+    "name": "acousto-optic-neuro",
+    "description": "Evaluating: Ultrasound can be used to increase the spatial resolution of fNIRS through the acoustooptic effect",
+    "created": "2025-11-22",
+    "last_updated": "2025-11-22",
+    "version": "1.0"
+  },
+  "claims": [
+    {
+      "id": "hypothesis",
+      "text": "Ultrasound can be used to increase the spatial resolution of fNIRS through the acoustooptic effect",
+      "score": 5.0,
+      "reasoning": "Initial hypothesis to be evaluated",
+      "uncertainties": [
+        "Not yet investigated"
+      ],
+      "tags": [
+        "HYPOTHESIS"
+      ]
+    },
+    {
+      "id": "c1",
+      "text": "Refractive index modulation by ultrasound in tissue is >10^-6",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - need to simulate/measure acousto-optic coefficient",
+      "evidence": [],
+      "uncertainties": [
+        "Acousto-optic coefficient for brain tissue unknown",
+        "Pressure amplitude achievable at depth"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c2",
+      "text": "NIR photon path length through ultrasound focal volume is >1mm",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - depends on scattering length and focal geometry",
+      "evidence": [],
+      "uncertainties": [
+        "NIR photon diffusion path in brain tissue",
+        "Overlap between diffuse photons and focal zone"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c3",
+      "text": "Ultrasound focal spot size at cortex depth is <5mm",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - depends on frequency and attenuation",
+      "evidence": [],
+      "uncertainties": [
+        "Ultrasound attenuation in skull and tissue",
+        "Frequency required for sub-cm focusing"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c4",
+      "text": "For typical fNIRS detectors at 10^6-10^8 photons/sec, shot noise limited phase sensitivity is 10^-3 to 10^-4 radians",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - need to verify typical fNIRS photon budgets",
+      "evidence": [],
+      "uncertainties": [
+        "Actual photon count rates in fNIRS systems",
+        "Detector quantum efficiency"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c14",
+      "text": "fNIRS operates at NIR wavelength of approximately 700-900nm",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - standard wavelength for fNIRS",
+      "evidence": [],
+      "uncertainties": [],
+      "tags": []
+    },
+    {
+      "id": "c16",
+      "text": "Phase modulation depth from acousto-optic effect follows delta_phi = (2*pi/lambda) * delta_n * L",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - this is the standard acousto-optic relationship",
+      "evidence": [],
+      "uncertainties": [
+        "Whether this formula applies in highly scattering tissue"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c5",
+      "text": "Phase modulation depth from acousto-optic effect is >5*10^-3 radians",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - depends on c1, c2, c14 via the acousto-optic formula",
+      "evidence": [],
+      "uncertainties": [
+        "Whether calculation applies in diffuse regime"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c6",
+      "text": "Spatially localized ultrasound modulation tags NIR photons that pass through the focal region",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - this is the core acousto-optic tagging mechanism",
+      "evidence": [],
+      "uncertainties": [
+        "Tagging efficiency in highly scattering medium",
+        "Whether tagged photons carry useful spatial information"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c7",
+      "text": "Native fNIRS spatial resolution without ultrasound is 1-3cm",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - need to verify from fNIRS literature",
+      "evidence": [],
+      "uncertainties": [
+        "Whether this is typical or best-case resolution"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c12",
+      "text": "Ultrasound focal spot size of <5mm provides finer localization than 1-3cm fNIRS resolution",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - straightforward comparison",
+      "evidence": [],
+      "uncertainties": [],
+      "tags": []
+    },
+    {
+      "id": "c11",
+      "text": "Modulated signal is detectable above noise",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - follows from c4 and c5",
+      "evidence": [],
+      "uncertainties": [
+        "Other noise sources beyond shot noise"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c13",
+      "text": "Ultrasound-tagged photons form a detectable signal originating from the ultrasound focal volume",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - combines tagging mechanism with detectability",
+      "evidence": [],
+      "uncertainties": [
+        "Whether tagged photons maintain spatial origin information after scattering"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c17",
+      "text": "Photons not passing through ultrasound focal volume are unmodulated",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - spatial selectivity of ultrasound modulation",
+      "evidence": [],
+      "uncertainties": [
+        "Ultrasound sidelobe effects",
+        "Modulation contrast between focal and non-focal regions"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c18",
+      "text": "Detecting only ultrasound-tagged photons restricts fNIRS measurements to the ultrasound focal volume",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - this is the key mechanism for spatial localization",
+      "evidence": [],
+      "uncertainties": [
+        "Whether untagged photons can be sufficiently suppressed",
+        "Tagging efficiency and contrast ratio"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c19",
+      "text": "Restricting fNIRS measurements to ultrasound focal volume achieves fNIRS imaging at ultrasound spatial resolution",
+      "score": 5.0,
+      "reasoning": "Not yet evaluated - follows from spatial restriction principle",
+      "evidence": [],
+      "uncertainties": [
+        "Whether measurement SNR is sufficient at restricted volume"
+      ],
+      "tags": []
+    }
+  ],
+  "implications": [
+    {
+      "id": "i1",
+      "premises": [
+        "c1",
+        "c2",
+        "c14",
+        "c16"
+      ],
+      "conclusion": "c5",
+      "type": "AND",
+      "reasoning": "Using the acousto-optic formula delta_phi = (2*pi/lambda)*delta_n*L with lambda~800nm, delta_n>10^-6, L>1mm: delta_phi = (2*pi/800e-9)*(1e-6)*(1e-3) = 7.85e-3 radians, which is >5*10^-3",
+      "last_checked": "2025-11-22T14:47:10.285828"
+    },
+    {
+      "id": "i2",
+      "premises": [
+        "c5",
+        "c4"
+      ],
+      "conclusion": "c11",
+      "type": "AND",
+      "reasoning": "If phase modulation (>5*10^-3 rad) significantly exceeds shot noise limit (10^-3 to 10^-4 rad) by at least 5x, then modulated signal is clearly detectable above noise",
+      "last_checked": "2025-11-22T14:47:10.285828"
+    },
+    {
+      "id": "i3",
+      "premises": [
+        "c3",
+        "c7"
+      ],
+      "conclusion": "c12",
+      "type": "AND",
+      "reasoning": "Mathematical comparison: if focal spot <5mm and native fNIRS resolution is 1-3cm, then focal spot provides finer localization",
+      "last_checked": "2025-11-22T14:47:10.285828"
+    },
+    {
+      "id": "i4",
+      "premises": [
+        "c6",
+        "c11"
+      ],
+      "conclusion": "c13",
+      "type": "AND",
+      "reasoning": "If ultrasound spatially tags NIR photons AND the modulated signal is detectable above noise, then tagged photons form a detectable signal from the focal volume",
+      "last_checked": "2025-11-22T14:48:20.928442"
+    },
+    {
+      "id": "i5",
+      "premises": [
+        "c13",
+        "c17"
+      ],
+      "conclusion": "c18",
+      "type": "AND",
+      "reasoning": "If tagged photons form a detectable signal from focal volume AND photons outside focal volume are unmodulated, then detecting only tagged photons restricts measurements to the focal volume",
+      "last_checked": "2025-11-22T14:48:20.928442"
+    },
+    {
+      "id": "i6",
+      "premises": [
+        "c18",
+        "c12"
+      ],
+      "conclusion": "c19",
+      "type": "AND",
+      "reasoning": "If fNIRS measurements are restricted to ultrasound focal volume AND this volume is smaller than native fNIRS resolution, then the resulting imaging achieves ultrasound spatial resolution",
+      "last_checked": "2025-11-22T14:48:20.928442"
+    },
+    {
+      "id": "i7",
+      "premises": [
+        "c19"
+      ],
+      "conclusion": "hypothesis",
+      "type": "AND",
+      "reasoning": "If fNIRS imaging at ultrasound spatial resolution is achievable, then ultrasound can be used to increase fNIRS spatial resolution via acousto-optic effect",
+      "last_checked": "2025-11-22T14:48:20.928442"
+    }
+  ]
+}

@@ -11,8 +11,8 @@ __pycache__/
 *$py.class
 *.pyc
 
-# User-generated approaches (each user creates their own)
-approaches/
+# # User-generated approaches (each user creates their own)
+# approaches/
 
 # IDEs
 .vscode/
