@@ -144,13 +144,18 @@ async def post_hypergraph_edit_hook(
     _context: Optional[HookContext] = None
 ) -> Dict[str, Any]:
     """
-    Auto-validate entailment after Claude's turn completes.
+    Auto-validate entailment and save history after Claude's turn completes.
 
-    Checks if any hypergraph.json files were modified during the turn, and if so,
-    runs entailment validation once.
+    Checks if hypergraph.json was modified during the turn, and if so:
+    1. Saves current version to history
+    2. Runs entailment validation
 
     NOTE: Cleanup is NOT automatic - it must be manually invoked by agent or user.
     """
+    # Import here to avoid circular imports
+    from .hypergraph_manager import HypergraphManager
+    import hashlib
+
     # Get cwd to check for hypergraph files
     cwd = input_data.get("cwd", ".")
     cwd_path = Path(cwd)
@@ -162,6 +167,37 @@ async def post_hypergraph_edit_hook(
 
     # Resolve to absolute path
     absolute_path = hypergraph_path.resolve()
+
+    # Check if hypergraph has actually changed by comparing hash
+    # (to avoid saving history when nothing changed)
+    history_dir = absolute_path.parent / ".hypergraph_history"
+    history_dir.mkdir(exist_ok=True)
+
+    # Get hash of current file
+    with open(absolute_path, 'rb') as f:
+        current_hash = hashlib.md5(f.read()).hexdigest()
+
+    # Check if we have a previous hash stored
+    hash_file = history_dir / ".last_hash"
+    previous_hash = None
+    if hash_file.exists():
+        with open(hash_file, 'r') as f:
+            previous_hash = f.read().strip()
+
+    # If content changed, save to history
+    if current_hash != previous_hash:
+        print(f"\n[VERSION CONTROL] Saving hypergraph snapshot...")
+        mgr = HypergraphManager(absolute_path.parent)
+
+        # Load and re-save to trigger history
+        hypergraph = mgr.load_hypergraph()
+        mgr._save_hypergraph(hypergraph)
+
+        # Update hash
+        with open(hash_file, 'w') as f:
+            f.write(current_hash)
+
+        print(f"[VERSION CONTROL] Snapshot saved to .hypergraph_history/")
 
     # Run entailment check
     print(f"\n[ENTAILMENT CHECK] Validating implications in {absolute_path}...")
