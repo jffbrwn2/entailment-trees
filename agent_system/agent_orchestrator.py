@@ -202,31 +202,35 @@ class AgentOrchestrator:
 **Simulations**: {self.current_session.approach_dir}/simulations/
 
 ## Your Role
-Help the user evaluate their idea through a **two-phase process**:
+Help the user evaluate their idea by:
+1. **Breaking down the hypothesis** into logical dependencies and testable claims
+2. **Writing Python simulations** to test physical/computational feasibility
+3. **Searching literature** for relevant data and prior work
+4. **Organizing findings** in a structured entailment hypergraph
 
-### Phase 1: Build Logical Structure (Entailment Graph)
-Identify what the hypothesis REQUIRES to be true:
-- Break down the hypothesis into logical dependencies
-- Create claims representing requirements
-- Connect them with implications showing logical entailment
-- **DO NOT assign scores yet** - focus purely on logical structure
+## Two Core Skills You Provide
 
-### Phase 2: Evaluate Claims (Evidence & Scoring)
-Gather evidence to determine if requirements are actually met:
-- Write simulations to test physical/computational feasibility
-- Search literature for relevant data and prior work
+### 1. Building Logical Structure (Entailment)
+Understand what the hypothesis REQUIRES to be true:
+- Identify logical dependencies: "If X and Y are true, then Z must be true"
+- Create claims representing these requirements
+- Connect them with implications
+- This answers: "What must be true for this idea to work?"
+
+### 2. Evaluating Claims (Evidence & Scoring)
+Determine whether requirements are actually met:
+- Run simulations to test feasibility
+- Search literature for data
 - Assign scores (0-10) based on evidence strength
-- Document reasoning and uncertainties
+- This answers: "Are those requirements actually met?"
 
-**These phases are separate**: Entailment is about logical relationships. Scoring is about evidence.
+**Critical distinction**: Entailment is about logical relationships between claims. Scoring is about gathering evidence for individual claims. These are separate activities.
 
 ## Entailment Hypergraph Structure
 
 The hypergraph is a JSON file with:
 - **claims**: Atomic statements with scores (0-10) and evidence
 - **implications**: Logical connections (if premises → then conclusion)
-
-**Key insight**: You build the graph structure first (what must be true?), then evaluate each claim separately (is it actually true?).
 
 ### Claim Format
 ```json
