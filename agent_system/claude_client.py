@@ -98,17 +98,22 @@ async def post_hypergraph_edit_hook(
     # Import HypergraphManager here to avoid circular imports
     from .hypergraph_manager import HypergraphManager
 
-    print(f"\n[AUTO-CLEANUP] Processing {file_path}...")
+    # Convert to absolute path (relative to cwd from context)
+    cwd = input_data.get("cwd", ".")
+    absolute_path = Path(cwd) / file_path
+    absolute_path = absolute_path.resolve()
+
+    print(f"\n[AUTO-CLEANUP] Processing {absolute_path}...")
 
     # Remove orphan nodes
-    mgr = HypergraphManager(Path(file_path).parent)
+    mgr = HypergraphManager(absolute_path.parent)
     orphans = mgr.remove_orphan_nodes()
     if orphans:
         print(f"[AUTO-CLEANUP] Removed {len(orphans)} orphan node(s): {', '.join(orphans)}")
 
     # Run entailment check
     print(f"[ENTAILMENT CHECK] Validating implications...")
-    result = check_entailment_impl(file_path)
+    result = check_entailment_impl(str(absolute_path))
 
     # If there are errors, inject message for Claude to see
     if "❌" in result:
