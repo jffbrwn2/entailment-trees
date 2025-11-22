@@ -105,11 +105,11 @@ async def post_hypergraph_edit_hook(
 
     print(f"\n[AUTO-CLEANUP] Processing {absolute_path}...")
 
-    # Remove orphan nodes
+    # Remove unreachable nodes
     mgr = HypergraphManager(absolute_path.parent)
-    orphans = mgr.remove_orphan_nodes()
-    if orphans:
-        print(f"[AUTO-CLEANUP] Removed {len(orphans)} orphan node(s): {', '.join(orphans)}")
+    unreachable = mgr.remove_unreachable_nodes()
+    if unreachable:
+        print(f"[AUTO-CLEANUP] Removed {len(unreachable)} unreachable node(s): {', '.join(unreachable)}")
 
     # Run entailment check
     print(f"[ENTAILMENT CHECK] Validating implications...")

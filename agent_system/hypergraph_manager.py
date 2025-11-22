@@ -333,45 +333,62 @@ python -m http.server 8765
             # Non-critical - catalog will be updated on next manual run
             pass
 
-    def remove_orphan_nodes(self) -> List[str]:
+    def remove_unreachable_nodes(self) -> List[str]:
         """
-        Remove claims that aren't connected to any implications.
+        Remove claims that don't have a directed path to the hypothesis.
 
-        A claim is an orphan if it's not:
-        - A premise in any implication
-        - A conclusion in any implication
-        - The hypothesis (root node)
+        Uses backward reachability from the hypothesis node. A claim is kept only if:
+        - It is the hypothesis itself, OR
+        - It can be reached by traversing backward through implications from the hypothesis
 
         Returns:
             List of removed claim IDs
         """
         hypergraph = self.load_hypergraph()
 
-        # Collect all claims referenced in implications
-        referenced_claims = set()
+        # Build reverse implication map: conclusion -> premises
+        conclusion_to_premises = {}
         for impl in hypergraph.get('implications', []):
-            referenced_claims.update(impl.get('premises', []))
-            referenced_claims.add(impl.get('conclusion'))
+            conclusion = impl.get('conclusion')
+            premises = impl.get('premises', [])
+            if conclusion:
+                if conclusion not in conclusion_to_premises:
+                    conclusion_to_premises[conclusion] = []
+                conclusion_to_premises[conclusion].extend(premises)
 
-        # Keep hypothesis even if orphaned (it's the root)
-        referenced_claims.add('hypothesis')
+        # Perform backward reachability search from hypothesis
+        reachable = set()
+        to_visit = ['hypothesis']
 
-        # Find orphans
-        orphans = []
+        while to_visit:
+            current = to_visit.pop()
+            if current in reachable:
+                continue
+
+            reachable.add(current)
+
+            # Add all premises that support this conclusion
+            if current in conclusion_to_premises:
+                for premise in conclusion_to_premises[current]:
+                    if premise not in reachable:
+                        to_visit.append(premise)
+
+        # Find unreachable claims
+        unreachable = []
         claims = hypergraph.get('claims', [])
         for claim in claims:
             claim_id = claim.get('id')
-            if claim_id not in referenced_claims:
-                orphans.append(claim_id)
+            if claim_id not in reachable:
+                unreachable.append(claim_id)
 
-        # Remove orphans
-        if orphans:
+        # Remove unreachable claims
+        if unreachable:
             hypergraph['claims'] = [
-                c for c in claims if c.get('id') not in orphans
+                c for c in claims if c.get('id') not in unreachable
             ]
             self._save_hypergraph(hypergraph)
 
-        return orphans
+        return unreachable
 
     def generate_next_id(self, prefix: str) -> str:
         """

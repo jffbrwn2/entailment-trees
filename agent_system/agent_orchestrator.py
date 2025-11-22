@@ -269,20 +269,18 @@ The hook will automatically validate after you save hypergraph.json and alert yo
 
 ## Automatic Cleanup
 
-**Orphan nodes are automatically removed** after each hypergraph edit.
+**Unreachable nodes are automatically removed** after your turn completes.
 
-An orphan node is a claim that is:
-- NOT a premise in any implication
-- NOT a conclusion in any implication
-- NOT the hypothesis (root node)
+An unreachable node is a claim that has **no directed path to the hypothesis**. The system performs backward reachability analysis from the hypothesis node - only claims that can be reached by following implications backward from the hypothesis are kept.
 
-When you save hypergraph.json, the system will:
-1. Remove all orphan claims
-2. Print which nodes were removed
-3. Validate remaining implications
+When your turn completes, the system will:
+1. Perform reachability analysis from the hypothesis
+2. Remove all unreachable claims
+3. Print which nodes were removed
+4. Validate remaining implications
 
-This keeps the hypergraph clean and focused on connected logical chains.
-If you want to keep a claim temporarily, add it as a premise to an implication.
+This keeps the hypergraph clean and focused on logical chains that actually support the hypothesis.
+To keep a claim, ensure it's connected to the hypothesis through a chain of implications.
 
 ## Workflow
 
