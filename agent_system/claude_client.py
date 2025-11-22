@@ -14,6 +14,7 @@ from claude_agent_sdk import (
     ClaudeAgentOptions,
     AssistantMessage,
     TextBlock,
+    ToolUseBlock,
     tool,
     create_sdk_mcp_server,
     HookMatcher,
@@ -221,13 +222,23 @@ class ClaudeCodeClient:
 
             # Collect response content with streaming
             response_text = []
+            last_was_tool = False
+
             async for message in self.sdk_client.receive_response():
                 if isinstance(message, AssistantMessage):
                     for block in message.content:
                         if isinstance(block, TextBlock):
+                            # Add spacing before text if previous was a tool
+                            if last_was_tool and block.text.strip():
+                                print("\n", end="", flush=True)
+
                             # Print streaming output
                             print(block.text, end="", flush=True)
                             response_text.append(block.text)
+                            last_was_tool = False
+                        elif isinstance(block, ToolUseBlock):
+                            # Tool use - mark that we need spacing after
+                            last_was_tool = True
 
             print()  # Newline after streaming completes
 
