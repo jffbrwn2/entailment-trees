@@ -209,16 +209,20 @@ class ClaudeCodeClient:
         try:
             await self.sdk_client.query(prompt)
 
-            # Collect response content
+            # Collect response content with streaming
             response_text = []
             async for message in self.sdk_client.receive_response():
                 if isinstance(message, AssistantMessage):
                     for block in message.content:
                         if isinstance(block, TextBlock):
+                            # Print streaming output
+                            print(block.text, end="", flush=True)
                             response_text.append(block.text)
 
+            print()  # Newline after streaming completes
+
             return ClaudeResponse(
-                content="\n".join(response_text),
+                content="".join(response_text),
                 session_id="active",  # SDK manages sessions internally
                 cost_usd=None,  # SDK doesn't expose cost in response
                 raw_output={"messages": response_text}

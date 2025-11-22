@@ -41,6 +41,11 @@
       "name": "acoustooptic-neuro",
       "path": "/approaches/acoustooptic-neuro/hypergraph.json",
       "category": "approach"
+    },
+    {
+      "name": "acousto-optic-neuro",
+      "path": "/approaches/acousto-optic-neuro/hypergraph.json",
+      "category": "approach"
     }
   ]
 }

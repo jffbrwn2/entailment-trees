@@ -238,11 +238,11 @@ class AgentCLI:
 
                 try:
                     response = self.orchestrator.process_user_input(user_input)
-                    print(response.content)
+                    # Content already streamed during query, don't print again
 
                     # Show cost if available
                     if response.cost_usd:
-                        print(f"\n(Cost: ${response.cost_usd:.4f})")
+                        print(f"(Cost: ${response.cost_usd:.4f})")
 
                 except Exception as e:
                     print(f"\nError: {e}")
