@@ -18,43 +18,13 @@
   ],
   "approaches": [
     {
-      "name": "Record Neural Activity with Tardigrades",
-      "path": "/approaches/record-neural-activity-with-tardigrades/hypergraph.json",
-      "category": "approach"
-    },
-    {
-      "name": "Test Approach",
-      "path": "/approaches/test_approach/hypergraph.json",
-      "category": "approach"
-    },
-    {
-      "name": "Test / Approach With Spaces",
-      "path": "/approaches/test___approach_with_spaces/hypergraph.json",
-      "category": "approach"
-    },
-    {
-      "name": "Test",
-      "path": "/approaches/test/hypergraph.json",
-      "category": "approach"
-    },
-    {
-      "name": "acoustooptic-neuro",
-      "path": "/approaches/acoustooptic-neuro/hypergraph.json",
-      "category": "approach"
-    },
-    {
       "name": "acousto-optic-neuro",
       "path": "/approaches/acousto-optic-neuro/hypergraph.json",
       "category": "approach"
     },
     {
-      "name": "Test",
-      "path": "/approaches/tmpep7a5tdq/hypergraph.json",
-      "category": "approach"
-    },
-    {
-      "name": "Test",
-      "path": "/approaches/tmpukha3iyg/hypergraph.json",
+      "name": "record-neural-activity-with-tardigrades",
+      "path": "/approaches/record-neural-activity-with-tardigrades/hypergraph.json",
       "category": "approach"
     }
   ]

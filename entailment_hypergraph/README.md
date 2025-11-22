@@ -150,6 +150,16 @@ python -m http.server 8765
 # Visit: http://localhost:8765/entailment_hypergraph/
 ```
 
+### Catalog Management
+
+The dropdown menu is auto-generated from the filesystem. To update it after adding/removing approaches:
+
+```bash
+python update_catalog.py
+```
+
+This scans `approaches/` and updates `hypergraph_catalog.json` automatically. The agent system also runs this when creating new approaches.
+
 ### Features:
 - **True hypergraph visualization** - premises merge at junction nodes
 - **Claim text on nodes** - see what each claim says directly on the graph

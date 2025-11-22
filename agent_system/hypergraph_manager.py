@@ -317,33 +317,21 @@ python -m http.server 8765
             f.write(content)
 
     def _update_catalog(self, name: str) -> None:
-        """Add this approach to the visualizer catalog."""
-        catalog_path = Path(__file__).parent.parent / "entailment_hypergraph" / "hypergraph_catalog.json"
+        """Regenerate catalog by scanning filesystem."""
+        # Run the update_catalog.py script to auto-generate from filesystem
+        update_script = Path(__file__).parent.parent / "update_catalog.py"
 
-        # Load existing catalog
         try:
-            with open(catalog_path, 'r') as f:
-                catalog = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            # Create new catalog if it doesn't exist
-            catalog = {"examples": [], "approaches": []}
-
-        # Get relative path from project root to hypergraph
-        relative_path = f"approaches/{self.approach_dir.name}/hypergraph.json"
-
-        # Check if approach already exists
-        existing = [a for a in catalog.get('approaches', []) if a['path'] == f"/{relative_path}"]
-        if not existing:
-            # Add new approach
-            catalog.setdefault('approaches', []).append({
-                "name": name,
-                "path": f"/{relative_path}",
-                "category": "approach"
-            })
-
-            # Save updated catalog
-            with open(catalog_path, 'w') as f:
-                json.dump(catalog, f, indent=2)
+            subprocess.run(
+                ['python', str(update_script)],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=True
+            )
+        except Exception as e:
+            # Non-critical - catalog will be updated on next manual run
+            pass
 
     def remove_orphan_nodes(self) -> List[str]:
         """
