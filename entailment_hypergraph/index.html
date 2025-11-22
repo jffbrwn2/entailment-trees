@@ -530,7 +530,9 @@
                     savedTransform = currentTransform;
                 }
 
-                const response = await fetch(path);
+                // Add cache-busting timestamp to ensure fresh data
+                const cacheBuster = `?t=${Date.now()}`;
+                const response = await fetch(path + cacheBuster);
                 hypergraph = await response.json();
 
                 // Only clear state on manual example changes, not auto-reload
