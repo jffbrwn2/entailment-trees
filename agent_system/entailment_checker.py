@@ -33,9 +33,9 @@ class EntailmentChecker:
         premises: List[Dict[str, Any]],
         conclusion: Dict[str, Any],
         implication_type: str
-    ) -> Tuple[bool, str]:
+    ) -> Tuple[bool, str, List[str]]:
         """
-        Check if premises entail the conclusion.
+        Check if premises entail the conclusion and if premise set is minimal.
 
         Args:
             premises: List of premise claims (each with id, text, score, reasoning)
@@ -43,7 +43,8 @@ class EntailmentChecker:
             implication_type: "AND" or "OR"
 
         Returns:
-            (is_valid, explanation) - whether entailment holds and why
+            (is_valid, explanation, redundant_premises) - whether entailment holds,
+            why, and list of redundant premise IDs (for AND only)
         """
         # Build prompt for Claude
         premise_texts = "\n".join([
@@ -52,6 +53,18 @@ class EntailmentChecker:
         ])
 
         operator = "AND" if implication_type == "AND" else "OR"
+
+        # For AND relationships, check minimality
+        minimality_instruction = ""
+        if implication_type == "AND":
+            minimality_instruction = """
+**CRITICAL for AND relationships:** Check if the premise set is MINIMAL.
+- A premise is redundant if removing it doesn't break the entailment
+- The premise set should contain ONLY necessary premises
+- If any premise can be removed while still reaching the conclusion, flag it
+
+Include in your response:
+REDUNDANT_PREMISES: [comma-separated list of premise IDs that are redundant, or "None"]"""
 
         prompt = f"""You are a logic checker. Your job is to determine whether a logical entailment is valid.
 
@@ -72,6 +85,7 @@ Analyze this carefully:
 1. Does the conclusion logically follow from the premises?
 2. Are there any logical gaps?
 3. Do we need intermediate claims to bridge the gap?
+{minimality_instruction}
 
 Respond in this format:
 VALID: [YES/NO]
@@ -91,10 +105,23 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
             # Parse response
             is_valid = "VALID: YES" in response_text
 
-            return is_valid, response_text
+            # Parse redundant premises for AND relationships
+            redundant = []
+            if implication_type == "AND" and "REDUNDANT_PREMISES:" in response_text:
+                redundant_line = [
+                    line for line in response_text.split('\n')
+                    if line.startswith('REDUNDANT_PREMISES:')
+                ]
+                if redundant_line:
+                    redundant_text = redundant_line[0].split(':', 1)[1].strip()
+                    if redundant_text and redundant_text != "None":
+                        # Parse comma-separated IDs
+                        redundant = [r.strip() for r in redundant_text.split(',')]
+
+            return is_valid, response_text, redundant
 
         except Exception as e:
-            return False, f"Entailment check failed: {str(e)}"
+            return False, f"Entailment check failed: {str(e)}", []
 
     def check_hypergraph(self, hypergraph_path: Path) -> Tuple[List[str], List[str]]:
         """
@@ -144,7 +171,7 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
             conclusion_claim = claims[conclusion_id]
 
             # Check entailment
-            is_valid, explanation = self.check_implication(
+            is_valid, explanation, redundant_premises = self.check_implication(
                 premise_claims,
                 conclusion_claim,
                 impl_type
@@ -158,6 +185,15 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
                     f"  {explanation}"
                 )
             else:
+                # Check for redundant premises (minimality violation)
+                if redundant_premises:
+                    errors.append(
+                        f"Implication {impl_id} ({impl_type}): Premise set is not minimal\n"
+                        f"  Redundant premises: {redundant_premises}\n"
+                        f"  These premises can be removed without breaking the entailment.\n"
+                        f"  {explanation}"
+                    )
+
                 # Valid, but add any suggestions as warnings
                 if "SUGGESTIONS:" in explanation and "None" not in explanation:
                     warnings.append(

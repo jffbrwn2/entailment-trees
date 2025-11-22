@@ -244,18 +244,26 @@ You have access to an **entailment checker tool** that validates logical implica
 
 This tool checks whether "if all premises are true, then conclusion is true" for each implication.
 
+**Minimality Requirement for AND implications**:
+- Premise sets must be **MINIMAL** - containing only necessary premises
+- A premise is redundant if removing it doesn't break the entailment
+- The checker will flag any redundant premises as errors
+
 **When to use**:
 - Before finalizing implications - check your logic manually
 - The system will ALSO auto-check after you edit hypergraph.json
 
 **What it returns**:
-- ✓ if all implications are logically valid
-- ❌ with specific errors and suggestions if entailment fails
+- ✓ if all implications are logically valid and minimal
+- ❌ with specific errors if:
+  - Entailment doesn't hold (premises don't imply conclusion)
+  - Premise set is not minimal (redundant premises exist)
 
-**If entailment fails**, you must fix it by:
+**If validation fails**, you must fix it by:
 1. Modifying the premises or conclusion
 2. Adding intermediate claims to bridge logical gaps
-3. Removing the invalid implication
+3. Removing redundant premises from AND implications
+4. Removing the invalid implication
 
 The hook will automatically validate after you save hypergraph.json and alert you to any issues.
 
