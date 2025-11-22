@@ -423,7 +423,7 @@
         // Node positions (persistent across renders)
         let nodePositions = new Map();
 
-        // Auto-reload interval (check for updates every 3 seconds)
+        // Auto-reload interval (check for updates every 1 second)
         let autoReloadInterval = null;
         let currentGraphPath = null;
 
@@ -498,7 +498,7 @@
             if (autoReloadInterval) clearInterval(autoReloadInterval);
             autoReloadInterval = setInterval(() => {
                 loadExample(currentGraphPath, true); // silent reload
-            }, 3000); // 3 seconds
+            }, 1000); // 1 second - fast polling for responsive updates
         }
 
         function stopAutoReload() {

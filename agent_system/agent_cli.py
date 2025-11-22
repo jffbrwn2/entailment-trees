@@ -284,6 +284,7 @@ class AgentCLI:
                 print(f"✓ Removed {len(unreachable)} unreachable node(s):")
                 for node_id in unreachable:
                     print(f"  - {node_id}")
+                print("\n💡 Refresh your browser to see updated visualization")
             else:
                 print("✓ No unreachable nodes found. Hypergraph is clean!")
         except Exception as e:
