@@ -91,16 +91,15 @@ async def check_entailment_tool(args: Dict[str, Any]) -> Dict[str, Any]:
 # Define claim evaluator as SDK tool
 @tool(
     name="evaluate_claim",
-    description="Evaluate a claim based on its evidence. Score the claim according to how well "
-                "the evidence supports it. If no evidence exists, score defaults to 0. "
+    description="Evaluate a claim using Claude to analyze evidence and determine score. "
+                "Claude examines the evidence and autonomously assigns a score 0-10 based on "
+                "how well the evidence supports the claim. If no evidence exists, score = 0. "
                 "Evidence types: simulation results, literature citations, calculations. "
-                "Scores: 0=false/no evidence, 10=true/strong evidence, 5=unsure/weak evidence. "
+                "Returns: calculated score + reasoning. "
                 "Updates last_evidence_modified timestamp when evidence changes.",
     input_schema={
         "hypergraph_path": str,
         "claim_id": str,
-        "score": float,
-        "reasoning": str,
         "evidence": {"type": "string", "default": None},
         "uncertainties": {"type": "string", "default": None},
         "tags": {"type": "string", "default": None}
@@ -108,26 +107,22 @@ async def check_entailment_tool(args: Dict[str, Any]) -> Dict[str, Any]:
 )
 async def evaluate_claim_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Tool for evaluating claims with evidence and scoring.
+    Tool for autonomously evaluating claims with Claude.
 
     Args:
         args: Dictionary with keys:
             - hypergraph_path: Path to hypergraph.json
             - claim_id: ID of claim to evaluate (e.g., "c1")
-            - score: Score 0-10
-            - reasoning: Why this score was assigned
             - evidence: JSON array string of evidence items (optional)
             - uncertainties: Comma-separated uncertainties (optional)
             - tags: Comma-separated tags like "CRITICAL_BLOCKER" (optional)
 
     Returns:
-        Tool response with confirmation or error
+        Tool response with calculated score, reasoning, or error
     """
     result = evaluate_claim_impl(
         args.get("hypergraph_path", ""),
         args.get("claim_id", ""),
-        args.get("score", 5.0),
-        args.get("reasoning", ""),
         args.get("evidence", None),
         args.get("uncertainties", None),
         args.get("tags", None)
