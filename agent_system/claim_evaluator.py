@@ -12,6 +12,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from anthropic import Anthropic
 import os
+from .config import DEFAULT_CONFIG
 
 
 def _evaluate_evidence_with_claude(claim_text: str, evidence_list: list) -> tuple[float, str]:
@@ -59,9 +60,9 @@ Respond in this exact format:
 SCORE: [number 0-10]
 REASONING: [your explanation]"""
 
-    # Call Claude
+    # Call Claude with configured model
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model=DEFAULT_CONFIG.evaluation_model,
         max_tokens=1024,
         messages=[{
             "role": "user",

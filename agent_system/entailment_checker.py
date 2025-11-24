@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from anthropic import Anthropic
+from .config import DEFAULT_CONFIG
 
 
 class EntailmentChecker:
@@ -18,15 +19,16 @@ class EntailmentChecker:
     Uses Claude to evaluate whether premises logically entail conclusions.
     """
 
-    def __init__(self, model: str = "claude-sonnet-4-5-20250929"):
+    def __init__(self, model: Optional[str] = None):
         """
         Initialize entailment checker.
 
         Args:
             model: Claude model to use for entailment checking
+                   (defaults to config.evaluation_model)
         """
         self.client = Anthropic()
-        self.model = model
+        self.model = model or DEFAULT_CONFIG.evaluation_model
 
     def check_implication(
         self,

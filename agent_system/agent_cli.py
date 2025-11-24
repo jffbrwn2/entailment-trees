@@ -33,6 +33,7 @@ class AgentCLI:
         print("  /load      - Load an existing approach")
         print("  /new       - Start a new approach")
         print("  /status    - Show current approach status")
+        print("  /set-model - Set evaluation model for scoring")
         print("  /validate  - Validate current hypergraph")
         print("  /cleanup   - Remove unreachable nodes from hypergraph")
         print("  /history   - View hypergraph version history")
@@ -50,6 +51,7 @@ class AgentCLI:
         print("  /load      - Load an existing approach")
         print("  /new       - Start a new approach")
         print("  /status    - Show current approach status and stats")
+        print("  /set-model - Set evaluation model (evaluate_claim, check_entailment)")
         print("  /validate  - Run type checker on hypergraph")
         print("  /cleanup   - Remove unreachable nodes from hypergraph")
         print("  /history   - View hypergraph version history")
@@ -404,6 +406,53 @@ class AgentCLI:
         print("  - See color-coded scores (green=good, red=bad)")
         print()
 
+    def set_evaluation_model(self, command: str):
+        """Set the evaluation model used by evaluate_claim and check_entailment."""
+        from .config import DEFAULT_CONFIG
+
+        # Parse model from command
+        parts = command.split()
+        if len(parts) < 2:
+            # Show current model
+            print()
+            print(f"Current evaluation model: {DEFAULT_CONFIG.evaluation_model}")
+            print()
+            print("Available models:")
+            print("  - claude-sonnet-4-5-20250929 (default, balanced)")
+            print("  - claude-opus-4-20250514 (most capable)")
+            print("  - claude-sonnet-4-20250514 (faster)")
+            print("  - claude-haiku-4-20250514 (fastest, cheapest)")
+            print()
+            print("Usage: /set-model <model-name>")
+            print("Example: /set-model claude-opus-4-20250514")
+            print()
+            return
+
+        model_name = parts[1]
+
+        # Validate model name (basic check)
+        valid_models = [
+            "claude-sonnet-4-5-20250929",
+            "claude-opus-4-20250514",
+            "claude-sonnet-4-20250514",
+            "claude-haiku-4-20250514"
+        ]
+
+        if model_name not in valid_models:
+            print(f"\n⚠️  Warning: '{model_name}' not in known models list")
+            print("Continuing anyway (will fail if model doesn't exist)")
+
+        # Update config
+        DEFAULT_CONFIG.evaluation_model = model_name
+
+        print()
+        print(f"✓ Evaluation model set to: {model_name}")
+        print()
+        print("This affects:")
+        print("  - evaluate_claim (autonomous scoring from evidence)")
+        print("  - check_entailment (logical validation)")
+        print()
+
     def handle_command(self, command: str) -> bool:
         """
         Handle slash commands.
@@ -435,6 +484,8 @@ class AgentCLI:
             self.restore_version()
         elif command == "/viz":
             self.show_viz_instructions()
+        elif command.startswith("/set-model"):
+            self.set_evaluation_model(command)
         else:
             print(f"Unknown command: {command}")
             print("Type /help for available commands")

@@ -1,5 +1,15 @@
 """
 Configuration for the agent system.
+
+Environment Variables:
+- ANTHROPIC_API_KEY: Your Anthropic API key (required)
+- APPROACHES_DIR: Directory for approach folders (default: "approaches")
+- EVALUATION_MODEL: Claude model for evaluate_claim and check_entailment
+                    (default: "claude-sonnet-4-5-20250929")
+
+Example:
+    export EVALUATION_MODEL="claude-opus-4-20250514"
+    # Now both evaluate_claim and check_entailment use Opus
 """
 
 from pathlib import Path
@@ -19,6 +29,9 @@ class AgentConfig:
     claude_api_key: Optional[str] = None  # Will be read from environment
     model: str = "claude-sonnet-4-5-20250929"
 
+    # Evaluation model (used by evaluate_claim and check_entailment)
+    evaluation_model: str = "claude-sonnet-4-5-20250929"
+
     # Agent behavior
     max_turns: int = 50  # Max conversation turns before requiring reset
     auto_validate: bool = True  # Validate hypergraph after each update
@@ -36,6 +49,7 @@ class AgentConfig:
         return cls(
             claude_api_key=os.getenv('ANTHROPIC_API_KEY'),
             approaches_dir=Path(os.getenv('APPROACHES_DIR', 'approaches')),
+            evaluation_model=os.getenv('EVALUATION_MODEL', 'claude-sonnet-4-5-20250929'),
         )
 
 
