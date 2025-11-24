@@ -5,6 +5,9 @@
 # Server logs
 server.log
 
+# Architecture docs (work in progress)
+ARCHITECTURE.md
+
 # Python
 __pycache__/
 *.py[cod]
