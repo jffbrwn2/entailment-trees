@@ -91,10 +91,11 @@ async def check_entailment_tool(args: Dict[str, Any]) -> Dict[str, Any]:
 # Define claim evaluator as SDK tool
 @tool(
     name="evaluate_claim",
-    description="Evaluate a claim by assigning a score based on evidence. "
-                "This is Phase 2 after building the logical structure - gather evidence "
-                "(simulations, literature, calculations) and assign scores to show whether "
-                "requirements are actually met. Scores: 0=false, 10=true, 5=unsure.",
+    description="Evaluate a claim based on its evidence. Score the claim according to how well "
+                "the evidence supports it. If no evidence exists, score defaults to 0. "
+                "Evidence types: simulation results, literature citations, calculations. "
+                "Scores: 0=false/no evidence, 10=true/strong evidence, 5=unsure/weak evidence. "
+                "Updates last_evidence_modified timestamp when evidence changes.",
     input_schema={
         "hypergraph_path": str,
         "claim_id": str,
