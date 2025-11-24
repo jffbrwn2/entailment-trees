@@ -64,11 +64,11 @@ def quick_search(query: str):
 
 
 if __name__ == "__main__":
-    # Example 1: Explore neural recording problems
-    explore_problem("neural recording", field="Biology")
+    # Example 1: Explore neural/brain problems
+    explore_problem("neural", field="Neuroscience")
 
-    # Example 2: Explore quantum computing
-    explore_problem("quantum computing", field="Computation")
+    # Example 2: Explore computing problems
+    explore_problem("computing", field="Computation")
 
-    # Example 3: Quick search
-    quick_search("machine learning hardware")
+    # Example 3: Quick search (no field filter)
+    quick_search("quantum")
