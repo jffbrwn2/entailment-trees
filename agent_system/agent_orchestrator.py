@@ -200,6 +200,7 @@ class AgentOrchestrator:
 **Folder**: {self.current_session.approach_dir}
 **Hypergraph**: {self.current_session.approach_dir}/hypergraph.json
 **Simulations**: {self.current_session.approach_dir}/simulations/
+**References**: {self.current_session.approach_dir}/references/ (for literature, Edison tasks, etc.)
 
 ## Your Role
 Help the user evaluate their idea by:

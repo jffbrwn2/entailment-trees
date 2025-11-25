@@ -6,9 +6,11 @@ Provides Python interface to the Claude Agent SDK for programmatic interaction.
 
 import asyncio
 import os
+import json
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass
 from pathlib import Path
+from datetime import datetime
 
 from claude_agent_sdk import (
     ClaudeSDKClient,
@@ -168,6 +170,8 @@ async def evaluate_claim_tool(args: Dict[str, Any]) -> Dict[str, Any]:
 if EDISON_AVAILABLE:
     # Initialize Edison client with API key from environment
     _edison_client = None
+    # Working directory (approach directory) - set by ClaudeCodeClient
+    _approach_dir: Optional[Path] = None
 
     def _get_edison_client():
         global _edison_client
@@ -178,31 +182,98 @@ if EDISON_AVAILABLE:
             _edison_client = EdisonClient(api_key=api_key)
         return _edison_client
 
+    def _get_approach_dir() -> Path:
+        """Get the current approach directory."""
+        if _approach_dir is None:
+            raise RuntimeError("Approach directory not set. Edison tools require ClaudeCodeClient to be initialized first.")
+        return _approach_dir
+
+    def _log_edison_task(approach_dir: str, task_id: str, task_type: str, query: str):
+        """Log Edison task to JSON file in approach's references folder."""
+        # References folder is defined in HypergraphManager alongside simulations
+        log_path = Path(approach_dir) / "references" / "edison_tasks.json"
+
+        # Ensure references directory exists
+        log_path.parent.mkdir(exist_ok=True)
+
+        # Load existing log
+        if log_path.exists():
+            with open(log_path) as f:
+                tasks = json.load(f)
+        else:
+            tasks = []
+
+        # Add new task
+        tasks.append({
+            "task_id": task_id,
+            "type": task_type,
+            "query": query,
+            "submitted_at": datetime.now().isoformat(),
+            "status": "pending"
+        })
+
+        # Save log
+        with open(log_path, 'w') as f:
+            json.dump(tasks, f, indent=2)
+
+    def _update_edison_task_status(approach_dir: str, task_id: str, status: str, answer: Optional[str] = None):
+        """Update status of logged Edison task in approach's references folder."""
+        log_path = Path(approach_dir) / "references" / "edison_tasks.json"
+
+        if not log_path.exists():
+            return
+
+        with open(log_path) as f:
+            tasks = json.load(f)
+
+        # Find and update task
+        for task in tasks:
+            if task["task_id"] == task_id:
+                task["status"] = status
+                task["completed_at"] = datetime.now().isoformat()
+                if answer:
+                    task["answer"] = answer
+                break
+
+        # Save updated log
+        with open(log_path, 'w') as f:
+            json.dump(tasks, f, indent=2)
+
     @tool(
         name="literature_search",
         description="Search scientific literature and get cited answers to research questions. "
-                    "Uses Edison's PaperQA3 to query scientific databases. Returns answers with proper citations. "
+                    "Uses Edison's PaperQA2 to query scientific databases asynchronously. "
+                    "Submits task and returns task ID. Use check_edison_task to get results. "
+                    "Tasks are logged in references/edison_tasks.json. "
                     "Perfect for gathering evidence for entailment tree claims.",
         input_schema={
             "query": str,
         }
     )
     async def edison_literature_search(args: Dict[str, Any]) -> Dict[str, Any]:
-        """Search scientific literature with Edison."""
+        """Search scientific literature with Edison (async)."""
         query = args.get("query", "")
 
         try:
+            # Get approach directory from module state
+            approach_path = _get_approach_dir()
+
             client = _get_edison_client()
             task_data = {"name": JobNames.LITERATURE, "query": query}
-            response = await client.arun_tasks_until_done(task_data)
 
-            # Handle list response
-            if isinstance(response, list):
-                if len(response) != 1:
-                    raise ValueError(f"Expected single response, got {len(response)}")
-                response = response[0]
+            # Create task asynchronously
+            task_id = await client.acreate_task(task_data)
 
-            result_text = f"**Answer:**\n{response.answer}\n\n**Status:** {response.status}"
+            # Log task to approach's references folder
+            _log_edison_task(str(approach_path), task_id, "literature", query)
+
+            result_text = (
+                f"✓ Literature search task submitted\n\n"
+                f"**Task ID:** {task_id}\n"
+                f"**Query:** {query}\n\n"
+                f"Task logged in references/edison_tasks.json\n"
+                f"Use check_edison_task(task_id=\"{task_id}\") to check status and get results."
+            )
 
             return {"content": [{"type": "text", "text": result_text}]}
         except Exception as e:
@@ -211,38 +282,91 @@ if EDISON_AVAILABLE:
     @tool(
         name="precedent_search",
         description="Check if a scientific concept or approach has been previously explored. "
-                    "Uses Edison to search for prior work in scientific literature. "
+                    "Uses Edison to search for prior work in scientific literature asynchronously. "
+                    "Submits task and returns task ID. Use check_edison_task to get results. "
+                    "Tasks are logged in references/edison_tasks.json. "
                     "Useful for assessing novelty and finding related approaches.",
         input_schema={
             "query": str,
         }
     )
     async def edison_precedent_search(args: Dict[str, Any]) -> Dict[str, Any]:
-        """Search for precedents in scientific literature with Edison."""
+        """Search for precedents in scientific literature with Edison (async)."""
         query = args.get("query", "")
 
         try:
+            # Get approach directory from module state
+            approach_path = _get_approach_dir()
+
             client = _get_edison_client()
             task_data = {"name": JobNames.PRECEDENT, "query": query}
-            response = await client.arun_tasks_until_done(task_data)
 
-            # Handle list response
-            if isinstance(response, list):
-                if len(response) != 1:
-                    raise ValueError(f"Expected single response, got {len(response)}")
-                response = response[0]
+            # Create task asynchronously
+            task_id = await client.acreate_task(task_data)
 
-            result_text = f"**Answer:**\n{response.answer}\n\n**Status:** {response.status}"
+            # Log task to approach's references folder
+            _log_edison_task(str(approach_path), task_id, "precedent", query)
+
+            result_text = (
+                f"✓ Precedent search task submitted\n\n"
+                f"**Task ID:** {task_id}\n"
+                f"**Query:** {query}\n\n"
+                f"Task logged in references/edison_tasks.json\n"
+                f"Use check_edison_task(task_id=\"{task_id}\") to check status and get results."
+            )
 
             return {"content": [{"type": "text", "text": result_text}]}
         except Exception as e:
             return {"content": [{"type": "text", "text": f"❌ Edison precedent search failed: {str(e)}"}]}
 
+    @tool(
+        name="check_edison_task",
+        description="Check status and get results of a previously submitted Edison task. "
+                    "Provide the task ID. "
+                    "Returns current status (pending/running/success/failed) and answer if complete. "
+                    "Updates task status in references/edison_tasks.json.",
+        input_schema={
+            "task_id": str,
+        }
+    )
+    async def check_edison_task(args: Dict[str, Any]) -> Dict[str, Any]:
+        """Check status of Edison task."""
+        task_id = args.get("task_id", "")
+
+        try:
+            # Get approach directory from module state
+            approach_path = _get_approach_dir()
+
+            client = _get_edison_client()
+
+            # Get task status
+            task_status = await client.aget_task(task_id)
+
+            # Build result text
+            status = task_status.status
+            result_text = f"**Task ID:** {task_id}\n**Status:** {status}\n\n"
+
+            if status == "success":
+                answer = task_status.answer if hasattr(task_status, 'answer') else "No answer available"
+                result_text += f"**Answer:**\n{answer}"
+
+                # Update log with completion
+                _update_edison_task_status(str(approach_path), task_id, status, answer)
+            elif status == "failed":
+                result_text += "❌ Task failed"
+                _update_edison_task_status(str(approach_path), task_id, status)
+            elif status in ["pending", "running"]:
+                result_text += f"⏳ Task is {status}... check again later"
+
+            return {"content": [{"type": "text", "text": result_text}]}
+        except Exception as e:
+            return {"content": [{"type": "text", "text": f"❌ Failed to check Edison task: {str(e)}"}]}
+
     # Create Edison MCP server
     edison_server = create_sdk_mcp_server(
         name="edison",
         version="1.0.0",
-        tools=[edison_literature_search, edison_precedent_search]
+        tools=[edison_literature_search, edison_precedent_search, check_edison_task]
     )
 else:
     edison_server = None
@@ -399,6 +523,11 @@ class ClaudeCodeClient:
         """
         # Initialize SDK client if not already done or if system prompt changed
         if self.sdk_client is None or (system_prompt and system_prompt != self.current_system_prompt):
+            # Set approach directory for Edison tools
+            if EDISON_AVAILABLE:
+                global _approach_dir
+                _approach_dir = self.working_dir
+
             # Build allowed tools list (include built-in tools + MCP tools)
             allowed = self.allowed_tools.copy() if self.allowed_tools else []
             allowed.append("mcp__entailment__check_entailment")
@@ -409,6 +538,7 @@ class ClaudeCodeClient:
             if EDISON_AVAILABLE and edison_server:
                 allowed.append("mcp__edison__literature_search")
                 allowed.append("mcp__edison__precedent_search")
+                allowed.append("mcp__edison__check_edison_task")
 
             # Build MCP servers dict
             mcp_servers_dict = {"entailment": entailment_server}

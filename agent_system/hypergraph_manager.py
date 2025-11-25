@@ -47,11 +47,13 @@ class HypergraphManager:
         self.approach_dir = Path(approach_dir)
         self.hypergraph_path = self.approach_dir / "hypergraph.json"
         self.simulations_dir = self.approach_dir / "simulations"
+        self.references_dir = self.approach_dir / "references"
         self.history_dir = self.approach_dir / ".hypergraph_history"
 
         # Ensure directories exist
         self.approach_dir.mkdir(parents=True, exist_ok=True)
         self.simulations_dir.mkdir(exist_ok=True)
+        self.references_dir.mkdir(exist_ok=True)
         self.history_dir.mkdir(exist_ok=True)
 
     def create_approach(self, name: str, initial_claim: str, description: str = "") -> Dict[str, Any]:
