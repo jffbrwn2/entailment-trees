@@ -23,6 +23,7 @@ class AgentConfig:
 
     # Paths
     approaches_dir: Path = Path("approaches")
+    explorations_dir: Path = Path("explorations")
     visualizer_dir: Path = Path("entailment_hypergraph")
 
     # Claude Code settings
@@ -40,6 +41,7 @@ class AgentConfig:
     def __post_init__(self):
         """Ensure directories exist."""
         self.approaches_dir.mkdir(parents=True, exist_ok=True)
+        self.explorations_dir.mkdir(parents=True, exist_ok=True)
 
     @classmethod
     def from_env(cls) -> 'AgentConfig':
@@ -49,6 +51,7 @@ class AgentConfig:
         return cls(
             claude_api_key=os.getenv('ANTHROPIC_API_KEY'),
             approaches_dir=Path(os.getenv('APPROACHES_DIR', 'approaches')),
+            explorations_dir=Path(os.getenv('EXPLORATIONS_DIR', 'explorations')),
             evaluation_model=os.getenv('EVALUATION_MODEL', 'claude-sonnet-4-5-20250929'),
         )
 

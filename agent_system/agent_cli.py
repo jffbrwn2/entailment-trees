@@ -519,9 +519,13 @@ class AgentCLI:
 
                 # Process input with Claude Code agent
                 status = self.orchestrator.get_status()
+
+                # Allow exploration mode without active approach
+                # But warn about limitations
                 if not status['active']:
-                    print("\nNo active approach. Use /new to start one.")
-                    continue
+                    print("\n💡 Exploration mode: Working in explorations/ directory")
+                    print("   You can use research tools (GAP-map, Edison, web search) and create notes.")
+                    print("   To work on a specific project with simulations/hypergraphs, use /new to start an approach.\n")
 
                 print()
                 print("Agent: ", end="", flush=True)
@@ -536,9 +540,8 @@ class AgentCLI:
 
                 except Exception as e:
                     print(f"\nError: {e}")
-                    print("\nTry:")
-                    print("  - Check that 'claude' CLI is available")
-                    print("  - Verify your approach was created with /new")
+                    if not status['active']:
+                        print("\nNote: Some operations require an active approach (/new)")
 
                 print()
 

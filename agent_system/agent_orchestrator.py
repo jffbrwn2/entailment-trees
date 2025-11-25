@@ -155,8 +155,9 @@ class AgentOrchestrator:
         Raises:
             RuntimeError: If no active session
         """
+        # Allow exploration mode without active session
         if not self.current_session or not self.claude_client:
-            raise RuntimeError("No active session. Call start_approach() first.")
+            return self._process_exploration_mode(user_input)
 
         # First turn - start conversation with system prompt
         if self.current_session.turn_count == 0:
@@ -181,6 +182,56 @@ class AgentOrchestrator:
                     response.content += f"\n\n⚠️  Hypergraph validation failed:\n" + "\n".join(errors)
             except Exception:
                 pass  # Validation might fail if hypergraph doesn't exist yet
+
+        return response
+
+    def _process_exploration_mode(self, user_input: str) -> ClaudeResponse:
+        """
+        Process user input in exploration mode (no active approach).
+
+        In this mode, user can access research tools (GAP-map, Edison, web search)
+        but cannot create simulations or edit hypergraphs.
+
+        Uses persistent explorations directory as a scratch pad.
+
+        Args:
+            user_input: User's message/question
+
+        Returns:
+            Claude's response
+        """
+        # Use persistent explorations directory
+        explorations_dir = self.config.explorations_dir
+        explorations_dir.mkdir(parents=True, exist_ok=True)
+
+        # Initialize exploration client with research tools
+        # Note: MCP tools (GAP-map, Edison) are registered as custom tools
+        # and are automatically available - they don't need to be in allowed_tools
+        exploration_client = ClaudeCodeClient(
+            working_dir=explorations_dir,
+            allowed_tools=["Write", "Read", "Edit", "Bash", "WebSearch", "Glob", "Grep"],
+            verbose=False
+        )
+
+        exploration_prompt = """You are in exploration mode. You can help the user:
+- Search GAP-map for research gaps, capabilities, and resources
+- Search scientific literature with Edison
+- Search the web
+- Answer questions about research areas
+- Create notes and scratch work in the explorations/ directory
+
+You CANNOT:
+- Create simulations that require a specific approach context
+- Work with entailment hypergraphs (no approach loaded)
+
+The explorations/ directory is a persistent scratch pad for general research.
+When the user is ready to evaluate a specific idea, suggest they use /new to start an approach.
+"""
+
+        response = exploration_client.start_conversation(
+            initial_prompt=user_input,
+            system_prompt=exploration_prompt
+        )
 
         return response
 
