@@ -23,7 +23,7 @@ from claude_agent_sdk import (
 )
 
 from .entailment_checker import check_entailment_skill as check_entailment_impl
-from .claim_evaluator import evaluate_claim_skill as evaluate_claim_impl
+from .claim_evaluator import evaluate_claim_skill as evaluate_claim_impl, add_evidence_skill as add_evidence_impl
 
 try:
     from edison_client import EdisonClient, JobNames
@@ -88,44 +88,75 @@ async def check_entailment_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-# Define claim evaluator as SDK tool
+# Define add_evidence as SDK tool
 @tool(
-    name="evaluate_claim",
-    description="Evaluate a claim using Claude to analyze evidence and determine score. "
-                "Claude examines the evidence and autonomously assigns a score 0-10 based on "
-                "how well the evidence supports the claim. If no evidence exists, score = 0. "
-                "Evidence types: simulation results, literature citations, calculations. "
-                "Returns: calculated score + reasoning. "
-                "Updates last_evidence_modified timestamp when evidence changes.",
+    name="add_evidence",
+    description="Add evidence to a claim in the hypergraph. "
+                "Evidence must follow the schema: "
+                "- simulation: requires 'type', 'source' (file path), 'lines' (e.g. '10-50'), 'code' (extracted code) "
+                "- literature: requires 'type', 'source' (citation/file), 'reference_text' (exact quote) "
+                "- calculation: requires 'type', 'equations' (LaTeX), 'program' (Python code). "
+                "Validates format and updates last_evidence_modified timestamp. "
+                "Use this BEFORE evaluate_claim to add new evidence.",
     input_schema={
         "hypergraph_path": str,
         "claim_id": str,
-        "evidence": {"type": "string", "default": None},
-        "uncertainties": {"type": "string", "default": None},
-        "tags": {"type": "string", "default": None}
+        "evidence": str  # JSON string of evidence item or array
+    }
+)
+async def add_evidence_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for adding validated evidence to claims.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+            - claim_id: ID of claim (e.g., "c1")
+            - evidence: JSON string of evidence item(s)
+
+    Returns:
+        Tool response with confirmation or error
+    """
+    result = add_evidence_impl(
+        args.get("hypergraph_path", ""),
+        args.get("claim_id", ""),
+        args.get("evidence", "")
+    )
+
+    return {
+        "content": [{"type": "text", "text": result}]
+    }
+
+
+# Define claim evaluator as SDK tool
+@tool(
+    name="evaluate_claim",
+    description="Evaluate a claim using Claude to analyze its existing evidence and determine score. "
+                "Claude examines the evidence already attached to the claim and autonomously assigns "
+                "a score 0-10 based on how well the evidence supports the claim. "
+                "If no evidence exists, score = 0. "
+                "Use add_evidence BEFORE this tool to attach evidence to the claim. "
+                "Returns: calculated score + reasoning.",
+    input_schema={
+        "hypergraph_path": str,
+        "claim_id": str
     }
 )
 async def evaluate_claim_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Tool for autonomously evaluating claims with Claude.
+    Tool for autonomously evaluating claims with Claude based on existing evidence.
 
     Args:
         args: Dictionary with keys:
             - hypergraph_path: Path to hypergraph.json
             - claim_id: ID of claim to evaluate (e.g., "c1")
-            - evidence: JSON array string of evidence items (optional)
-            - uncertainties: Comma-separated uncertainties (optional)
-            - tags: Comma-separated tags like "CRITICAL_BLOCKER" (optional)
 
     Returns:
         Tool response with calculated score, reasoning, or error
     """
     result = evaluate_claim_impl(
         args.get("hypergraph_path", ""),
-        args.get("claim_id", ""),
-        args.get("evidence", None),
-        args.get("uncertainties", None),
-        args.get("tags", None)
+        args.get("claim_id", "")
     )
 
     return {
@@ -221,7 +252,7 @@ else:
 entailment_server = create_sdk_mcp_server(
     name="entailment",
     version="1.0.0",
-    tools=[check_entailment_tool, evaluate_claim_tool]
+    tools=[check_entailment_tool, add_evidence_tool, evaluate_claim_tool]
 )
 
 
@@ -371,6 +402,7 @@ class ClaudeCodeClient:
             # Build allowed tools list (include built-in tools + MCP tools)
             allowed = self.allowed_tools.copy() if self.allowed_tools else []
             allowed.append("mcp__entailment__check_entailment")
+            allowed.append("mcp__entailment__add_evidence")
             allowed.append("mcp__entailment__evaluate_claim")
 
             # Add Edison tools if available

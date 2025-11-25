@@ -346,27 +346,80 @@ Model what the hypothesis REQUIRES to be true. The logical structure shows the r
 
 The hook will automatically validate after you save hypergraph.json and alert you to any issues.
 
-## Claim Evaluation Tool
+## Claim Evaluation Tools
 
-After building the logical structure, evaluate individual claims using the **evaluate_claim** tool:
+After building the logical structure, evaluate individual claims using these tools:
 
-**Tool**: `mcp__entailment__evaluate_claim(hypergraph_path: str, claim_id: str, score: float, reasoning: str, evidence: str = None, uncertainties: str = None, tags: str = None)`
+### 1. Add Evidence Tool
+
+**Tool**: `mcp__entailment__add_evidence(hypergraph_path: str, claim_id: str, evidence: str)`
+
+Parameters:
+- `hypergraph_path`: Path to hypergraph.json (required)
+- `claim_id`: ID of claim to add evidence to, e.g., "c1" (required)
+- `evidence`: JSON string of evidence item(s) following the schema below (required)
+
+**Evidence Schema** (validated automatically):
+
+1. **Simulation evidence**:
+```json
+{{
+  "type": "simulation",
+  "source": "simulations/signal_strength.py",
+  "lines": "45-67",
+  "code": "# Exact code from those lines"
+}}
+```
+
+2. **Literature evidence**:
+```json
+{{
+  "type": "literature",
+  "source": "Smith et al. (2023)",
+  "reference_text": "Exact quote from paper"
+}}
+```
+
+3. **Calculation evidence**:
+```json
+{{
+  "type": "calculation",
+  "equations": "E = mc^2, P = F/A",
+  "program": "def calc(): return result"
+}}
+```
+
+**When to use**:
+- After running simulations - attach simulation results as evidence
+- After literature search - attach paper citations as evidence
+- After calculations - attach back-of-envelope math as evidence
+
+This tool validates the evidence format and attaches it to the claim, updating the `last_evidence_modified` timestamp.
+
+### 2. Evaluate Claim Tool
+
+**Tool**: `mcp__entailment__evaluate_claim(hypergraph_path: str, claim_id: str)`
 
 Parameters:
 - `hypergraph_path`: Path to hypergraph.json (required)
 - `claim_id`: ID of claim to evaluate, e.g., "c1" (required)
-- `score`: Score 0-10, where 0=false, 10=true, 5=unsure (required)
-- `reasoning`: Why this score was assigned (required)
-- `evidence`: JSON array string of evidence items (optional)
-- `uncertainties`: Comma-separated uncertainties (optional)
-- `tags`: Comma-separated tags like "CRITICAL_BLOCKER" (optional)
+
+**What it does**:
+- Uses Claude to analyze ALL evidence attached to the claim
+- Autonomously assigns a score 0-10 based on how well evidence supports the claim
+- Provides reasoning for the score
+- If no evidence exists, score = 0
 
 **When to use**:
-- After running simulations - evaluate claims based on results
-- After literature search - evaluate claims based on papers
-- After calculations - evaluate claims based on back-of-envelope math
+- AFTER using add_evidence to attach evidence to the claim
+- When you want Claude to analyze evidence and determine the appropriate score
 
-This tool updates the claim's score, reasoning, evidence, and metadata. It's separate from building the logical structure.
+**Workflow**:
+1. Run simulation or gather information
+2. Use `add_evidence` to attach evidence to claim
+3. Use `evaluate_claim` to let Claude analyze and score based on the evidence
+
+This two-step process ensures evidence is validated before evaluation and makes scoring objective and transparent.
 
 ## Cleanup Operations
 
@@ -406,9 +459,9 @@ To keep a claim, ensure it's connected to the hypothesis through a chain of impl
 
 4. **Add claims + evidence** - After running simulations:
    - Add claims to hypergraph
-   - Link simulation code as evidence
-   - Score claims based on results (0=false, 10=true, 5=unsure)
-   - Note uncertainties
+   - Use `add_evidence` tool to attach simulation code as evidence (validated automatically)
+   - Use `evaluate_claim` tool to let Claude analyze evidence and assign score
+   - Note uncertainties in evidence or claim
 
 5. **Connect with implications** - Show logical structure:
    - If [premises] are true, then [conclusion] follows
@@ -447,10 +500,13 @@ You might:
 3. Write simulations/neural_signal_amplitude.py
 4. Run it: `python simulations/neural_signal_amplitude.py`
 5. Add claim c1: "Neural signals produce acoustic pressure ~10^-12 Pa"
-6. Add evidence: simulation result with code excerpt
-7. Add claim c2: "Ultrasound sensors detect >10^-6 Pa"
-8. Add implication: If c1 AND c2, then SNR = 10^-6 (infeasible)
-9. Conclude: Score hypothesis 2/10 - signal too weak by factor of 1 million
+6. Use `add_evidence` with simulation evidence (source, lines, code)
+7. Use `evaluate_claim` to score c1 based on simulation results
+8. Add claim c2: "Ultrasound sensors detect >10^-6 Pa"
+9. Use `add_evidence` with literature citation
+10. Use `evaluate_claim` to score c2 based on literature
+11. Add implication: If c1 AND c2, then SNR = 10^-6 (infeasible)
+12. Conclude: Score hypothesis 2/10 - signal too weak by factor of 1 million
 
 Always update hypergraph.json after making progress!
 """

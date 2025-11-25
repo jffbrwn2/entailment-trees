@@ -15,6 +15,129 @@ import os
 from .config import DEFAULT_CONFIG
 
 
+def _validate_evidence_format(evidence_item: dict) -> tuple[bool, Optional[str]]:
+    """
+    Validate evidence item format according to hypergraph schema.
+
+    Args:
+        evidence_item: Evidence dictionary to validate
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    # Check type field
+    if 'type' not in evidence_item:
+        return False, "Missing required field 'type'"
+
+    evidence_type = evidence_item['type']
+    allowed_types = ['simulation', 'literature', 'calculation']
+
+    if evidence_type not in allowed_types:
+        return False, f"Invalid evidence type '{evidence_type}'. Must be one of: {', '.join(allowed_types)}"
+
+    # Type-specific validation
+    if evidence_type == 'simulation':
+        required = ['source', 'lines', 'code']
+        for field in required:
+            if field not in evidence_item:
+                return False, f"Simulation evidence missing required field '{field}'"
+
+    elif evidence_type == 'literature':
+        required = ['source', 'reference_text']
+        for field in required:
+            if field not in evidence_item:
+                return False, f"Literature evidence missing required field '{field}'"
+
+    elif evidence_type == 'calculation':
+        required = ['equations', 'program']
+        for field in required:
+            if field not in evidence_item:
+                return False, f"Calculation evidence missing required field '{field}'"
+
+    return True, None
+
+
+def add_evidence_skill(
+    hypergraph_path: str,
+    claim_id: str,
+    evidence: str
+) -> str:
+    """
+    Add evidence to a claim in the hypergraph.
+
+    Validates evidence format and adds it to the claim's evidence list.
+    Updates last_evidence_modified timestamp.
+
+    Args:
+        hypergraph_path: Path to hypergraph.json file
+        claim_id: ID of claim to add evidence to (e.g., "c1")
+        evidence: JSON string of evidence item or array of evidence items
+
+    Returns:
+        Confirmation message or error
+    """
+    try:
+        path = Path(hypergraph_path)
+        if not path.exists():
+            return f"❌ Hypergraph not found: {hypergraph_path}"
+
+        # Load hypergraph
+        with open(path) as f:
+            hypergraph = json.load(f)
+
+        # Find the claim
+        claim = None
+        for c in hypergraph.get('claims', []):
+            if c['id'] == claim_id:
+                claim = c
+                break
+
+        if not claim:
+            return f"❌ Claim '{claim_id}' not found in hypergraph"
+
+        # Parse evidence JSON
+        try:
+            evidence_data = json.loads(evidence)
+        except json.JSONDecodeError as e:
+            return f"❌ Invalid evidence JSON: {e}"
+
+        # Handle both single item and array
+        if isinstance(evidence_data, dict):
+            evidence_items = [evidence_data]
+        elif isinstance(evidence_data, list):
+            evidence_items = evidence_data
+        else:
+            return f"❌ Evidence must be a JSON object or array of objects"
+
+        # Validate all evidence items
+        for i, item in enumerate(evidence_items):
+            is_valid, error = _validate_evidence_format(item)
+            if not is_valid:
+                return f"❌ Evidence item {i}: {error}"
+
+        # Add evidence to claim
+        if 'evidence' not in claim:
+            claim['evidence'] = []
+
+        claim['evidence'].extend(evidence_items)
+
+        # Update timestamps
+        claim['last_evidence_modified'] = datetime.now().isoformat()
+        claim['modified_at'] = datetime.now().isoformat()
+        hypergraph['metadata']['last_updated'] = datetime.now().strftime("%Y-%m-%d")
+
+        # Save hypergraph
+        with open(path, 'w') as f:
+            json.dump(hypergraph, f, indent=2)
+
+        count = len(evidence_items)
+        item_word = "item" if count == 1 else "items"
+        return f"✓ Added {count} evidence {item_word} to claim {claim_id}"
+
+    except Exception as e:
+        return f"❌ Error adding evidence: {e}"
+
+
 def _evaluate_evidence_with_claude(claim_text: str, evidence_list: list) -> tuple[float, str]:
     """
     Use Claude to evaluate evidence and determine claim score.
@@ -94,27 +217,21 @@ REASONING: [your explanation]"""
 
 def evaluate_claim_skill(
     hypergraph_path: str,
-    claim_id: str,
-    evidence: Optional[str] = None,
-    uncertainties: Optional[str] = None,
-    tags: Optional[str] = None
+    claim_id: str
 ) -> str:
     """
-    Evaluate a claim based on its evidence using Claude.
+    Evaluate a claim based on its existing evidence using Claude.
 
-    Claude analyzes the evidence and determines:
+    Claude analyzes the evidence already attached to the claim and determines:
     - Score (0-10): How well the evidence supports the claim
     - Reasoning: Why this score was assigned
 
     If no evidence exists, score defaults to 0.
-    Tracks when evidence was last modified.
+    Use add_evidence_skill first to add evidence before evaluating.
 
     Args:
         hypergraph_path: Path to hypergraph.json file
         claim_id: ID of claim to evaluate (e.g., "c1")
-        evidence: JSON array string of evidence items (required to score > 0)
-        uncertainties: Comma-separated list of uncertainties (optional)
-        tags: Comma-separated list of tags like "CRITICAL_BLOCKER" (optional)
 
     Returns:
         Confirmation message with score and reasoning, or error
@@ -138,27 +255,13 @@ def evaluate_claim_skill(
         if not claim:
             return f"❌ Claim '{claim_id}' not found in hypergraph"
 
-        # Parse and update evidence if provided
-        evidence_changed = False
-        evidence_list = []
-        if evidence:
-            try:
-                evidence_list = json.loads(evidence)
-                # Check if evidence actually changed
-                old_evidence = claim.get('evidence', [])
-                if evidence_list != old_evidence:
-                    claim['evidence'] = evidence_list
-                    evidence_changed = True
-            except json.JSONDecodeError as e:
-                return f"❌ Invalid evidence JSON: {e}"
-        else:
-            # Use existing evidence if any
-            evidence_list = claim.get('evidence', [])
+        # Get existing evidence
+        evidence_list = claim.get('evidence', [])
 
         # If no evidence exists, score = 0
         if not evidence_list:
             score = 0.0
-            reasoning = "No evidence provided for this claim"
+            reasoning = "No evidence provided for this claim. Use add_evidence to add evidence first."
         else:
             # Use Claude to evaluate the evidence and determine score
             try:
@@ -169,22 +272,10 @@ def evaluate_claim_skill(
             except Exception as e:
                 return f"❌ Error evaluating evidence with Claude: {e}"
 
-        # Update last_evidence_modified timestamp if evidence changed
-        if evidence_changed:
-            claim['last_evidence_modified'] = datetime.now().isoformat()
-
         # Update claim with evaluated score and reasoning
         claim['score'] = score
         claim['reasoning'] = reasoning
         claim['modified_at'] = datetime.now().isoformat()
-
-        # Parse and update uncertainties if provided
-        if uncertainties:
-            claim['uncertainties'] = [u.strip() for u in uncertainties.split(',')]
-
-        # Parse and update tags if provided
-        if tags:
-            claim['tags'] = [t.strip() for t in tags.split(',')]
 
         # Update last_updated timestamp
         hypergraph['metadata']['last_updated'] = datetime.now().strftime("%Y-%m-%d")
