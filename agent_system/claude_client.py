@@ -26,6 +26,7 @@ from claude_agent_sdk import (
 
 from .entailment_checker import check_entailment_skill as check_entailment_impl
 from .claim_evaluator import evaluate_claim_skill as evaluate_claim_impl, add_evidence_skill as add_evidence_impl
+from .gapmap_client import GapMapClient
 
 try:
     from edison_client import EdisonClient, JobNames
@@ -372,6 +373,321 @@ else:
     edison_server = None
 
 
+# GAP-map tools
+_gapmap_client = None
+
+def _get_gapmap_client():
+    """Get or create GAP-map client."""
+    global _gapmap_client
+    if _gapmap_client is None:
+        _gapmap_client = GapMapClient()
+    return _gapmap_client
+
+
+@tool(
+    name="list_fields",
+    description="List all research fields/domains in GAP-map. "
+                "Returns the 20 major fields with descriptions (e.g., Computation, Biology, Global Health). "
+                "Use this to explore available domains or filter searches by field.",
+    input_schema={}
+)
+async def gapmap_list_fields(args: Dict[str, Any]) -> Dict[str, Any]:
+    """List all research fields."""
+    try:
+        client = _get_gapmap_client()
+        fields = client.get_all_fields()
+
+        result_text = f"**GAP-map Research Fields** ({len(fields)} total):\n\n"
+
+        for field in fields:
+            result_text += f"**{field['name']}**\n"
+            result_text += f"{field['description'][:150]}...\n"
+            result_text += f"ID: `{field['id']}`\n\n"
+
+        return {"content": [{"type": "text", "text": result_text}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"❌ Failed to list fields: {str(e)}"}]}
+
+
+@tool(
+    name="list_gaps",
+    description="List all research gaps in GAP-map. "
+                "Returns all 104 catalogued gaps with summaries. "
+                "Optionally filter by field. Use this to browse available problems.",
+    input_schema={
+        "field": {"type": "string", "default": None},  # Optional: field name to filter
+    }
+)
+async def gapmap_list_gaps(args: Dict[str, Any]) -> Dict[str, Any]:
+    """List all research gaps."""
+    field = args.get("field", None)
+
+    try:
+        client = _get_gapmap_client()
+        gaps = client.get_all_gaps()
+
+        # Filter by field if specified
+        if field:
+            field_lower = field.lower()
+            gaps = [g for g in gaps if field_lower in g.get("field", {}).get("name", "").lower()]
+
+        if not gaps:
+            return {"content": [{"type": "text", "text": f"No gaps found" + (f" in field '{field}'" if field else "")}]}
+
+        result_text = f"**GAP-map Research Gaps** ({len(gaps)} total"
+        if field:
+            result_text += f" in {field}"
+        result_text += "):\n\n"
+
+        for gap in gaps[:10]:  # Show first 10
+            field_name = gap.get("field", {}).get("name", "Unknown")
+            cap_count = len(gap.get("foundationalCapabilities", []))
+
+            result_text += f"**{gap['name']}** ({field_name})\n"
+            result_text += f"{gap['description'][:150]}...\n"
+            result_text += f"Gap ID: `{gap['id']}` | Capabilities: {cap_count}\n\n"
+
+        if len(gaps) > 10:
+            result_text += f"(Showing 10 of {len(gaps)} gaps)"
+
+        return {"content": [{"type": "text", "text": result_text}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"❌ Failed: {str(e)}"}]}
+
+
+@tool(
+    name="search_gaps",
+    description="Search GAP-map for open research problems. "
+                "104 catalogued gaps across fields like Computation, Biology, Materials, etc. "
+                "Returns gap ID, name, description, field, tags, and count of proposed capabilities. "
+                "Use gap_id with get_capabilities to see proposed solutions.",
+    input_schema={
+        "query": str,
+        "field": {"type": "string", "default": None},  # Optional: field name to filter
+    }
+)
+async def gapmap_search_gaps(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Search for research gaps."""
+    query = args.get("query", "")
+    field = args.get("field", None)
+
+    try:
+        client = _get_gapmap_client()
+        gaps = client.search_gaps(query, field=field)
+
+        if not gaps:
+            return {"content": [{"type": "text", "text": f"No gaps found matching '{query}'"}]}
+
+        result_text = f"Found {len(gaps)} gap(s):\n\n"
+
+        for gap in gaps[:5]:
+            field_name = gap.get("field", {}).get("name", "Unknown")
+            tags = gap.get("tags", [])
+            tags_str = f" [{', '.join(tags)}]" if tags else ""
+            cap_count = len(gap.get("foundationalCapabilities", []))
+
+            result_text += f"**{gap['name']}** ({field_name}){tags_str}\n"
+            result_text += f"{gap['description'][:200]}...\n"
+            result_text += f"Gap ID: `{gap['id']}`\n"
+            result_text += f"Proposed capabilities: {cap_count}\n\n"
+
+        if len(gaps) > 5:
+            result_text += f"(Showing 5 of {len(gaps)} results)"
+
+        return {"content": [{"type": "text", "text": result_text}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"❌ Search failed: {str(e)}"}]}
+
+
+@tool(
+    name="list_capabilities",
+    description="List all foundational capabilities in GAP-map. "
+                "Returns all 368 catalogued approaches/technologies with summaries. "
+                "Use this to browse what solutions have been proposed across all problems.",
+    input_schema={}
+)
+async def gapmap_list_capabilities(args: Dict[str, Any]) -> Dict[str, Any]:
+    """List all capabilities."""
+    try:
+        client = _get_gapmap_client()
+        capabilities = client.get_all_capabilities()
+
+        result_text = f"**GAP-map Foundational Capabilities** ({len(capabilities)} total):\n\n"
+
+        for cap in capabilities[:15]:  # Show first 15
+            tags = cap.get("tags", [])
+            tags_str = f" [{', '.join(tags[:2])}]" if tags else ""
+            gap_count = len(cap.get("gaps", []))
+            resource_count = len(cap.get("resources", []))
+
+            result_text += f"**{cap['name']}**{tags_str}\n"
+            result_text += f"{cap['description'][:150]}...\n"
+            result_text += f"ID: `{cap['id']}` | Gaps addressed: {gap_count} | Resources: {resource_count}\n\n"
+
+        if len(capabilities) > 15:
+            result_text += f"(Showing 15 of {len(capabilities)} capabilities)"
+
+        return {"content": [{"type": "text", "text": result_text}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"❌ Failed: {str(e)}"}]}
+
+
+@tool(
+    name="get_capabilities",
+    description="Get foundational capabilities for a gap. "
+                "Returns proposed approaches/technologies that could address the problem. "
+                "Each capability includes description, tags, and count of linked resources. "
+                "Use capability_id with get_resources to access papers, companies, initiatives, etc.",
+    input_schema={
+        "gap_id": str,
+    }
+)
+async def gapmap_get_capabilities(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Get capabilities for a gap."""
+    gap_id = args.get("gap_id", "")
+
+    try:
+        client = _get_gapmap_client()
+        gap = client.get_gap_by_id(gap_id)
+        if not gap:
+            return {"content": [{"type": "text", "text": f"❌ Gap not found: {gap_id}"}]}
+
+        capabilities = client.get_capabilities_for_gap(gap_id)
+
+        if not capabilities:
+            return {"content": [{"type": "text", "text": f"Gap **{gap['name']}** has no linked capabilities yet."}]}
+
+        result_text = f"**Gap:** {gap['name']}\n\n"
+        result_text += f"**{len(capabilities)} Foundational Capabilities:**\n\n"
+
+        for cap in capabilities:
+            tags = cap.get("tags", [])
+            tags_str = f" [{', '.join(tags)}]" if tags else ""
+            resource_count = len(cap.get("resources", []))
+
+            result_text += f"**{cap['name']}**{tags_str}\n"
+            result_text += f"{cap['description'][:200]}...\n"
+            result_text += f"Capability ID: `{cap['id']}`\n"
+            result_text += f"Resources: {resource_count}\n\n"
+
+        return {"content": [{"type": "text", "text": result_text}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"❌ Failed: {str(e)}"}]}
+
+
+@tool(
+    name="list_resources",
+    description="List all resources in GAP-map. "
+                "Returns all 1062 resources (papers, companies, FROs, initiatives, etc.). "
+                "Optionally filter by resource type. Use this to browse available resources.",
+    input_schema={
+        "resource_type": {"type": "string", "default": None},  # Optional: e.g., "Research and Reviews", "Company", "FRO"
+    }
+)
+async def gapmap_list_resources(args: Dict[str, Any]) -> Dict[str, Any]:
+    """List all resources."""
+    resource_type = args.get("resource_type", None)
+
+    try:
+        client = _get_gapmap_client()
+        resources = client.get_all_resources()
+
+        # Filter by type if specified
+        if resource_type:
+            resources = [r for r in resources if resource_type in r.get("types", [])]
+
+        if not resources:
+            return {"content": [{"type": "text", "text": f"No resources found" + (f" of type '{resource_type}'" if resource_type else "")}]}
+
+        result_text = f"**GAP-map Resources** ({len(resources)} total"
+        if resource_type:
+            result_text += f" of type '{resource_type}'"
+        result_text += "):\n\n"
+
+        for res in resources[:15]:  # Show first 15
+            types = res.get("types", [])
+            types_str = f" ({', '.join(types)})" if types else ""
+            url = res.get("url", "")
+
+            result_text += f"**{res['title']}**{types_str}\n"
+            if url:
+                result_text += f"{url}\n"
+            result_text += "\n"
+
+        if len(resources) > 15:
+            result_text += f"(Showing 15 of {len(resources)} resources)"
+
+        return {"content": [{"type": "text", "text": result_text}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"❌ Failed: {str(e)}"}]}
+
+
+@tool(
+    name="get_resources",
+    description="Get resources for a capability. "
+                "Returns papers, companies, initiatives, datasets, etc. (1062 total resources). "
+                "Resource types: Research and Reviews, FRO, Company, Initiative, Technology Seed, etc. "
+                "Each resource has title, URL, summary, and type.",
+    input_schema={
+        "capability_id": str,
+    }
+)
+async def gapmap_get_resources(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Get resources for a capability."""
+    capability_id = args.get("capability_id", "")
+
+    try:
+        client = _get_gapmap_client()
+
+        # Get capability details
+        capabilities = client.get_all_capabilities()
+        capability = next((c for c in capabilities if c.get("id") == capability_id), None)
+
+        if not capability:
+            return {"content": [{"type": "text", "text": f"❌ Capability not found: {capability_id}"}]}
+
+        resources = client.get_resources_for_capability(capability_id)
+
+        if not resources:
+            return {"content": [{"type": "text", "text": f"Capability **{capability['name']}** has no linked resources yet."}]}
+
+        result_text = f"**Capability:** {capability['name']}\n\n"
+        result_text += f"**{len(resources)} Resources:**\n\n"
+
+        for res in resources:
+            types = res.get("types", [])
+            types_str = f" ({', '.join(types)})" if types else ""
+            url = res.get("url", "")
+            summary = res.get("summary", "").strip()
+
+            result_text += f"**{res['title']}**{types_str}\n"
+            if summary:
+                result_text += f"{summary[:150]}...\n"
+            if url:
+                result_text += f"URL: {url}\n"
+            result_text += "\n"
+
+        return {"content": [{"type": "text", "text": result_text}]}
+    except Exception as e:
+        return {"content": [{"type": "text", "text": f"❌ Failed: {str(e)}"}]}
+
+
+# Create GAP-map MCP server
+gapmap_server = create_sdk_mcp_server(
+    name="gapmap",
+    version="1.0.0",
+    tools=[
+        gapmap_list_fields,
+        gapmap_list_gaps,
+        gapmap_search_gaps,
+        gapmap_list_capabilities,
+        gapmap_get_capabilities,
+        gapmap_list_resources,
+        gapmap_get_resources
+    ]
+)
+
+
 # Create MCP server with entailment tools
 entailment_server = create_sdk_mcp_server(
     name="entailment",
@@ -540,8 +856,20 @@ class ClaudeCodeClient:
                 allowed.append("mcp__edison__precedent_search")
                 allowed.append("mcp__edison__check_edison_task")
 
+            # Add GAP-map tools
+            allowed.append("mcp__gapmap__list_fields")
+            allowed.append("mcp__gapmap__list_gaps")
+            allowed.append("mcp__gapmap__search_gaps")
+            allowed.append("mcp__gapmap__list_capabilities")
+            allowed.append("mcp__gapmap__get_capabilities")
+            allowed.append("mcp__gapmap__list_resources")
+            allowed.append("mcp__gapmap__get_resources")
+
             # Build MCP servers dict
-            mcp_servers_dict = {"entailment": entailment_server}
+            mcp_servers_dict = {
+                "entailment": entailment_server,
+                "gapmap": gapmap_server
+            }
             if EDISON_AVAILABLE and edison_server:
                 mcp_servers_dict["edison"] = edison_server
 
