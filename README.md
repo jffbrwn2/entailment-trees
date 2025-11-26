@@ -16,8 +16,8 @@ A tool for collaborating with an AI agent to rigorously evaluate ideas through s
 curl -fsSL https://pixi.sh/install.sh | bash
 
 # Clone and install dependencies
-git clone <your-repo-url>
-cd ai-simulations
+git clone https://github.com/jffbrwn2/entailment-trees.git
+cd entailment-trees
 pixi install
 ```
 
