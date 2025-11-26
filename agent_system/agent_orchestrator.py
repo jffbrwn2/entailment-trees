@@ -349,7 +349,17 @@ The hypergraph is a JSON file with:
   "premises": ["c1", "c2", "c3"],
   "conclusion": "c4",
   "type": "AND",  // or "OR"
-  "reasoning": "Logical explanation"
+  "reasoning": "Logical explanation where if all premises are true, then the conclusion must be true"
+}}
+```
+
+```json
+{{
+  "id": "i2",           // REQUIRED! Always include unique ID
+  "premises": ["c5", "c6"],
+  "conclusion": "c7",
+  "type": "OR",
+  "reasoning": "Logical explanation where if any one premise is true, then the conclusion must be true"
 }}
 ```
 
