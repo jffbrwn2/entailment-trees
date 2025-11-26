@@ -2,8 +2,6 @@
 
 A tool for collaborating with an AI agent to rigorously evaluate ideas through structured reasoning, simulations, and literature research.
 
-![Demo](media/demo.mov)
-
 ## Installation
 
 ### Prerequisites
