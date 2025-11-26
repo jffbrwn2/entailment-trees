@@ -439,7 +439,12 @@
         // Node positions (persistent across renders)
         let nodePositions = new Map();
 
-        // Auto-reload interval (check for updates every 1 second)
+        // WebSocket connection for real-time updates
+        let ws = null;
+        let wsReconnectTimer = null;
+        let useWebSocket = true; // Toggle for fallback to polling
+
+        // Auto-reload interval (fallback when WebSocket unavailable)
         let autoReloadInterval = null;
         let currentGraphPath = null;
 
@@ -468,6 +473,101 @@
             // Re-render graph to update colors
             if (viewMode === 'graph' && hypergraph) {
                 renderHypergraph();
+            }
+        }
+
+        // WebSocket connection management
+        function connectWebSocket() {
+            if (!useWebSocket) return;
+
+            // Determine WebSocket URL based on current location
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+            console.log('[WebSocket] Connecting to', wsUrl);
+
+            try {
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    console.log('[WebSocket] ✓ Connected');
+                    // Stop polling if it was running
+                    stopAutoReload();
+
+                    // Send ping every 30 seconds to keep connection alive
+                    if (ws.pingInterval) clearInterval(ws.pingInterval);
+                    ws.pingInterval = setInterval(() => {
+                        if (ws && ws.readyState === WebSocket.OPEN) {
+                            ws.send('ping');
+                        }
+                    }, 30000);
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        handleWebSocketUpdate(message);
+                    } catch (e) {
+                        console.error('[WebSocket] Error parsing message:', e);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('[WebSocket] Error:', error);
+                };
+
+                ws.onclose = () => {
+                    console.log('[WebSocket] Disconnected');
+                    if (ws.pingInterval) clearInterval(ws.pingInterval);
+
+                    // Attempt reconnection after 2 seconds
+                    if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+                    wsReconnectTimer = setTimeout(() => {
+                        console.log('[WebSocket] Attempting to reconnect...');
+                        connectWebSocket();
+                    }, 2000);
+                };
+            } catch (error) {
+                console.error('[WebSocket] Connection failed:', error);
+                // Fall back to polling
+                console.log('[WebSocket] Falling back to polling mode');
+                useWebSocket = false;
+                if (currentGraphPath) {
+                    startAutoReload();
+                }
+            }
+        }
+
+        function handleWebSocketUpdate(message) {
+            console.log('[WebSocket] Received update:', message.type);
+
+            if (message.type === 'hypergraph_update') {
+                // Check if this update is for the currently displayed graph
+                const messagePath = message.path.replace(/\\/g, '/');
+                const currentPath = currentGraphPath ? currentGraphPath.replace(/^\//, '') : '';
+
+                if (messagePath.includes(currentPath) || currentPath.includes(messagePath.split('/').pop())) {
+                    console.log('[WebSocket] Update matches current graph, reloading...');
+
+                    // Save current transform for smooth transition
+                    let savedTransform = null;
+                    if (svg) {
+                        savedTransform = d3.zoomTransform(svg.node());
+                    }
+
+                    // Update hypergraph data
+                    hypergraph = message.data;
+
+                    // Rebuild structures and re-render
+                    buildImplicationMap();
+                    renderCurrentView();
+                    renderSidebar();
+
+                    // Restore zoom/pan
+                    if (savedTransform && svg && zoom) {
+                        svg.call(zoom.transform, savedTransform);
+                    }
+                }
             }
         }
 
@@ -526,12 +626,17 @@
             }
         }
 
+        // Initialize WebSocket connection
+        connectWebSocket();
+
         // Load initial example (from URL param or default)
         if (graphParam) {
             currentGraphPath = '/' + graphParam;
             loadCatalog().then(() => loadExample(currentGraphPath));
-            // Start auto-reload for user-created graphs
-            startAutoReload();
+            // Only start auto-reload if WebSocket fails
+            if (!useWebSocket) {
+                startAutoReload();
+            }
         } else {
             currentGraphPath = '/entailment_hypergraph/water_boiling_example.json';
             loadCatalog().then(() => loadExample(currentGraphPath));
@@ -555,6 +660,7 @@
         // Event listeners
         document.getElementById('example-select').addEventListener('change', (e) => {
             stopAutoReload(); // Stop auto-reload when manually switching examples
+            currentGraphPath = e.target.value;
             loadExample(e.target.value);
         });
 
