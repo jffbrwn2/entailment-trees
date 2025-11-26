@@ -25,6 +25,7 @@ class AgentConfig:
     approaches_dir: Path = Path("approaches")
     explorations_dir: Path = Path("explorations")
     visualizer_dir: Path = Path("entailment_hypergraph")
+    logs_dir: Path = Path("logs")  # Centralized logs for all sessions
 
     # Claude Code settings
     claude_api_key: Optional[str] = None  # Will be read from environment
@@ -42,6 +43,7 @@ class AgentConfig:
         """Ensure directories exist."""
         self.approaches_dir.mkdir(parents=True, exist_ok=True)
         self.explorations_dir.mkdir(parents=True, exist_ok=True)
+        self.logs_dir.mkdir(parents=True, exist_ok=True)
 
     @classmethod
     def from_env(cls) -> 'AgentConfig':

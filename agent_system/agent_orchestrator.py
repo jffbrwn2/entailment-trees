@@ -12,7 +12,8 @@ from datetime import datetime
 
 from .hypergraph_manager import HypergraphManager
 from .config import AgentConfig
-from .claude_client import ClaudeCodeClient, ClaudeResponse
+from .claude_client import ClaudeCodeClient, ClaudeResponse, ClientMode
+from .conversation_logger import ConversationLogger
 
 
 @dataclass
@@ -46,7 +47,16 @@ class AgentOrchestrator:
         self.config = config or AgentConfig()
         self.current_session: Optional[Session] = None
         self.hypergraph_mgr: Optional[HypergraphManager] = None
-        self.claude_client: Optional[ClaudeCodeClient] = None
+        self.current_logger: Optional[ConversationLogger] = None
+
+        # Initialize single client in exploration mode by default
+        exploration_mode = ClientMode(working_dir=self.config.explorations_dir)
+        self.claude_client = ClaudeCodeClient(
+            mode=exploration_mode,
+            allowed_tools=["Write", "Read", "Edit", "Bash", "WebSearch", "Glob", "Grep"],
+            verbose=False,
+            logger=None  # Logger will be set when first used
+        )
 
     def start_approach(
         self,
@@ -85,12 +95,26 @@ class AgentOrchestrator:
             description=description
         )
 
-        # Initialize Claude Code client with approach directory as working dir
-        self.claude_client = ClaudeCodeClient(
+        # Create logger for this session (reuse if exists)
+        if self.current_logger is None:
+            self.current_logger = ConversationLogger(
+                logs_dir=self.config.logs_dir,
+                approach_name=name,
+                approach_dir=approach_dir,
+                working_dir=approach_dir
+            )
+            self.claude_client.logger = self.current_logger
+            # Update global logger for hooks
+            from . import claude_client as cc
+            cc._current_logger = self.current_logger
+
+        # Switch client to approach mode
+        approach_mode = ClientMode(
             working_dir=approach_dir,
-            allowed_tools=["Write", "Read", "Edit", "Bash", "WebSearch", "Glob", "Grep"],
-            verbose=False
+            approach_name=name,
+            approach_dir=approach_dir
         )
+        self.claude_client.switch_mode(approach_mode)
 
         return {
             "session": {
@@ -125,12 +149,26 @@ class AgentOrchestrator:
             approach_dir=approach_dir
         )
 
-        # Initialize Claude Code client with approach directory as working dir
-        self.claude_client = ClaudeCodeClient(
+        # Create logger for this session (reuse if exists)
+        if self.current_logger is None:
+            self.current_logger = ConversationLogger(
+                logs_dir=self.config.logs_dir,
+                approach_name=name,
+                approach_dir=approach_dir,
+                working_dir=approach_dir
+            )
+            self.claude_client.logger = self.current_logger
+            # Update global logger for hooks
+            from . import claude_client as cc
+            cc._current_logger = self.current_logger
+
+        # Switch client to approach mode
+        approach_mode = ClientMode(
             working_dir=approach_dir,
-            allowed_tools=["Write", "Read", "Edit", "Bash", "WebSearch", "Glob", "Grep"],
-            verbose=False
+            approach_name=name,
+            approach_dir=approach_dir
         )
+        self.claude_client.switch_mode(approach_mode)
 
         return {
             "session": {
@@ -151,69 +189,29 @@ class AgentOrchestrator:
 
         Returns:
             Claude's response
-
-        Raises:
-            RuntimeError: If no active session
         """
-        # Allow exploration mode without active session
-        if not self.current_session or not self.claude_client:
-            return self._process_exploration_mode(user_input)
-
-        # First turn - start conversation with system prompt
-        if self.current_session.turn_count == 0:
-            response = self.claude_client.start_conversation(
-                initial_prompt=user_input,
-                system_prompt=self.get_system_prompt()
+        # Initialize logger on first use if needed
+        if self.current_logger is None:
+            self.current_logger = ConversationLogger(
+                logs_dir=self.config.logs_dir,
+                approach_name=self.current_session.approach_name if self.current_session else None,
+                approach_dir=self.current_session.approach_dir if self.current_session else None,
+                working_dir=self.claude_client.mode.working_dir
             )
-        else:
-            # Continue existing conversation
-            response = self.claude_client.continue_conversation(user_input)
+            self.claude_client.logger = self.current_logger
+            # Update global logger for hooks
+            from . import claude_client as cc
+            cc._current_logger = self.current_logger
 
-        # Increment turn counter
-        self.increment_turn()
-
-        # Validate hypergraph if it might have been modified
-        # (Claude might have edited hypergraph.json)
-        if self.config.auto_validate:
-            try:
-                errors, warnings = self.hypergraph_mgr.validate()
-                if errors:
-                    # Append validation errors to response
-                    response.content += f"\n\n⚠️  Hypergraph validation failed:\n" + "\n".join(errors)
-            except Exception:
-                pass  # Validation might fail if hypergraph doesn't exist yet
-
-        return response
-
-    def _process_exploration_mode(self, user_input: str) -> ClaudeResponse:
-        """
-        Process user input in exploration mode (no active approach).
-
-        In this mode, user can access research tools (GAP-map, Edison, web search)
-        but cannot create simulations or edit hypergraphs.
-
-        Uses persistent explorations directory as a scratch pad.
-
-        Args:
-            user_input: User's message/question
-
-        Returns:
-            Claude's response
-        """
-        # Use persistent explorations directory
-        explorations_dir = self.config.explorations_dir
-        explorations_dir.mkdir(parents=True, exist_ok=True)
-
-        # Initialize exploration client with research tools
-        # Note: MCP tools (GAP-map, Edison) are registered as custom tools
-        # and are automatically available - they don't need to be in allowed_tools
-        exploration_client = ClaudeCodeClient(
-            working_dir=explorations_dir,
-            allowed_tools=["Write", "Read", "Edit", "Bash", "WebSearch", "Glob", "Grep"],
-            verbose=False
-        )
-
-        exploration_prompt = """You are in exploration mode. You can help the user:
+        # Determine system prompt based on mode
+        system_prompt = None
+        if self.claude_client.sdk_client is None:  # First turn
+            if self.current_session:
+                # In approach mode - use full hypergraph prompt
+                system_prompt = self.get_system_prompt()
+            else:
+                # In exploration mode - use simple prompt
+                system_prompt = """You are in exploration mode. You can help the user:
 - Search GAP-map for research gaps, capabilities, and resources
 - Search scientific literature with Edison
 - Search the web
@@ -228,12 +226,24 @@ The explorations/ directory is a persistent scratch pad for general research.
 When the user is ready to evaluate a specific idea, suggest they use /new to start an approach.
 """
 
-        response = exploration_client.start_conversation(
-            initial_prompt=user_input,
-            system_prompt=exploration_prompt
-        )
+        # SDK handles conversation continuity automatically
+        response = self.claude_client.query(user_input, system_prompt=system_prompt)
+
+        # Increment turn counter if in approach mode
+        if self.current_session:
+            self.increment_turn()
+
+            # Validate hypergraph if it might have been modified
+            if self.config.auto_validate:
+                try:
+                    errors, warnings = self.hypergraph_mgr.validate()
+                    if errors:
+                        response.content += f"\n\n⚠️  Hypergraph validation failed:\n" + "\n".join(errors)
+                except Exception:
+                    pass
 
         return response
+
 
     def get_system_prompt(self) -> str:
         """

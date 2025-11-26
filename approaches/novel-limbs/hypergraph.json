@@ -1,0 +1,24 @@
+{
+  "metadata": {
+    "name": "novel-limbs",
+    "description": "Evaluating: Humans can flexible use new limbs",
+    "created": "2025-11-25",
+    "last_updated": "2025-11-25",
+    "version": "1.0"
+  },
+  "claims": [
+    {
+      "id": "hypothesis",
+      "text": "Humans can flexible use new limbs",
+      "score": 5.0,
+      "reasoning": "Initial hypothesis to be evaluated",
+      "uncertainties": [
+        "Not yet investigated"
+      ],
+      "tags": [
+        "HYPOTHESIS"
+      ]
+    }
+  ],
+  "implications": []
+}

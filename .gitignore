@@ -5,6 +5,9 @@
 # Server logs
 server.log
 
+# Conversation logs (contain full conversation history)
+logs/
+
 # Architecture docs (work in progress)
 ARCHITECTURE.md
 

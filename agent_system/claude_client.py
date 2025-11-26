@@ -27,6 +27,7 @@ from claude_agent_sdk import (
 from .entailment_checker import check_entailment_skill as check_entailment_impl
 from .claim_evaluator import evaluate_claim_skill as evaluate_claim_impl, add_evidence_skill as add_evidence_impl
 from .gapmap_client import GapMapClient
+from .conversation_logger import ConversationLogger
 
 try:
     from edison_client import EdisonClient, JobNames
@@ -50,6 +51,14 @@ class ClaudeResponse:
     session_id: Optional[str] = None
     cost_usd: Optional[float] = None
     raw_output: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class ClientMode:
+    """Configuration for a client mode (exploration or approach)."""
+    working_dir: Path
+    approach_name: Optional[str] = None
+    approach_dir: Optional[Path] = None
 
 
 # Define entailment checker as SDK tool
@@ -401,7 +410,7 @@ async def gapmap_list_fields(args: Dict[str, Any]) -> Dict[str, Any]:
 
         for field in fields:
             result_text += f"**{field['name']}**\n"
-            result_text += f"{field['description'][:150]}...\n"
+            result_text += f"{field['description']}\n"
             result_text += f"ID: `{field['id']}`\n\n"
 
         return {"content": [{"type": "text", "text": result_text}]}
@@ -444,7 +453,7 @@ async def gapmap_list_gaps(args: Dict[str, Any]) -> Dict[str, Any]:
             cap_count = len(gap.get("foundationalCapabilities", []))
 
             result_text += f"**{gap['name']}** ({field_name})\n"
-            result_text += f"{gap['description'][:150]}...\n"
+            result_text += f"{gap['description']}\n"
             result_text += f"Gap ID: `{gap['id']}` | Capabilities: {cap_count}\n\n"
 
         if len(gaps) > 10:
@@ -487,7 +496,7 @@ async def gapmap_search_gaps(args: Dict[str, Any]) -> Dict[str, Any]:
             cap_count = len(gap.get("foundationalCapabilities", []))
 
             result_text += f"**{gap['name']}** ({field_name}){tags_str}\n"
-            result_text += f"{gap['description'][:200]}...\n"
+            result_text += f"{gap['description']}\n"
             result_text += f"Gap ID: `{gap['id']}`\n"
             result_text += f"Proposed capabilities: {cap_count}\n\n"
 
@@ -521,7 +530,7 @@ async def gapmap_list_capabilities(args: Dict[str, Any]) -> Dict[str, Any]:
             resource_count = len(cap.get("resources", []))
 
             result_text += f"**{cap['name']}**{tags_str}\n"
-            result_text += f"{cap['description'][:150]}...\n"
+            result_text += f"{cap['description']}\n"
             result_text += f"ID: `{cap['id']}` | Gaps addressed: {gap_count} | Resources: {resource_count}\n\n"
 
         if len(capabilities) > 15:
@@ -566,7 +575,7 @@ async def gapmap_get_capabilities(args: Dict[str, Any]) -> Dict[str, Any]:
             resource_count = len(cap.get("resources", []))
 
             result_text += f"**{cap['name']}**{tags_str}\n"
-            result_text += f"{cap['description'][:200]}...\n"
+            result_text += f"{cap['description']}\n"
             result_text += f"Capability ID: `{cap['id']}`\n"
             result_text += f"Resources: {resource_count}\n\n"
 
@@ -662,7 +671,7 @@ async def gapmap_get_resources(args: Dict[str, Any]) -> Dict[str, Any]:
 
             result_text += f"**{res['title']}**{types_str}\n"
             if summary:
-                result_text += f"{summary[:150]}...\n"
+                result_text += f"{summary}\n"
             if url:
                 result_text += f"URL: {url}\n"
             result_text += "\n"
@@ -694,6 +703,58 @@ entailment_server = create_sdk_mcp_server(
     version="1.0.0",
     tools=[check_entailment_tool, add_evidence_tool, evaluate_claim_tool]
 )
+
+
+# Global logger instance (set by ClaudeCodeClient)
+_current_logger: Optional[ConversationLogger] = None
+
+
+# Hook that logs all tool calls
+async def tool_logging_hook(
+    input_data: Dict[str, Any],
+    tool_use_id: Optional[str] = None,
+    context: Optional[HookContext] = None
+) -> Dict[str, Any]:
+    """
+    Hook that logs every tool call with parameters and results.
+
+    Called after each tool execution (PostToolUse hook).
+    """
+    global _current_logger
+
+    if _current_logger is None:
+        return {}
+
+    # Extract tool information from input_data
+    # PostToolUse structure has: tool_name, tool_input, tool_response
+    tool_name = input_data.get("tool_name", "unknown")
+    tool_input = input_data.get("tool_input", {})
+    tool_response = input_data.get("tool_response")
+
+    # Parse result/error from tool_response
+    result = None
+    error = None
+    if tool_response:
+        if isinstance(tool_response, dict):
+            if "error" in tool_response:
+                error = str(tool_response["error"])
+            elif "content" in tool_response:
+                # MCP tools return content in a specific format
+                result = str(tool_response["content"])
+            else:
+                result = str(tool_response)
+        else:
+            result = str(tool_response)
+
+    # Log the tool call
+    _current_logger.log_tool_call(
+        tool_name=tool_name,
+        parameters=tool_input,
+        result=result,
+        error=error
+    )
+
+    return {}
 
 
 # Hook that runs at end of Claude's turn
@@ -785,24 +846,32 @@ class ClaudeCodeClient:
 
     def __init__(
         self,
-        working_dir: Optional[Path] = None,
+        mode: ClientMode,
         allowed_tools: Optional[List[str]] = None,
-        verbose: bool = False
+        verbose: bool = False,
+        logger: Optional[ConversationLogger] = None
     ):
         """
         Initialize Claude Code client.
 
         Args:
-            working_dir: Working directory for Claude Code (affects file operations)
+            mode: Client mode configuration (working dir, approach info)
             allowed_tools: List of tools to allow (e.g., ["Write", "Read", "Bash"])
             verbose: Enable verbose logging
+            logger: ConversationLogger instance for logging all interactions
         """
-        self.working_dir = working_dir or Path.cwd()
+        self.mode = mode
         self.allowed_tools = allowed_tools or []
         self.verbose = verbose
         self.sdk_client: Optional[ClaudeSDKClient] = None
         self.current_system_prompt: Optional[str] = None
         self._loop = None
+        self.logger = logger
+
+        # Set global logger for hooks
+        if logger:
+            global _current_logger
+            _current_logger = logger
 
     def _get_or_create_loop(self):
         """Get or create event loop for async operations."""
@@ -837,12 +906,22 @@ class ClaudeCodeClient:
         Returns:
             ClaudeResponse with content and metadata
         """
-        # Initialize SDK client if not already done or if system prompt changed
-        if self.sdk_client is None or (system_prompt and system_prompt != self.current_system_prompt):
+        # Log turn start
+        if self.logger:
+            self.logger.log_turn_start(prompt)
+
+        # Initialize SDK client if not already done
+        # OR if we're explicitly changing the system prompt (not None)
+        should_recreate = (
+            self.sdk_client is None or
+            (system_prompt is not None and system_prompt != self.current_system_prompt)
+        )
+
+        if should_recreate:
             # Set approach directory for Edison tools
             if EDISON_AVAILABLE:
                 global _approach_dir
-                _approach_dir = self.working_dir
+                _approach_dir = self.mode.working_dir
 
             # Build allowed tools list (include built-in tools + MCP tools)
             allowed = self.allowed_tools.copy() if self.allowed_tools else []
@@ -876,9 +955,12 @@ class ClaudeCodeClient:
             options = ClaudeAgentOptions(
                 system_prompt=system_prompt or "claude_code",
                 allowed_tools=allowed if allowed else None,
-                cwd=str(self.working_dir),
+                cwd=str(self.mode.working_dir),
                 mcp_servers=mcp_servers_dict,
                 hooks={
+                    "PostToolUse": [
+                        HookMatcher(hooks=[tool_logging_hook])
+                    ],
                     "Stop": [
                         HookMatcher(hooks=[post_hypergraph_edit_hook])
                     ]
@@ -922,13 +1004,28 @@ class ClaudeCodeClient:
 
             print()  # Newline after streaming completes
 
+            # Log turn end
+            response_content = "".join(response_text)
+            if self.logger:
+                self.logger.log_turn_end(
+                    claude_response=response_content,
+                    cost_usd=None,  # SDK doesn't expose cost
+                    raw_metadata={"messages": response_text}
+                )
+
             return ClaudeResponse(
-                content="".join(response_text),
+                content=response_content,
                 session_id="active",  # SDK manages sessions internally
                 cost_usd=None,  # SDK doesn't expose cost in response
                 raw_output={"messages": response_text}
             )
         except Exception as e:
+            # Log error if logger available
+            if self.logger:
+                self.logger.log_turn_end(
+                    claude_response=f"ERROR: {str(e)}",
+                    raw_metadata={"error": str(e)}
+                )
             raise RuntimeError(f"Claude SDK failed: {str(e)}")
 
     def query(
@@ -952,44 +1049,26 @@ class ClaudeCodeClient:
             self._query_async(prompt, system_prompt)
         )
 
-    def start_conversation(
-        self,
-        initial_prompt: str,
-        system_prompt: Optional[str] = None
-    ) -> ClaudeResponse:
+
+    def switch_mode(self, new_mode: ClientMode):
         """
-        Start a new conversation.
+        Switch client to a new mode (e.g., exploration → approach).
+
+        Updates working directory without destroying conversation history.
 
         Args:
-            initial_prompt: Initial user message
-            system_prompt: System instructions
-
-        Returns:
-            Response from Claude
+            new_mode: New mode configuration
         """
-        # Close existing client to start fresh
-        if self.sdk_client is not None:
-            self._run_async(self.sdk_client.__aexit__(None, None, None))
-            self.sdk_client = None
-            self.current_system_prompt = None
+        self.mode = new_mode
 
-        return self.query(initial_prompt, system_prompt=system_prompt)
+        # Update approach directory for Edison tools
+        if EDISON_AVAILABLE:
+            global _approach_dir
+            _approach_dir = new_mode.working_dir
 
-    def continue_conversation(self, prompt: str) -> ClaudeResponse:
-        """
-        Continue the current conversation.
-
-        Args:
-            prompt: Next user message
-
-        Returns:
-            Response continuing the session
-        """
-        if self.sdk_client is None:
-            raise RuntimeError("No active session. Call start_conversation() first.")
-
-        # Pass resume flag to maintain conversation context
-        return self.query(prompt, _resume_session="active")
+        # Note: We don't recreate the SDK client - conversation continues
+        # The cwd is set when the SDK client is created, but that's OK
+        # File operations will use the paths passed to tools
 
     def end_conversation(self):
         """End the current conversation session."""
@@ -997,6 +1076,10 @@ class ClaudeCodeClient:
             self._run_async(self.sdk_client.__aexit__(None, None, None))
             self.sdk_client = None
             self.current_system_prompt = None
+
+        # End logging session
+        if self.logger:
+            self.logger.end_session()
 
     def __del__(self):
         """Cleanup when object is destroyed."""
