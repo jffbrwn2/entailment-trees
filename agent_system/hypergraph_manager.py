@@ -145,7 +145,7 @@ class HypergraphManager:
         claim_dict = {
             "id": claim.id,
             "text": claim.text,
-            "score": claim.score,
+            "score": claim.score if claim.score is not None else 0.0,
             "reasoning": claim.reasoning,
             "created_at": timestamp,
             "modified_at": timestamp
@@ -292,7 +292,7 @@ class HypergraphManager:
         claims = hypergraph['claims']
         implications = hypergraph['implications']
 
-        scores = [c['score'] for c in claims if 'score' in c]
+        scores = [c.get('score', 0) for c in claims]
 
         return {
             "num_claims": len(claims),
@@ -515,3 +515,112 @@ python -m http.server 8765
         self._save_hypergraph(historical_hypergraph)
 
         return historical_hypergraph
+
+    def calculate_propagated_negative_logs(self) -> Dict[str, float]:
+        """
+        Calculate propagated negative log scores for all claims.
+
+        For leaf nodes: propagated_negative_log = -log2(score/10)
+        For AND nodes: propagated_negative_log = sum(children_propagated_negative_log)
+        For OR nodes: propagated_negative_log = max(children_propagated_negative_log)
+
+        Returns:
+            Dict mapping claim_id -> propagated_negative_log value
+        """
+        import math
+
+        hypergraph = self.load_hypergraph()
+        claims = hypergraph.get('claims', [])
+        implications = hypergraph.get('implications', [])
+
+        # Build conclusion->implication map
+        conclusion_to_implication = {}
+        for impl in implications:
+            conclusion_id = impl.get('conclusion')
+            premise_ids = impl.get('premises', [])
+            impl_type = impl.get('type', 'AND')
+
+            conclusion_to_implication[conclusion_id] = {
+                'premises': premise_ids,
+                'type': impl_type
+            }
+
+        # Calculate propagated negative logs using topological sort (bottom-up)
+        propagated_logs = {}
+        visited = set()
+
+        def calculate_node(claim_id):
+            if claim_id in visited:
+                return propagated_logs[claim_id]
+
+            visited.add(claim_id)
+
+            # Find the claim
+            claim = None
+            for c in claims:
+                if c['id'] == claim_id:
+                    claim = c
+                    break
+
+            if not claim:
+                # Claim not found, return default
+                propagated_logs[claim_id] = float('inf')
+                return float('inf')
+
+            score = claim.get('score', 0.0)
+
+            # Check if this is a leaf node (not a conclusion of any implication)
+            if claim_id not in conclusion_to_implication:
+                # Leaf node: -log2(score/10)
+                if score <= 0:
+                    neg_log = float('inf')
+                else:
+                    neg_log = -math.log2(score / 10.0)
+                propagated_logs[claim_id] = neg_log
+                return neg_log
+
+            # Non-leaf node: get children and aggregate
+            impl_info = conclusion_to_implication[claim_id]
+            premise_ids = impl_info['premises']
+            impl_type = impl_info['type']
+
+            # Recursively calculate children
+            children_logs = []
+            for premise_id in premise_ids:
+                child_log = calculate_node(premise_id)
+                children_logs.append(child_log)
+
+            # Aggregate based on type
+            if impl_type == 'AND':
+                # AND: sum of children negative logs
+                propagated_log = sum(children_logs)
+            elif impl_type == 'OR':
+                # OR: max of children negative logs
+                propagated_log = max(children_logs) if children_logs else float('inf')
+            else:
+                # Unknown type, treat as AND
+                propagated_log = sum(children_logs)
+
+            propagated_logs[claim_id] = propagated_log
+            return propagated_log
+
+        # Calculate for all claims
+        for claim in claims:
+            calculate_node(claim['id'])
+
+        return propagated_logs
+
+    def update_propagated_negative_logs(self) -> None:
+        """
+        Calculate and update propagated_negative_log field for all claims.
+        """
+        propagated_logs = self.calculate_propagated_negative_logs()
+        hypergraph = self.load_hypergraph()
+
+        # Update each claim with its propagated negative log
+        for claim in hypergraph['claims']:
+            claim_id = claim['id']
+            if claim_id in propagated_logs:
+                claim['propagated_negative_log'] = propagated_logs[claim_id]
+
+        self._save_hypergraph(hypergraph)

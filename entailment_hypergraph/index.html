@@ -352,6 +352,7 @@
                 <option value="">Loading...</option>
             </select>
             <button id="toggle-theme">🌙 Dark Mode</button>
+            <button id="toggle-coloring">Color: Score</button>
             <button id="toggle-view-mode">View: Graph</button>
             <button id="reset-view">Reset View</button>
             <button id="toggle-text">Compact Text</button>
@@ -429,6 +430,9 @@
         // View mode: 'graph' or 'outline'
         let viewMode = 'graph';
 
+        // Coloring mode: 'score' or 'propagated'
+        let coloringMode = 'score';
+
         // Collapse state for graph view
         let collapsedNodes = new Set();
         let conclusionToPremises = new Map();
@@ -473,6 +477,21 @@
             // Re-render graph to update colors
             if (viewMode === 'graph' && hypergraph) {
                 renderHypergraph();
+            }
+        }
+
+        function toggleColoring() {
+            coloringMode = coloringMode === 'score' ? 'propagated' : 'score';
+            const button = document.getElementById('toggle-coloring');
+            button.textContent = coloringMode === 'score' ? 'Color: Score' : 'Color: Propagated';
+
+            // Re-render to update colors
+            if (hypergraph) {
+                if (viewMode === 'graph') {
+                    renderHypergraph();
+                } else {
+                    renderOutlineView();
+                }
             }
         }
 
@@ -665,6 +684,7 @@
         });
 
         document.getElementById('toggle-theme').addEventListener('click', toggleTheme);
+        document.getElementById('toggle-coloring').addEventListener('click', toggleColoring);
         document.getElementById('toggle-view-mode').addEventListener('click', toggleViewMode);
         document.getElementById('reset-view').addEventListener('click', resetView);
         document.getElementById('toggle-text').addEventListener('click', toggleTextMode);
@@ -1256,10 +1276,33 @@
             });
         }
 
+        function getEffectiveScore(claim) {
+            if (coloringMode === 'propagated' && claim.propagated_negative_log !== undefined) {
+                // Convert propagated_negative_log back to score: 2^(-propagated_negative_log) * 10
+                return Math.pow(2, -claim.propagated_negative_log) * 10;
+            }
+            return claim.score;
+        }
+
         function getScoreColor(score) {
-            if (score >= 7.5) return '#3fb950';
-            if (score >= 5) return '#d29922';
-            return '#f85149';
+            // Smooth transition from red (score=0) to yellow (score=5) to green (score=10)
+            const clampedScore = Math.max(0, Math.min(10, score));
+
+            if (clampedScore <= 5) {
+                // Red to Yellow (0-5)
+                const t = clampedScore / 5;
+                const r = 248; // Red stays high
+                const g = Math.round(81 + (217 - 81) * t); // Increase green: 81 -> 217
+                const b = Math.round(73 + (34 - 73) * t); // Decrease blue: 73 -> 34
+                return `rgb(${r}, ${g}, ${b})`;
+            } else {
+                // Yellow to Green (5-10)
+                const t = (clampedScore - 5) / 5;
+                const r = Math.round(217 - (217 - 63) * t); // Decrease red: 217 -> 63
+                const g = Math.round(217 - (217 - 185) * t); // Slight decrease green: 217 -> 185
+                const b = Math.round(34 + (80 - 34) * t); // Increase blue: 34 -> 80
+                return `rgb(${r}, ${g}, ${b})`;
+            }
         }
 
         function getScoreClass(score) {
@@ -1387,6 +1430,11 @@
                                   class="${getScoreClass(claim.score)}">
                                 Score: ${claim.score}/10
                             </span>
+                            ${claim.propagated_negative_log !== undefined ? `
+                                <span style="display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem; background: rgba(52, 120, 246, 0.15); color: var(--accent);">
+                                    Propagated -log₂: ${claim.propagated_negative_log.toFixed(3)}
+                                </span>
+                            ` : ''}
                         </div>
                         ${claim.tags && claim.tags.length > 0 ? `
                             <div style="margin-top: 0.5rem;">
@@ -1866,9 +1914,9 @@
             node.filter(d => d.type === 'claim')
                 .append('circle')
                 .attr('r', fullTextMode ? 65 : 50)
-                .attr('fill', d => getScoreColor(d.score))
+                .attr('fill', d => getScoreColor(getEffectiveScore(d)))
                 .attr('fill-opacity', 0.6)
-                .attr('stroke', d => getScoreColor(d.score))
+                .attr('stroke', d => getScoreColor(getEffectiveScore(d)))
                 .attr('stroke-width', 2)
                 .attr('cursor', 'pointer');
 
@@ -2130,7 +2178,8 @@
             const hasPremises = premises && premises.length > 0;
             const isCollapsed = outlineCollapsedNodes.has(claim.id);
 
-            const scoreColor = getScoreColor(claim.score);
+            const effectiveScore = getEffectiveScore(claim);
+            const scoreColor = getScoreColor(effectiveScore);
 
             node.innerHTML = `
                 <div class="outline-claim" data-claim-id="${claim.id}" style="border-left-color: ${scoreColor};">
@@ -2142,7 +2191,7 @@
                     <div class="outline-content">
                         <div class="outline-id">${claim.id}</div>
                         <div class="outline-text">${claim.text}</div>
-                        <span class="outline-score ${getScoreClass(claim.score)}">${claim.score}/10</span>
+                        <span class="outline-score ${getScoreClass(effectiveScore)}">${effectiveScore.toFixed(1)}/10</span>
                     </div>
                 </div>
             `;
