@@ -448,16 +448,13 @@ async def gapmap_list_gaps(args: Dict[str, Any]) -> Dict[str, Any]:
             result_text += f" in {field}"
         result_text += "):\n\n"
 
-        for gap in gaps[:10]:  # Show first 10
+        for gap in gaps:
             field_name = gap.get("field", {}).get("name", "Unknown")
             cap_count = len(gap.get("foundationalCapabilities", []))
 
             result_text += f"**{gap['name']}** ({field_name})\n"
             result_text += f"{gap['description']}\n"
             result_text += f"Gap ID: `{gap['id']}` | Capabilities: {cap_count}\n\n"
-
-        if len(gaps) > 10:
-            result_text += f"(Showing 10 of {len(gaps)} gaps)"
 
         return {"content": [{"type": "text", "text": result_text}]}
     except Exception as e:
@@ -489,7 +486,7 @@ async def gapmap_search_gaps(args: Dict[str, Any]) -> Dict[str, Any]:
 
         result_text = f"Found {len(gaps)} gap(s):\n\n"
 
-        for gap in gaps[:5]:
+        for gap in gaps:
             field_name = gap.get("field", {}).get("name", "Unknown")
             tags = gap.get("tags", [])
             tags_str = f" [{', '.join(tags)}]" if tags else ""
@@ -499,9 +496,6 @@ async def gapmap_search_gaps(args: Dict[str, Any]) -> Dict[str, Any]:
             result_text += f"{gap['description']}\n"
             result_text += f"Gap ID: `{gap['id']}`\n"
             result_text += f"Proposed capabilities: {cap_count}\n\n"
-
-        if len(gaps) > 5:
-            result_text += f"(Showing 5 of {len(gaps)} results)"
 
         return {"content": [{"type": "text", "text": result_text}]}
     except Exception as e:
@@ -523,18 +517,15 @@ async def gapmap_list_capabilities(args: Dict[str, Any]) -> Dict[str, Any]:
 
         result_text = f"**GAP-map Foundational Capabilities** ({len(capabilities)} total):\n\n"
 
-        for cap in capabilities[:15]:  # Show first 15
+        for cap in capabilities:
             tags = cap.get("tags", [])
-            tags_str = f" [{', '.join(tags[:2])}]" if tags else ""
+            tags_str = f" [{', '.join(tags)}]" if tags else ""
             gap_count = len(cap.get("gaps", []))
             resource_count = len(cap.get("resources", []))
 
             result_text += f"**{cap['name']}**{tags_str}\n"
-            result_text += f"{cap['description']}\n"
+            result_text += f"{cap['description']}\n" if cap['description'] else ""
             result_text += f"ID: `{cap['id']}` | Gaps addressed: {gap_count} | Resources: {resource_count}\n\n"
-
-        if len(capabilities) > 15:
-            result_text += f"(Showing 15 of {len(capabilities)} capabilities)"
 
         return {"content": [{"type": "text", "text": result_text}]}
     except Exception as e:
