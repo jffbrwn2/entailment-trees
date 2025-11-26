@@ -22,6 +22,21 @@
             --success: #3fb950;
             --warning: #d29922;
             --danger: #f85149;
+            --junction-bg: #0f1419;
+        }
+
+        :root[data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f6f8fa;
+            --bg-tertiary: #eaeef2;
+            --text-primary: #24292f;
+            --text-secondary: #57606a;
+            --border: #d0d7de;
+            --accent: #0969da;
+            --success: #1a7f37;
+            --warning: #9a6700;
+            --danger: #cf222e;
+            --junction-bg: #ffffff;
         }
 
         body {
@@ -336,6 +351,7 @@
             <select id="example-select">
                 <option value="">Loading...</option>
             </select>
+            <button id="toggle-theme">🌙 Dark Mode</button>
             <button id="toggle-view-mode">View: Graph</button>
             <button id="reset-view">Reset View</button>
             <button id="toggle-text">Compact Text</button>
@@ -427,6 +443,34 @@
         let autoReloadInterval = null;
         let currentGraphPath = null;
 
+        // Initialize theme from localStorage or default to dark
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        updateThemeButton();
+
+        function updateThemeButton() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const button = document.getElementById('toggle-theme');
+            if (currentTheme === 'light') {
+                button.textContent = '☀️ Light Mode';
+            } else {
+                button.textContent = '🌙 Dark Mode';
+            }
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateThemeButton();
+
+            // Re-render graph to update colors
+            if (viewMode === 'graph' && hypergraph) {
+                renderHypergraph();
+            }
+        }
+
         // Check URL parameter for graph file
         const urlParams = new URLSearchParams(window.location.search);
         const graphParam = urlParams.get('graph');
@@ -514,6 +558,7 @@
             loadExample(e.target.value);
         });
 
+        document.getElementById('toggle-theme').addEventListener('click', toggleTheme);
         document.getElementById('toggle-view-mode').addEventListener('click', toggleViewMode);
         document.getElementById('reset-view').addEventListener('click', resetView);
         document.getElementById('toggle-text').addEventListener('click', toggleTextMode);
@@ -1197,6 +1242,7 @@
 
             // Add defs for markers
             const defs = svg.append('defs');
+            const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
 
             defs.append('marker')
                 .attr('id', 'arrowhead')
@@ -1208,7 +1254,7 @@
                 .attr('orient', 'auto')
                 .append('path')
                 .attr('d', 'M0,-5L10,0L0,5')
-                .attr('fill', '#58a6ff');
+                .attr('fill', accentColor);
 
             const filter = defs.append('filter')
                 .attr('id', 'glow')
@@ -1250,13 +1296,16 @@
                 }
             }
 
+            const edgeAccentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+            const edgeSecondaryColor = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim();
+
             const link = g.append('g')
                 .selectAll('path')
                 .data(links)
                 .join('path')
                 .attr('class', d => `hyperedge ${d.type}`)
                 .attr('d', createCurvePath)
-                .attr('stroke', d => d.type === 'junction-to-conclusion' ? '#58a6ff' : '#8b949e')
+                .attr('stroke', d => d.type === 'junction-to-conclusion' ? edgeAccentColor : edgeSecondaryColor)
                 .attr('stroke-width', d => {
                     // Make vertical lines thicker so they're more visible
                     const dx = Math.abs(d.target.x - d.source.x);
@@ -1296,7 +1345,7 @@
                 .append('circle')
                 .attr('r', fullTextMode ? 65 : 50)
                 .attr('fill', d => getScoreColor(d.score))
-                .attr('fill-opacity', 0.2)
+                .attr('fill-opacity', 0.6)
                 .attr('stroke', d => getScoreColor(d.score))
                 .attr('stroke-width', 2)
                 .attr('cursor', 'pointer');
@@ -1304,9 +1353,10 @@
             // Add claim text
             node.filter(d => d.type === 'claim')
                 .each(function(d) {
+                    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
                     const text = d3.select(this).append('text')
                         .attr('text-anchor', 'middle')
-                        .attr('fill', '#e6edf3')
+                        .attr('fill', textColor)
                         .attr('font-size', fullTextMode ? '10px' : '11px')
                         .attr('font-weight', '500')
                         .attr('pointer-events', 'none');
@@ -1365,12 +1415,16 @@
                             event.stopPropagation(); // Prevent zoom on double-click
                         });
 
+                    const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
+                    const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim();
+                    const junctionBg = getComputedStyle(document.documentElement).getPropertyValue('--junction-bg').trim();
+
                     indicatorG.append('circle')
                         .attr('cx', radius * 0.6)
                         .attr('cy', radius * 0.6)
                         .attr('r', 12)
-                        .attr('fill', '#58a6ff')
-                        .attr('stroke', '#e6edf3')
+                        .attr('fill', accentColor)
+                        .attr('stroke', textColor)
                         .attr('stroke-width', 2);
 
                     const isCollapsed = arePremisesCollapsed(d.id);
@@ -1380,7 +1434,7 @@
                         .attr('y', radius * 0.6)
                         .attr('text-anchor', 'middle')
                         .attr('dy', '0.35em')
-                        .attr('fill', '#0f1419')
+                        .attr('fill', junctionBg)
                         .attr('font-size', '14px')
                         .attr('font-weight', '700')
                         .attr('pointer-events', 'none')
@@ -1397,12 +1451,14 @@
                 .attr('opacity', 0.9)
                 .attr('cursor', 'pointer');
 
+            const junctionTextColor = getComputedStyle(document.documentElement).getPropertyValue('--junction-bg').trim();
+
             node.filter(d => d.type === 'junction')
                 .append('text')
                 .text(d => d.implication.type === 'OR' ? '∨' : '∧')
                 .attr('text-anchor', 'middle')
                 .attr('dy', '0.35em')
-                .attr('fill', '#0f1419')
+                .attr('fill', junctionTextColor)
                 .attr('font-size', '12px')
                 .attr('font-weight', '700')
                 .attr('pointer-events', 'none');
