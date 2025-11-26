@@ -777,21 +777,436 @@
             return premises.some(p => collapsedNodes.has(p));
         }
 
-        function toggleCollapse(conclusionId) {
+        async function toggleCollapse(conclusionId) {
             const premises = conclusionToPremises.get(conclusionId);
             if (!premises) return;
 
             const currentlyCollapsed = arePremisesCollapsed(conclusionId);
 
             if (currentlyCollapsed) {
-                premises.forEach(p => collapsedNodes.delete(p));
+                // EXPAND: Show children sequentially
+                await expandWithAnimation(conclusionId, premises);
             } else {
-                collapseRecursive(conclusionId);
+                // COLLAPSE: Hide children sequentially (reverse order)
+                await collapseWithAnimation(conclusionId, premises);
             }
 
-            // Just update visibility instead of full re-render
-            updateNodeVisibility();
+            // Update indicators after animation
             updateExpandIndicators();
+        }
+
+        async function expandWithAnimation(conclusionId, premises) {
+            // Get parent position
+            const parentNode = d3.selectAll('.claim-node').filter(d => d.id === conclusionId);
+            const parentData = parentNode.datum();
+            const parentX = parentData.x;
+            const parentY = parentData.y;
+
+            // Get junction for this implication
+            const impl = hypergraph.implications.find(i => i.conclusion === conclusionId);
+            const junctionId = impl ? `junction_${impl.id}` : null;
+
+            // Recalculate layout to get target positions
+            const width = document.getElementById('graph').clientWidth;
+            const height = 800;
+
+            // Temporarily mark as expanded to calculate layout
+            premises.forEach(p => collapsedNodes.delete(p));
+            const visibleClaims = hypergraph.claims
+                .map(c => ({...c, type: 'claim'}))
+                .filter(c => !collapsedNodes.has(c.id));
+            const { positions } = calculateTreeLayout(visibleClaims, width, height);
+
+            // Update ALL node positions from new layout
+            updateAllNodePositions(positions);
+
+            // First: Animate all other nodes to new positions to make space
+            await animateLayoutChange(positions);
+
+            // Then: Expand junction from parent with edges growing
+            if (junctionId) {
+                const junctionTarget = positions.get(junctionId);
+                const junctionNode = d3.selectAll('.junction-node').filter(d => d.id === junctionId);
+
+                // Animate junction growing from parent position
+                junctionNode
+                    .style('display', null)
+                    .each(function(d) {
+                        // Temporarily set position to parent for animation start
+                        d._animX = parentX;
+                        d._animY = parentY;
+
+                        // Show edges connected to this junction
+                        d3.selectAll('.hyperedge')
+                            .filter(edge => edge.target.id === junctionId || edge.source.id === junctionId)
+                            .each(function(edge) {
+                                // Check if the other end of the edge is visible
+                                const otherNodeId = edge.source.id === junctionId ? edge.target.id : edge.source.id;
+
+                                // Don't show edges to premises that will be expanded later
+                                const isPremiseToExpand = premises.includes(otherNodeId);
+                                if (isPremiseToExpand) {
+                                    return; // Skip this edge, it will be shown when the premise expands
+                                }
+
+                                const otherNodeVisible = !collapsedNodes.has(otherNodeId);
+
+                                if (otherNodeVisible) {
+                                    // Show edge starting at zero length from the visible end
+                                    const visibleX = edge.source.id === junctionId ? (edge.target.x || parentX) : (edge.source.x || parentX);
+                                    const visibleY = edge.source.id === junctionId ? (edge.target.y || parentY) : (edge.source.y || parentY);
+                                    d3.select(this)
+                                        .attr('d', `M ${visibleX},${visibleY} L ${visibleX},${visibleY}`)
+                                        .style('display', null);
+                                }
+                            });
+                    })
+                    .attr('transform', `translate(${parentX},${parentY}) scale(0)`)
+                    .transition()
+                    .duration(300)
+                    .ease(d3.easeCubicOut)
+                    .attr('transform', `translate(${junctionTarget.x},${junctionTarget.y}) scale(1)`)
+                    .tween('position', function(d) {
+                        const interpolateX = d3.interpolate(parentX, junctionTarget.x);
+                        const interpolateY = d3.interpolate(parentY, junctionTarget.y);
+                        return function(t) {
+                            d._animX = interpolateX(t);
+                            d._animY = interpolateY(t);
+                            // Animate edges connected to this junction
+                            animateEdgesForNode(d);
+                        };
+                    })
+                    .on('end', function(d) {
+                        d.x = junctionTarget.x;
+                        d.y = junctionTarget.y;
+                        delete d._animX;
+                        delete d._animY;
+                    });
+
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+
+            // Step 2: Expand premises sequentially with edges growing
+            const expandFromX = positions.get(junctionId)?.x || parentX;
+            const expandFromY = positions.get(junctionId)?.y || parentY;
+
+            for (let i = 0; i < premises.length; i++) {
+                const premiseId = premises[i];
+                const premiseTarget = positions.get(premiseId);
+                const premiseNode = d3.selectAll('.claim-node').filter(d => d.id === premiseId);
+
+                // Animate node growing from junction/parent position
+                premiseNode
+                    .style('display', null)
+                    .each(function(d) {
+                        d._animX = expandFromX;
+                        d._animY = expandFromY;
+
+                        // Show edges connected to this premise
+                        d3.selectAll('.hyperedge')
+                            .filter(edge => edge.target.id === premiseId || edge.source.id === premiseId)
+                            .each(function(edge) {
+                                // Check if the other end of the edge is visible
+                                const otherNodeId = edge.source.id === premiseId ? edge.target.id : edge.source.id;
+                                const otherNodeVisible = !collapsedNodes.has(otherNodeId);
+
+                                if (otherNodeVisible) {
+                                    // Show edge starting at zero length from the visible end
+                                    let visibleX, visibleY;
+
+                                    if (edge.source.id === premiseId) {
+                                        // This premise is the source, other end (target) is visible
+                                        visibleX = edge.target._animX !== undefined ? edge.target._animX : (edge.target.x || expandFromX);
+                                        visibleY = edge.target._animY !== undefined ? edge.target._animY : (edge.target.y || expandFromY);
+                                    } else {
+                                        // This premise is the target, other end (source) is visible
+                                        visibleX = edge.source._animX !== undefined ? edge.source._animX : (edge.source.x || expandFromX);
+                                        visibleY = edge.source._animY !== undefined ? edge.source._animY : (edge.source.y || expandFromY);
+                                    }
+
+                                    d3.select(this)
+                                        .attr('d', `M ${visibleX},${visibleY} L ${visibleX},${visibleY}`)
+                                        .style('display', null);
+                                }
+                            });
+                    })
+                    .attr('transform', `translate(${expandFromX},${expandFromY}) scale(0)`)
+                    .transition()
+                    .duration(400)
+                    .ease(d3.easeCubicOut)
+                    .attr('transform', `translate(${premiseTarget.x},${premiseTarget.y}) scale(1)`)
+                    .tween('position', function(d) {
+                        const interpolateX = d3.interpolate(expandFromX, premiseTarget.x);
+                        const interpolateY = d3.interpolate(expandFromY, premiseTarget.y);
+                        return function(t) {
+                            d._animX = interpolateX(t);
+                            d._animY = interpolateY(t);
+                            // Animate edges connected to this node
+                            animateEdgesForNode(d);
+                        };
+                    })
+                    .on('end', function(d) {
+                        d.x = premiseTarget.x;
+                        d.y = premiseTarget.y;
+                        delete d._animX;
+                        delete d._animY;
+                    });
+
+                await new Promise(resolve => setTimeout(resolve, 150));
+            }
+        }
+
+        async function collapseWithAnimation(conclusionId, premises) {
+            // Get parent position
+            const parentNode = d3.selectAll('.claim-node').filter(d => d.id === conclusionId);
+            const parentData = parentNode.datum();
+            const parentX = parentData.x;
+            const parentY = parentData.y;
+
+            // Get junction for this implication
+            const impl = hypergraph.implications.find(i => i.conclusion === conclusionId);
+            const junctionId = impl ? `junction_${impl.id}` : null;
+
+            // Get junction position if it exists
+            const junctionNode = junctionId ? d3.selectAll('.junction-node').filter(d => d.id === junctionId) : null;
+            const junctionData = junctionNode ? junctionNode.datum() : null;
+            const collapseToX = junctionData?.x || parentX;
+            const collapseToY = junctionData?.y || parentY;
+
+            // Step 1: Collapse premises in reverse order (deepest first)
+            const premisesReversed = [...premises].reverse();
+
+            for (let i = 0; i < premisesReversed.length; i++) {
+                const premiseId = premisesReversed[i];
+
+                // If this premise is also a conclusion, collapse it recursively first
+                if (isConclusion(premiseId)) {
+                    const subPremises = conclusionToPremises.get(premiseId);
+                    if (subPremises && !arePremisesCollapsed(premiseId)) {
+                        await collapseWithAnimation(premiseId, subPremises);
+                    }
+                }
+
+                const premiseNode = d3.selectAll('.claim-node').filter(d => d.id === premiseId);
+
+                // Shrink node back to junction position with edges retracting
+                await premiseNode
+                    .each(function(d) {
+                        d._animX = d.x;
+                        d._animY = d.y;
+                    })
+                    .transition()
+                    .duration(300)
+                    .ease(d3.easeCubicIn)
+                    .attr('transform', `translate(${collapseToX},${collapseToY}) scale(0)`)
+                    .tween('position', function(d) {
+                        const interpolateX = d3.interpolate(d.x, collapseToX);
+                        const interpolateY = d3.interpolate(d.y, collapseToY);
+                        return function(t) {
+                            d._animX = interpolateX(t);
+                            d._animY = interpolateY(t);
+                            // Animate edges retracting with this node
+                            animateEdgesForNode(d);
+                        };
+                    })
+                    .on('end', function(d) {
+                        delete d._animX;
+                        delete d._animY;
+                    })
+                    .end();
+
+                premiseNode.style('display', 'none');
+                collapsedNodes.add(premiseId);
+
+                // Hide edges connected to this premise
+                d3.selectAll('.hyperedge')
+                    .filter(d => d.source.id === premiseId || d.target.id === premiseId)
+                    .style('display', 'none');
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            // Step 2: Collapse junction back to parent with edges retracting
+            if (junctionId && junctionNode) {
+                const junctionData = junctionNode.datum();
+
+                await junctionNode
+                    .each(function(d) {
+                        d._animX = d.x;
+                        d._animY = d.y;
+                    })
+                    .transition()
+                    .duration(300)
+                    .ease(d3.easeCubicIn)
+                    .attr('transform', `translate(${parentX},${parentY}) scale(0)`)
+                    .tween('position', function(d) {
+                        const interpolateX = d3.interpolate(d.x, parentX);
+                        const interpolateY = d3.interpolate(d.y, parentY);
+                        return function(t) {
+                            d._animX = interpolateX(t);
+                            d._animY = interpolateY(t);
+                            // Animate edges retracting with this junction
+                            animateEdgesForNode(d);
+                        };
+                    })
+                    .on('end', function(d) {
+                        delete d._animX;
+                        delete d._animY;
+                    })
+                    .end();
+
+                junctionNode.style('display', 'none');
+
+                // Hide edges connected to this junction
+                d3.selectAll('.hyperedge')
+                    .filter(d => d.source.id === junctionId || d.target.id === junctionId)
+                    .style('display', 'none');
+            }
+
+            // Step 3: Recalculate layout for remaining nodes
+            const width = document.getElementById('graph').clientWidth;
+            const height = 800;
+            const visibleClaims = hypergraph.claims
+                .map(c => ({...c, type: 'claim'}))
+                .filter(c => !collapsedNodes.has(c.id));
+            const { positions } = calculateTreeLayout(visibleClaims, width, height);
+
+            // Update positions and animate
+            updateAllNodePositions(positions);
+            await animateLayoutChange(positions);
+        }
+
+        function animateEdgesForNode(node) {
+            // Update edge paths for edges connected to this node in real-time
+            // Use _animX/_animY if available (during animation), otherwise use x/y
+            const nodeX = node._animX !== undefined ? node._animX : node.x;
+            const nodeY = node._animY !== undefined ? node._animY : node.y;
+
+            // Update all edges where this node is source or target
+            d3.selectAll('.hyperedge').each(function(d) {
+                let updated = false;
+
+                // Check if this edge connects to our animating node
+                if (d.source.id === node.id) {
+                    updated = true;
+                } else if (d.target.id === node.id) {
+                    updated = true;
+                }
+
+                if (updated) {
+                    // Get current positions (use anim positions if available)
+                    const sourceX = d.source._animX !== undefined ? d.source._animX : d.source.x;
+                    const sourceY = d.source._animY !== undefined ? d.source._animY : d.source.y;
+                    const targetX = d.target._animX !== undefined ? d.target._animX : d.target.x;
+                    const targetY = d.target._animY !== undefined ? d.target._animY : d.target.y;
+
+                    const dx = targetX - sourceX;
+                    const dy = targetY - sourceY;
+
+                    // Calculate path
+                    let pathD;
+                    if (d.type === 'premise-to-junction') {
+                        const cp1X = sourceX + dx * 0.3;
+                        const cp1Y = sourceY + dy * 0.3;
+                        const cp2X = targetX - dx * 0.2;
+                        const cp2Y = targetY - dy * 0.2;
+                        pathD = `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
+                    } else {
+                        const cp1X = sourceX + dx * 0.3;
+                        const cp1Y = sourceY + dy * 0.3 - 15;
+                        const cp2X = sourceX + dx * 0.7;
+                        const cp2Y = sourceY + dy * 0.7 - 15;
+                        pathD = `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
+                    }
+
+                    // Update path immediately (no transition, part of node's animation)
+                    d3.select(this).attr('d', pathD);
+                }
+            });
+        }
+
+        function updateAllNodePositions(positions) {
+            // Update all node data objects with new positions
+            d3.selectAll('.claim-node').each(function(d) {
+                const newPos = positions.get(d.id);
+                if (newPos) {
+                    d.x = newPos.x;
+                    d.y = newPos.y;
+                }
+            });
+
+            d3.selectAll('.junction-node').each(function(d) {
+                const newPos = positions.get(d.id);
+                if (newPos) {
+                    d.x = newPos.x;
+                    d.y = newPos.y;
+                }
+            });
+
+            // Update edge source/target references
+            d3.selectAll('.hyperedge').each(function(d) {
+                // Source and target are node objects, their x/y are already updated above
+                // Just need to make sure the reference is still valid
+            });
+        }
+
+        async function animateLayoutChange(positions) {
+            // Animate all visible nodes to their new positions
+            d3.selectAll('.claim-node')
+                .filter(d => !collapsedNodes.has(d.id))
+                .transition()
+                .duration(600)
+                .ease(d3.easeCubicInOut)
+                .attr('transform', d => `translate(${d.x},${d.y}) scale(1)`);
+
+            d3.selectAll('.junction-node')
+                .filter(d => {
+                    // Check if junction is visible (its conclusion and all premises are visible)
+                    const impl = d.implication;
+                    if (collapsedNodes.has(impl.conclusion)) return false;
+                    if (impl.premises.some(p => collapsedNodes.has(p))) return false;
+                    return true;
+                })
+                .transition()
+                .duration(600)
+                .ease(d3.easeCubicInOut)
+                .attr('transform', d => `translate(${d.x},${d.y}) scale(1)`);
+
+            // Animate all visible edges
+            await new Promise(resolve => setTimeout(resolve, 100));
+            await animateEdges();
+        }
+
+        async function animateEdges() {
+            // Animate edge paths to follow updated node positions
+            d3.selectAll('.hyperedge')
+                .transition()
+                .duration(400)
+                .ease(d3.easeCubicInOut)
+                .attr('d', function(d) {
+                    const sourceX = d.source.x;
+                    const sourceY = d.source.y;
+                    const targetX = d.target.x;
+                    const targetY = d.target.y;
+                    const dx = targetX - sourceX;
+                    const dy = targetY - sourceY;
+
+                    if (d.type === 'premise-to-junction') {
+                        const cp1X = sourceX + dx * 0.3;
+                        const cp1Y = sourceY + dy * 0.3;
+                        const cp2X = targetX - dx * 0.2;
+                        const cp2Y = targetY - dy * 0.2;
+                        return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
+                    } else {
+                        const cp1X = sourceX + dx * 0.3;
+                        const cp1Y = sourceY + dy * 0.3 - 15;
+                        const cp2X = sourceX + dx * 0.7;
+                        const cp2Y = sourceY + dy * 0.7 - 15;
+                        return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`;
+                    }
+                });
+
+            await new Promise(resolve => setTimeout(resolve, 400));
         }
 
         function updateNodeVisibility() {
@@ -808,11 +1223,12 @@
                     return null;
                 });
 
-            // Hide/show edges
+            // Hide/show edges based on whether source or target is collapsed
             d3.selectAll('.hyperedge')
                 .style('display', function(d) {
-                    if (collapsedNodes.has(d.conclusion)) return 'none';
-                    if (d.premises && d.premises.some(p => collapsedNodes.has(p))) return 'none';
+                    // Hide edge if either source or target is collapsed
+                    if (collapsedNodes.has(d.source.id)) return 'none';
+                    if (collapsedNodes.has(d.target.id)) return 'none';
                     return null;
                 });
         }
