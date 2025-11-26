@@ -180,8 +180,8 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
         # Build claim lookup
         claims = {c['id']: c for c in hypergraph.get('claims', [])}
 
-        # Track which implications were checked (for updating timestamps)
-        implications_checked = []
+        # Track which implications were checked and their results
+        check_results = {}  # impl_id -> {status, explanation}
 
         # Check each implication
         for impl in hypergraph.get('implications', []):
@@ -243,8 +243,19 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
                 impl_type
             )
 
-            # Mark as checked
-            implications_checked.append(impl_id)
+            # Determine status
+            if not is_valid:
+                status = "failed"
+            elif redundant_premises:
+                status = "failed"  # Issues with premise set
+            else:
+                status = "passed"
+
+            # Store result
+            check_results[impl_id] = {
+                'status': status,
+                'explanation': explanation
+            }
 
             if not is_valid:
                 errors.append(
@@ -269,21 +280,25 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
                         f"Implication {impl_id}: {explanation.split('SUGGESTIONS:')[1].strip()}"
                     )
 
-        # Update last_checked timestamps for implications that were checked
-        if implications_checked:
+        # Update check results for implications that were checked
+        if check_results:
             from datetime import datetime
             timestamp = datetime.now().isoformat()
 
+            # Update implications with check results
             for impl in hypergraph.get('implications', []):
-                if impl.get('id') in implications_checked:
+                impl_id = impl.get('id')
+                if impl_id in check_results:
                     impl['last_checked'] = timestamp
+                    impl['entailment_status'] = check_results[impl_id]['status']
+                    impl['entailment_explanation'] = check_results[impl_id]['explanation']
 
             # Save updated hypergraph
             try:
                 with open(hypergraph_path, 'w') as f:
                     json.dump(hypergraph, f, indent=2)
             except Exception as e:
-                warnings.append(f"Failed to update last_checked timestamps: {e}")
+                warnings.append(f"Failed to update check results: {e}")
 
         return errors, warnings
 

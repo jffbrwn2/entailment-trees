@@ -1532,6 +1532,17 @@
                         <div style="font-family: 'SF Mono', Monaco, monospace; color: var(--accent); margin-bottom: 0.75rem; font-size: 0.9rem;">
                             ${formula}
                         </div>
+                        ${impl.entailment_status ? `
+                            <div style="margin-bottom: 0.75rem;">
+                                <span style="display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; ${
+                                    impl.entailment_status === 'passed'
+                                        ? 'background: rgba(63, 185, 80, 0.15); color: #3fb950;'
+                                        : 'background: rgba(248, 81, 73, 0.15); color: #f85149;'
+                                }">
+                                    Entailment: ${impl.entailment_status === 'passed' ? '✓ Passed' : '✗ Failed'}
+                                </span>
+                            </div>
+                        ` : ''}
                     </div>
                     <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
                         <div style="font-weight: 600; margin-bottom: 0.75rem; color: var(--accent);">Reasoning</div>
@@ -1539,6 +1550,14 @@
                             ${impl.reasoning}
                         </div>
                     </div>
+                    ${impl.entailment_explanation ? `
+                        <div style="border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem;">
+                            <div style="font-weight: 600; margin-bottom: 0.75rem; color: var(--text-secondary);">Entailment Check Details</div>
+                            <div style="font-size: 0.85rem; line-height: 1.6; color: var(--text-secondary); font-family: 'SF Mono', Monaco, monospace; white-space: pre-wrap;">
+                                ${impl.entailment_explanation}
+                            </div>
+                        </div>
+                    ` : ''}
                 `;
             }
         }
@@ -1875,7 +1894,22 @@
                 .join('path')
                 .attr('class', d => `hyperedge ${d.type}`)
                 .attr('d', createCurvePath)
-                .attr('stroke', d => d.type === 'junction-to-conclusion' ? edgeAccentColor : edgeSecondaryColor)
+                .attr('stroke', d => {
+                    // Look up implication to check entailment status
+                    const impl = hypergraph.implications.find(i => i.id === d.implId);
+                    const status = impl?.entailment_status;
+
+                    // Color based on type and entailment status
+                    if (d.type === 'junction-to-conclusion') {
+                        // Main edge: red if failed, blue if passed, gray if not checked
+                        if (status === 'failed') return '#f85149';
+                        if (status === 'passed') return edgeAccentColor;
+                        return edgeSecondaryColor; // Not checked yet - gray
+                    } else {
+                        // Premise edges: gray
+                        return edgeSecondaryColor;
+                    }
+                })
                 .attr('stroke-width', d => {
                     // Make vertical lines thicker so they're more visible
                     const dx = Math.abs(d.target.x - d.source.x);
