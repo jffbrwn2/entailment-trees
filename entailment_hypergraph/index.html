@@ -930,7 +930,16 @@
                                 const otherNodeId = edge.source.id === premiseId ? edge.target.id : edge.source.id;
                                 const otherNodeVisible = !collapsedNodes.has(otherNodeId);
 
-                                if (otherNodeVisible) {
+                                // Don't show edges to children of this premise yet
+                                // Those edges should only appear when the child is expanded
+                                const childrenOfThisPremise = conclusionToPremises.get(premiseId) || [];
+                                const isChildEdge = childrenOfThisPremise.includes(otherNodeId) ||
+                                                   (otherNodeId.startsWith('junction_') &&
+                                                    hypergraph.implications.find(impl =>
+                                                        `junction_${impl.id}` === otherNodeId &&
+                                                        impl.conclusion === premiseId));
+
+                                if (otherNodeVisible && !isChildEdge) {
                                     // Show edge starting at zero length from the visible end
                                     let visibleX, visibleY;
 
