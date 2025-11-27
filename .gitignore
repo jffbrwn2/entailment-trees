@@ -11,6 +11,9 @@ logs/
 # Architecture docs (work in progress)
 ARCHITECTURE.md
 
+# Web implementation research
+WEB_IMPLEMENTATION_RESEARCH.md
+
 # Python
 __pycache__/
 *.py[cod]
@@ -30,5 +33,3 @@ __pycache__/
 
 # Jupyter
 .ipynb_checkpoints/
-
-media/
