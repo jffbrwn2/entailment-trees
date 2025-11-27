@@ -993,24 +993,26 @@
             const collapseToX = junctionData?.x || parentX;
             const collapseToY = junctionData?.y || parentY;
 
-            // Step 1: Collapse premises in reverse order (deepest first)
+            // Step 1: Collapse premises simultaneously (deepest first for recursive cases)
             const premisesReversed = [...premises].reverse();
 
+            // First, handle recursive collapses for any premises that are also conclusions
             for (let i = 0; i < premisesReversed.length; i++) {
                 const premiseId = premisesReversed[i];
-
-                // If this premise is also a conclusion, collapse it recursively first
                 if (isConclusion(premiseId)) {
                     const subPremises = conclusionToPremises.get(premiseId);
                     if (subPremises && !arePremisesCollapsed(premiseId)) {
                         await collapseWithAnimation(premiseId, subPremises);
                     }
                 }
+            }
 
+            // Now collapse all premises at this level simultaneously
+            const collapsePromises = premisesReversed.map(premiseId => {
                 const premiseNode = d3.selectAll('.claim-node').filter(d => d.id === premiseId);
 
                 // Shrink node back to junction position with edges retracting
-                await premiseNode
+                return premiseNode
                     .each(function(d) {
                         d._animX = d.x;
                         d._animY = d.y;
@@ -1033,18 +1035,20 @@
                         delete d._animX;
                         delete d._animY;
                     })
-                    .end();
+                    .end()
+                    .then(() => {
+                        premiseNode.style('display', 'none');
+                        collapsedNodes.add(premiseId);
 
-                premiseNode.style('display', 'none');
-                collapsedNodes.add(premiseId);
+                        // Hide edges connected to this premise
+                        d3.selectAll('.hyperedge')
+                            .filter(d => d.source.id === premiseId || d.target.id === premiseId)
+                            .style('display', 'none');
+                    });
+            });
 
-                // Hide edges connected to this premise
-                d3.selectAll('.hyperedge')
-                    .filter(d => d.source.id === premiseId || d.target.id === premiseId)
-                    .style('display', 'none');
-
-                await new Promise(resolve => setTimeout(resolve, 100));
-            }
+            // Wait for all premise collapses to complete
+            await Promise.all(collapsePromises);
 
             // Step 2: Collapse junction back to parent with edges retracting
             if (junctionId && junctionNode) {
