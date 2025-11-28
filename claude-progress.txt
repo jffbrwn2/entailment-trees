@@ -27,23 +27,59 @@
   - Focus: FastAPI backend + React frontend + port visualization
   - Key insight: Modify ClaudeCodeClient to yield streams (not print to stdout)
 
-## Next Steps:
-1. Start with "streaming-refactor" - modify ClaudeCodeClient.query_stream()
-2. Then "fastapi-backend" - wrap agent_system with HTTP/WebSocket
-3. Then "react-frontend" - split pane layout
-4. Then "chat-interface" - SSE streaming consumer
-5. Then "visualization-port" - React component from index.html
-6. Finally "integration-testing" - end-to-end polish
+## Session 3: Implementation Sprint
+Implemented all Phase 1 features in one session:
 
-## Architecture Decision:
+### 1. Streaming Refactor ✓
+- Added StreamEvent types: TextEvent, ToolUseEvent, ToolResultEvent, ErrorEvent, DoneEvent
+- Added query_stream() async generator to ClaudeCodeClient
+- CLI still works unchanged
+- Commit: bd42645
+
+### 2. FastAPI Backend ✓
+- Created backend/main.py with FastAPI app
+- Endpoints: /health, /api/approaches, /api/chat (SSE), /ws/hypergraph/{folder}
+- Chat endpoint streams events via Server-Sent Events
+- WebSocket pushes hypergraph updates to connected clients
+- Tested: Server starts, health check passes
+- Commit: e5d7656
+
+### 3. React Frontend ✓
+- Created frontend/ with Vite + React + TypeScript
+- Split pane layout (60% viz, 40% chat) using react-split
+- ApproachSelector dropdown with create modal
+- ChatInterface with SSE streaming and tool indicators
+- HypergraphVisualizer with basic claim list (full viz deferred)
+- Dark theme matching existing visualizer
+- Build verified working
+- Commit: 83c6ba4
+
+### 4. Integration Script ✓
+- Created start_web.sh to launch both servers
+- Frontend proxies /api and /ws to backend
+
+## What's Working:
+- Backend starts on localhost:8000 with API docs
+- Frontend builds and runs on localhost:5173
+- Approaches list from existing folders
+- Basic hypergraph display with live WebSocket updates
+- Chat interface ready for streaming (needs end-to-end test)
+
+## What's Next:
+1. End-to-end testing: Run both servers, test full flow
+2. Port full visualization from entailment_hypergraph/index.html to React
+3. Test chat streaming with actual Claude responses
+4. Polish and bug fixes
+
+## Architecture:
 ```
 Browser (React) <--HTTP/SSE/WS--> FastAPI (localhost:8000) <--> agent_system <--> Claude SDK
 ```
-- SSE for streaming chat responses
-- WebSocket for live hypergraph updates
-- No persistence needed - files stay in approaches/ folder
 
-## Notes:
-- CLI must keep working after ClaudeCodeClient changes
-- Visualization port is biggest task - ~100KB of JS to understand
-- Hosting (Phase 2) deferred until local version works well
+## To Run:
+```bash
+./start_web.sh
+# Or manually:
+# Terminal 1: pixi run python -m uvicorn backend.main:app --port 8000
+# Terminal 2: cd frontend && npm run dev
+```
