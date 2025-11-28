@@ -1269,11 +1269,12 @@ class ClaudeCodeClient:
         """
         Switch client to a new mode (e.g., exploration → approach).
 
-        Updates working directory without destroying conversation history.
+        Forces SDK client to recreate with new working directory.
 
         Args:
             new_mode: New mode configuration
         """
+        old_working_dir = self.mode.working_dir if self.mode else None
         self.mode = new_mode
 
         # Update approach directory for Edison tools
@@ -1281,9 +1282,12 @@ class ClaudeCodeClient:
             global _approach_dir
             _approach_dir = new_mode.working_dir
 
-        # Note: We don't recreate the SDK client - conversation continues
-        # The cwd is set when the SDK client is created, but that's OK
-        # File operations will use the paths passed to tools
+        # Force SDK client recreation if working directory changed
+        # The cwd is set when the SDK client is created, so we must recreate
+        if old_working_dir != new_mode.working_dir and self.sdk_client is not None:
+            self._run_async(self.sdk_client.__aexit__(None, None, None))
+            self.sdk_client = None
+            self.current_system_prompt = None  # Force new system prompt too
 
     def end_conversation(self):
         """End the current conversation session."""

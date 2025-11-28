@@ -23,6 +23,11 @@
       "category": "approach"
     },
     {
+      "name": "new-limb",
+      "path": "/approaches/new-limb/hypergraph.json",
+      "category": "approach"
+    },
+    {
       "name": "novel-limbs",
       "path": "/approaches/novel-limbs/hypergraph.json",
       "category": "approach"

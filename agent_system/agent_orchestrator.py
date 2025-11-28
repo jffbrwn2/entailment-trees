@@ -258,10 +258,14 @@ When the user is ready to evaluate a specific idea, suggest they use /new to sta
 
 ## Current Approach
 **Name**: {self.current_session.approach_name}
-**Folder**: {self.current_session.approach_dir}
-**Hypergraph**: {self.current_session.approach_dir}/hypergraph.json
-**Simulations**: {self.current_session.approach_dir}/simulations/
-**References**: {self.current_session.approach_dir}/references/ (for literature, Edison tasks, etc.)
+
+**IMPORTANT: Your working directory is already set to the approach folder.**
+All file paths should be RELATIVE to this directory. Use these paths:
+- `hypergraph.json` - The entailment hypergraph (READ THIS FIRST to see current state)
+- `simulations/` - Python simulation scripts
+- `references/` - Literature and Edison task results
+
+Do NOT use absolute paths. Just use `hypergraph.json`, `simulations/my_script.py`, etc.
 
 ## Your Role
 Help the user evaluate their idea by:
@@ -514,7 +518,7 @@ To keep a claim, ensure it's connected to the hypothesis through a chain of impl
 
 ## Workflow
 
-1. **Read current hypergraph** - Always start by reading hypergraph.json to see current state
+1. **Read current hypergraph** - ALWAYS start by running: `Read hypergraph.json` to see current state
 
 2. **Break down the hypothesis** - Identify key claims that need evaluation:
    - Physical constraints (signal strength, noise, etc.)

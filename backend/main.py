@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 # Add parent directory to path so we can import agent_system
@@ -342,6 +343,13 @@ async def notify_hypergraph_update(folder: str):
     # Clean up disconnected clients
     for ws in disconnected:
         hypergraph_connections[folder].remove(ws)
+
+
+# Mount static files for visualization
+# These must be mounted AFTER all API routes
+PROJECT_ROOT = Path(__file__).parent.parent
+app.mount("/entailment_hypergraph", StaticFiles(directory=PROJECT_ROOT / "entailment_hypergraph", html=True), name="entailment_hypergraph")
+app.mount("/approaches", StaticFiles(directory=PROJECT_ROOT / "approaches"), name="approaches")
 
 
 if __name__ == "__main__":
