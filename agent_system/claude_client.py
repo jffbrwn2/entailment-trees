@@ -7,7 +7,7 @@ Provides Python interface to the Claude Agent SDK for programmatic interaction.
 import asyncio
 import os
 import json
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, AsyncIterator, Union
 from dataclasses import dataclass
 from pathlib import Path
 from datetime import datetime
@@ -18,6 +18,7 @@ from claude_agent_sdk import (
     AssistantMessage,
     TextBlock,
     ToolUseBlock,
+    ToolResultBlock,
     tool,
     create_sdk_mcp_server,
     HookMatcher,
@@ -51,6 +52,68 @@ class ClaudeResponse:
     session_id: Optional[str] = None
     cost_usd: Optional[float] = None
     raw_output: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class StreamEvent:
+    """Base class for streaming events from Claude."""
+    type: str  # "text", "tool_use", "tool_result", "error", "done"
+
+
+@dataclass
+class TextEvent(StreamEvent):
+    """Text chunk from Claude's response."""
+    text: str
+
+    def __init__(self, text: str):
+        self.type = "text"
+        self.text = text
+
+
+@dataclass
+class ToolUseEvent(StreamEvent):
+    """Notification that a tool is being used."""
+    tool_name: str
+    tool_input: Dict[str, Any]
+
+    def __init__(self, tool_name: str, tool_input: Dict[str, Any]):
+        self.type = "tool_use"
+        self.tool_name = tool_name
+        self.tool_input = tool_input
+
+
+@dataclass
+class ToolResultEvent(StreamEvent):
+    """Result from a tool execution."""
+    tool_name: str
+    result: str
+    is_error: bool = False
+
+    def __init__(self, tool_name: str, result: str, is_error: bool = False):
+        self.type = "tool_result"
+        self.tool_name = tool_name
+        self.result = result
+        self.is_error = is_error
+
+
+@dataclass
+class ErrorEvent(StreamEvent):
+    """Error during execution."""
+    error: str
+
+    def __init__(self, error: str):
+        self.type = "error"
+        self.error = error
+
+
+@dataclass
+class DoneEvent(StreamEvent):
+    """Stream complete."""
+    full_response: str
+
+    def __init__(self, full_response: str):
+        self.type = "done"
+        self.full_response = full_response
 
 
 @dataclass
@@ -1018,6 +1081,167 @@ class ClaudeCodeClient:
                     raw_metadata={"error": str(e)}
                 )
             raise RuntimeError(f"Claude SDK failed: {str(e)}")
+
+    async def _query_stream_async(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None
+    ) -> AsyncIterator[Union[TextEvent, ToolUseEvent, ToolResultEvent, ErrorEvent, DoneEvent]]:
+        """
+        Send a query to Claude Code and yield streaming events.
+
+        This is the web-friendly version that yields events instead of printing.
+
+        Args:
+            prompt: User message/prompt
+            system_prompt: Optional system instructions
+
+        Yields:
+            StreamEvent subclasses: TextEvent, ToolUseEvent, ToolResultEvent, ErrorEvent, DoneEvent
+        """
+        # Log turn start
+        if self.logger:
+            self.logger.log_turn_start(prompt)
+
+        # Initialize SDK client if not already done
+        should_recreate = (
+            self.sdk_client is None or
+            (system_prompt is not None and system_prompt != self.current_system_prompt)
+        )
+
+        if should_recreate:
+            # Set approach directory for Edison tools
+            if EDISON_AVAILABLE:
+                global _approach_dir
+                _approach_dir = self.mode.working_dir
+
+            # Build allowed tools list (include built-in tools + MCP tools)
+            allowed = self.allowed_tools.copy() if self.allowed_tools else []
+            allowed.append("mcp__entailment__check_entailment")
+            allowed.append("mcp__entailment__add_evidence")
+            allowed.append("mcp__entailment__evaluate_claim")
+
+            # Add Edison tools if available
+            if EDISON_AVAILABLE and edison_server:
+                allowed.append("mcp__edison__literature_search")
+                allowed.append("mcp__edison__precedent_search")
+                allowed.append("mcp__edison__check_edison_task")
+
+            # Add GAP-map tools
+            allowed.append("mcp__gapmap__list_fields")
+            allowed.append("mcp__gapmap__list_gaps")
+            allowed.append("mcp__gapmap__search_gaps")
+            allowed.append("mcp__gapmap__list_capabilities")
+            allowed.append("mcp__gapmap__get_capabilities")
+            allowed.append("mcp__gapmap__list_resources")
+            allowed.append("mcp__gapmap__get_resources")
+
+            # Build MCP servers dict
+            mcp_servers_dict = {
+                "entailment": entailment_server,
+                "gapmap": gapmap_server
+            }
+            if EDISON_AVAILABLE and edison_server:
+                mcp_servers_dict["edison"] = edison_server
+
+            options = ClaudeAgentOptions(
+                system_prompt=system_prompt or "claude_code",
+                allowed_tools=allowed if allowed else None,
+                cwd=str(self.mode.working_dir),
+                mcp_servers=mcp_servers_dict,
+                hooks={
+                    "PostToolUse": [
+                        HookMatcher(hooks=[tool_logging_hook])
+                    ],
+                    "Stop": [
+                        HookMatcher(hooks=[post_hypergraph_edit_hook])
+                    ]
+                }
+            )
+
+            # Close existing client if changing system prompt
+            if self.sdk_client is not None:
+                try:
+                    await self.sdk_client.__aexit__(None, None, None)
+                except:
+                    pass
+
+            self.sdk_client = ClaudeSDKClient(options=options)
+            await self.sdk_client.__aenter__()
+            self.current_system_prompt = system_prompt
+
+        # Send query and stream responses
+        try:
+            await self.sdk_client.query(prompt)
+
+            response_text = []
+            current_tool_name = None
+
+            async for message in self.sdk_client.receive_response():
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            response_text.append(block.text)
+                            yield TextEvent(block.text)
+                        elif isinstance(block, ToolUseBlock):
+                            current_tool_name = block.name
+                            yield ToolUseEvent(
+                                tool_name=block.name,
+                                tool_input=block.input if hasattr(block, 'input') else {}
+                            )
+                        elif isinstance(block, ToolResultBlock):
+                            # Tool result - extract content
+                            result_text = ""
+                            if hasattr(block, 'content'):
+                                if isinstance(block.content, str):
+                                    result_text = block.content
+                                elif isinstance(block.content, list):
+                                    result_text = str(block.content)
+                            yield ToolResultEvent(
+                                tool_name=current_tool_name or "unknown",
+                                result=result_text,
+                                is_error=getattr(block, 'is_error', False)
+                            )
+
+            # Log turn end
+            response_content = "".join(response_text)
+            if self.logger:
+                self.logger.log_turn_end(
+                    claude_response=response_content,
+                    cost_usd=None,
+                    raw_metadata={"messages": response_text}
+                )
+
+            yield DoneEvent(full_response=response_content)
+
+        except Exception as e:
+            # Log error if logger available
+            if self.logger:
+                self.logger.log_turn_end(
+                    claude_response=f"ERROR: {str(e)}",
+                    raw_metadata={"error": str(e)}
+                )
+            yield ErrorEvent(error=str(e))
+
+    async def query_stream(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None
+    ) -> AsyncIterator[Union[TextEvent, ToolUseEvent, ToolResultEvent, ErrorEvent, DoneEvent]]:
+        """
+        Send a query and yield streaming events (async generator).
+
+        This is the main entry point for web streaming.
+
+        Args:
+            prompt: User message/prompt
+            system_prompt: Optional system instructions
+
+        Yields:
+            StreamEvent subclasses
+        """
+        async for event in self._query_stream_async(prompt, system_prompt):
+            yield event
 
     def query(
         self,
