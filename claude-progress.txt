@@ -5,17 +5,45 @@
 ## Start Date: 2025-11-28
 
 ## Session 1: Harness Setup
-- Created features.json with all Phase 1 & 2 tasks
+- Created features.json with all Phase 1 & 2 tasks (original full-stack plan)
 - Created init.sh environment setup script
 - Initialized progress tracking system
 - Created baseline git structure
 
+## Session 2: Architecture Pivot to Local-First
+- Discussed requirements with user:
+  - Few collaborators (not public)
+  - BYOK (user brings own API key)
+  - Ephemeral storage (no persistence needed initially)
+  - Public URL eventually, but local-first development
+- Reviewed existing code:
+  - agent_system/claude_client.py uses Claude Agent SDK with streaming
+  - entailment_hypergraph/index.html has full visualization (~100KB)
+  - CLI works well, just needs web UI
+- Decided: Build local web app first, defer hosting questions
+- Rewrote features.json v2.0 with simplified local-first plan:
+  - 6 features instead of 11
+  - No auth, database, cloud storage
+  - Focus: FastAPI backend + React frontend + port visualization
+  - Key insight: Modify ClaudeCodeClient to yield streams (not print to stdout)
+
 ## Next Steps:
-- Begin Phase 1: Backend Setup
-- Reference features.json for task list
-- Update this file after each completed feature
+1. Start with "streaming-refactor" - modify ClaudeCodeClient.query_stream()
+2. Then "fastapi-backend" - wrap agent_system with HTTP/WebSocket
+3. Then "react-frontend" - split pane layout
+4. Then "chat-interface" - SSE streaming consumer
+5. Then "visualization-port" - React component from index.html
+6. Finally "integration-testing" - end-to-end polish
+
+## Architecture Decision:
+```
+Browser (React) <--HTTP/SSE/WS--> FastAPI (localhost:8000) <--> agent_system <--> Claude SDK
+```
+- SSE for streaming chat responses
+- WebSocket for live hypergraph updates
+- No persistence needed - files stay in approaches/ folder
 
 ## Notes:
-- Always commit after completing a feature
-- Run tests before marking features complete
-- Keep progress descriptions concise and specific
+- CLI must keep working after ClaudeCodeClient changes
+- Visualization port is biggest task - ~100KB of JS to understand
+- Hosting (Phase 2) deferred until local version works well

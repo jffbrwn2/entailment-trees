@@ -1,267 +1,215 @@
 {
-  "project": "Entailment Trees Web Application",
-  "version": "1.0",
+  "project": "Entailment Trees Web Application (Local-First)",
+  "version": "2.0",
+  "approach": "local-first",
+  "description": "Web UI for existing agent_system. Runs locally, no auth/cloud needed. Hosting deferred.",
   "phases": {
-    "phase_1_mvp": {
-      "name": "Phase 1: MVP (4-6 weeks)",
+    "phase_1_local_web": {
+      "name": "Phase 1: Local Web App",
       "features": [
         {
-          "id": "backend-setup",
-          "name": "FastAPI Backend Setup",
+          "id": "streaming-refactor",
+          "name": "Refactor ClaudeCodeClient for Web Streaming",
           "status": "pending",
-          "description": "Set up FastAPI backend with basic project structure",
+          "description": "Modify ClaudeCodeClient to yield chunks instead of printing to stdout",
           "tasks": [
-            "Create backend/ directory structure",
-            "Set up FastAPI with uvicorn",
-            "Configure CORS for frontend communication",
-            "Add health check endpoint",
-            "Set up environment variables with python-dotenv"
+            "Add async generator method query_stream() that yields text chunks",
+            "Yield tool use notifications (so UI can show 'Running simulation...')",
+            "Keep existing query() method working for CLI compatibility",
+            "Test that CLI still works after changes"
           ],
           "acceptance_criteria": [
-            "Backend server runs on port 8000",
-            "Health check endpoint returns 200 OK",
-            "CORS configured for localhost:5173"
+            "query_stream() yields chunks as they arrive from Claude SDK",
+            "Tool use events yielded with type indicator",
+            "CLI agent_cli.py still works unchanged",
+            "Can consume stream from both sync and async contexts"
+          ],
+          "files_to_modify": [
+            "agent_system/claude_client.py"
           ]
         },
         {
-          "id": "database-setup",
-          "name": "PostgreSQL + S3 Storage Setup",
+          "id": "fastapi-backend",
+          "name": "FastAPI Backend",
           "status": "pending",
-          "description": "Set up PostgreSQL database and S3-compatible storage (Cloudflare R2 or Backblaze B2)",
+          "description": "Create FastAPI server wrapping agent_system with SSE streaming",
           "tasks": [
-            "Set up PostgreSQL schema (users, approaches, simulations, hypergraph_versions)",
-            "Create database models with SQLAlchemy",
-            "Set up S3-compatible storage client (boto3)",
-            "Create storage service for hypergraph/simulation files",
-            "Implement presigned URL generation for secure uploads"
+            "Create backend/main.py with FastAPI app",
+            "POST /api/chat - SSE streaming endpoint for chat",
+            "GET /api/approaches - list approaches",
+            "POST /api/approaches - create new approach",
+            "GET /api/approaches/{name}/hypergraph - get hypergraph JSON",
+            "WebSocket /ws/hypergraph/{name} - live hypergraph updates",
+            "Configure CORS for localhost:5173"
           ],
           "acceptance_criteria": [
-            "Database tables created successfully",
-            "Can save/retrieve hypergraph JSON from S3",
-            "Can save/retrieve simulation files from S3",
-            "Presigned URLs work for file uploads"
+            "Server runs on localhost:8000",
+            "Chat endpoint streams responses via SSE",
+            "Can list, create, load approaches via API",
+            "Hypergraph updates push via WebSocket",
+            "CORS allows frontend requests"
+          ],
+          "files_to_create": [
+            "backend/main.py",
+            "backend/routes/__init__.py",
+            "backend/routes/chat.py",
+            "backend/routes/approaches.py"
           ]
         },
         {
-          "id": "auth-setup",
-          "name": "Clerk Authentication",
+          "id": "react-frontend",
+          "name": "React Frontend Shell",
           "status": "pending",
-          "description": "Implement Clerk authentication for user management",
+          "description": "Create React app with split-pane layout",
           "tasks": [
-            "Set up Clerk account and application",
-            "Install Clerk SDK in backend",
-            "Create authentication middleware for FastAPI",
-            "Set up token verification",
-            "Create user profile endpoints"
+            "Initialize Vite + React + TypeScript project in frontend/",
+            "Install dependencies: react-split-pane (or similar), axios",
+            "Create split-pane layout component (60% viz, 40% chat)",
+            "Create ApproachSelector sidebar/dropdown component",
+            "Set up React Router for navigation"
           ],
           "acceptance_criteria": [
-            "Users can sign up via Clerk",
-            "JWT tokens are verified on backend",
-            "Protected endpoints require authentication",
-            "User profile data accessible via API"
+            "Frontend runs on localhost:5173",
+            "Split pane renders with resizable divider",
+            "Can select/create approaches from sidebar",
+            "Layout responsive and usable"
+          ],
+          "files_to_create": [
+            "frontend/package.json",
+            "frontend/src/App.tsx",
+            "frontend/src/components/Layout.tsx",
+            "frontend/src/components/ApproachSelector.tsx"
           ]
         },
         {
-          "id": "backend-routes",
-          "name": "Backend API Routes",
+          "id": "chat-interface",
+          "name": "Chat Interface Component",
           "status": "pending",
-          "description": "Implement core API routes for approaches and hypergraphs",
+          "description": "Build chat UI that consumes SSE stream from backend",
           "tasks": [
-            "Create /api/approaches endpoints (CRUD)",
-            "Create /api/hypergraph endpoints (load, save, update)",
-            "Create /api/claims endpoints (add, update, get)",
-            "Create /api/implications endpoints (add, get)",
-            "Add validation using Pydantic models"
+            "Create ChatInterface component with message history",
+            "Implement SSE client to consume /api/chat stream",
+            "Show streaming text as it arrives",
+            "Show tool use indicators (e.g., 'Running simulation...')",
+            "Auto-scroll to bottom on new messages",
+            "Input box with send button"
           ],
           "acceptance_criteria": [
-            "Can create new approach via API",
-            "Can load hypergraph for approach",
-            "Can add/update claims and implications",
-            "All endpoints return proper error codes"
+            "Messages stream in real-time (not waiting for completion)",
+            "Tool use shows visual indicator",
+            "Message history preserved in session",
+            "Can send new messages while previous still streaming"
+          ],
+          "files_to_create": [
+            "frontend/src/components/ChatInterface.tsx",
+            "frontend/src/hooks/useChat.ts",
+            "frontend/src/services/api.ts"
           ]
         },
         {
-          "id": "frontend-setup",
-          "name": "React Frontend with Split View",
+          "id": "visualization-port",
+          "name": "Port Hypergraph Visualization to React",
           "status": "pending",
-          "description": "Set up React frontend with visualization and chat split view",
+          "description": "Convert existing index.html visualization to React component",
           "tasks": [
-            "Create React + TypeScript + Vite project in frontend/",
-            "Install dependencies (Clerk React, react-splitter, axios)",
-            "Create split-pane layout (60% viz, 40% chat)",
-            "Set up routing with React Router",
-            "Configure Clerk authentication on frontend"
-          ],
-          "acceptance_criteria": [
-            "Frontend runs on port 5173",
-            "Split view renders correctly",
-            "Users can log in via Clerk UI",
-            "Can navigate between pages"
-          ]
-        },
-        {
-          "id": "claude-api-integration",
-          "name": "Claude API Integration (Streaming)",
-          "status": "pending",
-          "description": "Implement streaming Claude API for chat interface",
-          "tasks": [
-            "Create Claude API service with streaming support",
-            "Set up Server-Sent Events endpoint for streaming responses",
-            "Implement chat route with context injection",
-            "Add rate limiting (100 requests/hour per user)",
-            "Create frontend hook for streaming responses"
-          ],
-          "acceptance_criteria": [
-            "Chat messages stream in real-time",
-            "Rate limiting prevents abuse",
-            "Context from hypergraph included in prompts",
-            "Errors handled gracefully"
-          ]
-        },
-        {
-          "id": "hypergraph-visualization",
-          "name": "Basic Hypergraph Visualization",
-          "status": "pending",
-          "description": "Port existing hypergraph visualization to React component",
-          "tasks": [
+            "Extract core visualization logic from index.html",
             "Create HypergraphVisualizer React component",
-            "Port existing D3.js/Plotly visualization code",
-            "Implement node expansion/collapse",
-            "Add score color gradients",
-            "Connect to backend API for hypergraph data"
+            "Integrate with D3.js or keep vanilla JS in useEffect",
+            "Connect to WebSocket for live updates",
+            "Preserve all existing features (expand/collapse, colors, details panel)",
+            "Add 'click node to set chat context' interaction"
           ],
           "acceptance_criteria": [
-            "Hypergraph renders correctly",
-            "Nodes can be expanded/collapsed",
-            "Score colors match existing system",
-            "Clicking nodes updates chat context"
+            "Visualization renders identically to current index.html",
+            "Nodes expand/collapse with animations",
+            "Score colors (red-yellow-green gradient) work",
+            "Details panel shows on node click",
+            "Live updates when hypergraph.json changes",
+            "Clicking node adds context to chat input"
+          ],
+          "files_to_create": [
+            "frontend/src/components/HypergraphVisualizer.tsx",
+            "frontend/src/hooks/useHypergraph.ts"
+          ],
+          "reference": "entailment_hypergraph/index.html"
+        },
+        {
+          "id": "integration-testing",
+          "name": "Integration & Polish",
+          "status": "pending",
+          "description": "End-to-end testing and UX polish",
+          "tasks": [
+            "Test full flow: create approach -> chat -> run simulation -> view results",
+            "Ensure hypergraph updates reflect in visualization immediately",
+            "Add loading states and error handling",
+            "Create start script that launches both backend and frontend",
+            "Write basic README for running locally"
+          ],
+          "acceptance_criteria": [
+            "Full user journey works end-to-end",
+            "No console errors in normal operation",
+            "Graceful error messages for failures",
+            "Single command to start (e.g., ./start_web.sh)"
+          ],
+          "files_to_create": [
+            "start_web.sh"
           ]
         }
       ]
     },
-    "phase_2_simulations": {
-      "name": "Phase 2: Simulations (3-4 weeks)",
-      "features": [
-        {
-          "id": "docker-sandbox",
-          "name": "Docker Sandbox Environment",
-          "status": "pending",
-          "description": "Set up secure Docker-based sandbox for running user simulations",
-          "tasks": [
-            "Create Docker image for Python simulations (python:3.12-slim)",
-            "Install scientific packages (numpy, scipy, matplotlib, pandas)",
-            "Configure resource limits (CPU, memory, timeout)",
-            "Disable network access in containers",
-            "Implement container cleanup after execution"
-          ],
-          "acceptance_criteria": [
-            "Docker image builds successfully",
-            "Can execute Python code in isolated container",
-            "Resource limits enforced",
-            "No network access from container",
-            "Containers cleaned up after execution"
-          ]
-        },
-        {
-          "id": "simulation-execution-api",
-          "name": "Simulation Execution API",
-          "status": "pending",
-          "description": "Create API endpoints for running and managing simulations",
-          "tasks": [
-            "Create /api/simulations/execute endpoint",
-            "Implement async execution with background tasks",
-            "Add simulation queue management",
-            "Store simulation code and output to S3",
-            "Create status polling endpoint"
-          ],
-          "acceptance_criteria": [
-            "Can submit simulation code via API",
-            "Simulations run in background",
-            "Status updates available via polling",
-            "Results stored in S3",
-            "Multiple simulations can run concurrently"
-          ]
-        },
-        {
-          "id": "simulation-results",
-          "name": "Result Storage and Retrieval",
-          "status": "pending",
-          "description": "Implement system for storing and retrieving simulation results",
-          "tasks": [
-            "Create simulation_results table schema",
-            "Implement result storage with metadata (runtime, status, errors)",
-            "Create endpoint to retrieve simulation results",
-            "Handle plot/image outputs from matplotlib",
-            "Create result history viewer"
-          ],
-          "acceptance_criteria": [
-            "Simulation results saved to database and S3",
-            "Can retrieve results by simulation ID",
-            "Plot images displayed correctly",
-            "Result history shows all past runs",
-            "Error messages captured and displayed"
-          ]
-        },
-        {
-          "id": "simulation-progress",
-          "name": "Progress Tracking",
-          "status": "pending",
-          "description": "Add real-time progress tracking for long-running simulations",
-          "tasks": [
-            "Implement WebSocket connection for progress updates",
-            "Add progress reporting in simulation runner",
-            "Create progress bar UI component",
-            "Add cancellation support for running simulations",
-            "Show estimated time remaining"
-          ],
-          "acceptance_criteria": [
-            "Progress updates stream in real-time",
-            "Progress bar shows accurate percentage",
-            "Can cancel running simulations",
-            "Time estimates displayed",
-            "Progress persists across page refreshes"
-          ]
-        }
-      ]
+    "phase_2_hosting": {
+      "name": "Phase 2: Hosting (Deferred)",
+      "status": "deferred",
+      "description": "Figure out hosting after local version works. Key questions to resolve:",
+      "open_questions": [
+        "Simulation execution: Pyodide in browser? Backend sandboxing? User runs locally?",
+        "API key handling: BYOK with key stored in browser? Backend proxy?",
+        "State persistence: Just download JSON? Simple paste-bin service?",
+        "Deployment: Vercel + Railway? Single container? Static + serverless?"
+      ],
+      "features": []
     }
   },
   "technical_stack": {
     "backend": {
       "framework": "FastAPI",
-      "database": "PostgreSQL",
-      "storage": "Cloudflare R2 / Backblaze B2",
-      "auth": "Clerk",
-      "language": "Python 3.12"
+      "language": "Python 3.12",
+      "key_dependency": "agent_system (existing)"
     },
     "frontend": {
       "framework": "React 18",
       "language": "TypeScript",
       "build_tool": "Vite",
-      "visualization": "D3.js + Plotly.js",
-      "auth": "Clerk React"
-    },
-    "deployment": {
-      "frontend": "Vercel",
-      "backend": "Railway / Fly.io",
-      "database": "Supabase",
-      "storage": "Cloudflare R2"
+      "visualization": "Ported from existing index.html (D3.js or vanilla)"
     }
   },
+  "architecture": {
+    "diagram": "Browser (React) <--HTTP/WS--> FastAPI (localhost:8000) <--> agent_system <--> Claude SDK",
+    "data_flow": [
+      "1. User types in chat",
+      "2. Frontend POSTs to /api/chat with message",
+      "3. Backend calls ClaudeCodeClient.query_stream()",
+      "4. Chunks yielded back via SSE to frontend",
+      "5. If hypergraph.json changes, WebSocket pushes update",
+      "6. Visualization re-renders with new data"
+    ]
+  },
+  "deferred_from_original": [
+    "Authentication (Clerk)",
+    "Cloud database (PostgreSQL)",
+    "Cloud storage (S3/R2)",
+    "Docker sandboxing",
+    "User accounts",
+    "Deployment configuration"
+  ],
   "completion_criteria": {
     "phase_1": [
-      "Users can create account and log in",
-      "Users can create new approach with hypothesis",
-      "Hypergraph visualizes correctly with expand/collapse",
-      "Chat interface streams Claude responses",
-      "Chat updates hypergraph based on conversation",
-      "All data persists to database and storage"
-    ],
-    "phase_2": [
-      "Users can write Python simulation code",
-      "Simulations run securely in Docker sandbox",
-      "Results display in UI with plots",
-      "Progress tracking works for long simulations",
-      "Simulation history preserved and viewable"
+      "Can create new approach from web UI",
+      "Chat streams Claude responses in real-time",
+      "Simulations run and results appear in chat",
+      "Hypergraph visualization updates live as chat modifies it",
+      "Can click nodes to add context to chat",
+      "All existing CLI functionality accessible via web"
     ]
   }
 }
