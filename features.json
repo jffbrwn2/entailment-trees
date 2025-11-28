@@ -1,0 +1,267 @@
+{
+  "project": "Entailment Trees Web Application",
+  "version": "1.0",
+  "phases": {
+    "phase_1_mvp": {
+      "name": "Phase 1: MVP (4-6 weeks)",
+      "features": [
+        {
+          "id": "backend-setup",
+          "name": "FastAPI Backend Setup",
+          "status": "pending",
+          "description": "Set up FastAPI backend with basic project structure",
+          "tasks": [
+            "Create backend/ directory structure",
+            "Set up FastAPI with uvicorn",
+            "Configure CORS for frontend communication",
+            "Add health check endpoint",
+            "Set up environment variables with python-dotenv"
+          ],
+          "acceptance_criteria": [
+            "Backend server runs on port 8000",
+            "Health check endpoint returns 200 OK",
+            "CORS configured for localhost:5173"
+          ]
+        },
+        {
+          "id": "database-setup",
+          "name": "PostgreSQL + S3 Storage Setup",
+          "status": "pending",
+          "description": "Set up PostgreSQL database and S3-compatible storage (Cloudflare R2 or Backblaze B2)",
+          "tasks": [
+            "Set up PostgreSQL schema (users, approaches, simulations, hypergraph_versions)",
+            "Create database models with SQLAlchemy",
+            "Set up S3-compatible storage client (boto3)",
+            "Create storage service for hypergraph/simulation files",
+            "Implement presigned URL generation for secure uploads"
+          ],
+          "acceptance_criteria": [
+            "Database tables created successfully",
+            "Can save/retrieve hypergraph JSON from S3",
+            "Can save/retrieve simulation files from S3",
+            "Presigned URLs work for file uploads"
+          ]
+        },
+        {
+          "id": "auth-setup",
+          "name": "Clerk Authentication",
+          "status": "pending",
+          "description": "Implement Clerk authentication for user management",
+          "tasks": [
+            "Set up Clerk account and application",
+            "Install Clerk SDK in backend",
+            "Create authentication middleware for FastAPI",
+            "Set up token verification",
+            "Create user profile endpoints"
+          ],
+          "acceptance_criteria": [
+            "Users can sign up via Clerk",
+            "JWT tokens are verified on backend",
+            "Protected endpoints require authentication",
+            "User profile data accessible via API"
+          ]
+        },
+        {
+          "id": "backend-routes",
+          "name": "Backend API Routes",
+          "status": "pending",
+          "description": "Implement core API routes for approaches and hypergraphs",
+          "tasks": [
+            "Create /api/approaches endpoints (CRUD)",
+            "Create /api/hypergraph endpoints (load, save, update)",
+            "Create /api/claims endpoints (add, update, get)",
+            "Create /api/implications endpoints (add, get)",
+            "Add validation using Pydantic models"
+          ],
+          "acceptance_criteria": [
+            "Can create new approach via API",
+            "Can load hypergraph for approach",
+            "Can add/update claims and implications",
+            "All endpoints return proper error codes"
+          ]
+        },
+        {
+          "id": "frontend-setup",
+          "name": "React Frontend with Split View",
+          "status": "pending",
+          "description": "Set up React frontend with visualization and chat split view",
+          "tasks": [
+            "Create React + TypeScript + Vite project in frontend/",
+            "Install dependencies (Clerk React, react-splitter, axios)",
+            "Create split-pane layout (60% viz, 40% chat)",
+            "Set up routing with React Router",
+            "Configure Clerk authentication on frontend"
+          ],
+          "acceptance_criteria": [
+            "Frontend runs on port 5173",
+            "Split view renders correctly",
+            "Users can log in via Clerk UI",
+            "Can navigate between pages"
+          ]
+        },
+        {
+          "id": "claude-api-integration",
+          "name": "Claude API Integration (Streaming)",
+          "status": "pending",
+          "description": "Implement streaming Claude API for chat interface",
+          "tasks": [
+            "Create Claude API service with streaming support",
+            "Set up Server-Sent Events endpoint for streaming responses",
+            "Implement chat route with context injection",
+            "Add rate limiting (100 requests/hour per user)",
+            "Create frontend hook for streaming responses"
+          ],
+          "acceptance_criteria": [
+            "Chat messages stream in real-time",
+            "Rate limiting prevents abuse",
+            "Context from hypergraph included in prompts",
+            "Errors handled gracefully"
+          ]
+        },
+        {
+          "id": "hypergraph-visualization",
+          "name": "Basic Hypergraph Visualization",
+          "status": "pending",
+          "description": "Port existing hypergraph visualization to React component",
+          "tasks": [
+            "Create HypergraphVisualizer React component",
+            "Port existing D3.js/Plotly visualization code",
+            "Implement node expansion/collapse",
+            "Add score color gradients",
+            "Connect to backend API for hypergraph data"
+          ],
+          "acceptance_criteria": [
+            "Hypergraph renders correctly",
+            "Nodes can be expanded/collapsed",
+            "Score colors match existing system",
+            "Clicking nodes updates chat context"
+          ]
+        }
+      ]
+    },
+    "phase_2_simulations": {
+      "name": "Phase 2: Simulations (3-4 weeks)",
+      "features": [
+        {
+          "id": "docker-sandbox",
+          "name": "Docker Sandbox Environment",
+          "status": "pending",
+          "description": "Set up secure Docker-based sandbox for running user simulations",
+          "tasks": [
+            "Create Docker image for Python simulations (python:3.12-slim)",
+            "Install scientific packages (numpy, scipy, matplotlib, pandas)",
+            "Configure resource limits (CPU, memory, timeout)",
+            "Disable network access in containers",
+            "Implement container cleanup after execution"
+          ],
+          "acceptance_criteria": [
+            "Docker image builds successfully",
+            "Can execute Python code in isolated container",
+            "Resource limits enforced",
+            "No network access from container",
+            "Containers cleaned up after execution"
+          ]
+        },
+        {
+          "id": "simulation-execution-api",
+          "name": "Simulation Execution API",
+          "status": "pending",
+          "description": "Create API endpoints for running and managing simulations",
+          "tasks": [
+            "Create /api/simulations/execute endpoint",
+            "Implement async execution with background tasks",
+            "Add simulation queue management",
+            "Store simulation code and output to S3",
+            "Create status polling endpoint"
+          ],
+          "acceptance_criteria": [
+            "Can submit simulation code via API",
+            "Simulations run in background",
+            "Status updates available via polling",
+            "Results stored in S3",
+            "Multiple simulations can run concurrently"
+          ]
+        },
+        {
+          "id": "simulation-results",
+          "name": "Result Storage and Retrieval",
+          "status": "pending",
+          "description": "Implement system for storing and retrieving simulation results",
+          "tasks": [
+            "Create simulation_results table schema",
+            "Implement result storage with metadata (runtime, status, errors)",
+            "Create endpoint to retrieve simulation results",
+            "Handle plot/image outputs from matplotlib",
+            "Create result history viewer"
+          ],
+          "acceptance_criteria": [
+            "Simulation results saved to database and S3",
+            "Can retrieve results by simulation ID",
+            "Plot images displayed correctly",
+            "Result history shows all past runs",
+            "Error messages captured and displayed"
+          ]
+        },
+        {
+          "id": "simulation-progress",
+          "name": "Progress Tracking",
+          "status": "pending",
+          "description": "Add real-time progress tracking for long-running simulations",
+          "tasks": [
+            "Implement WebSocket connection for progress updates",
+            "Add progress reporting in simulation runner",
+            "Create progress bar UI component",
+            "Add cancellation support for running simulations",
+            "Show estimated time remaining"
+          ],
+          "acceptance_criteria": [
+            "Progress updates stream in real-time",
+            "Progress bar shows accurate percentage",
+            "Can cancel running simulations",
+            "Time estimates displayed",
+            "Progress persists across page refreshes"
+          ]
+        }
+      ]
+    }
+  },
+  "technical_stack": {
+    "backend": {
+      "framework": "FastAPI",
+      "database": "PostgreSQL",
+      "storage": "Cloudflare R2 / Backblaze B2",
+      "auth": "Clerk",
+      "language": "Python 3.12"
+    },
+    "frontend": {
+      "framework": "React 18",
+      "language": "TypeScript",
+      "build_tool": "Vite",
+      "visualization": "D3.js + Plotly.js",
+      "auth": "Clerk React"
+    },
+    "deployment": {
+      "frontend": "Vercel",
+      "backend": "Railway / Fly.io",
+      "database": "Supabase",
+      "storage": "Cloudflare R2"
+    }
+  },
+  "completion_criteria": {
+    "phase_1": [
+      "Users can create account and log in",
+      "Users can create new approach with hypothesis",
+      "Hypergraph visualizes correctly with expand/collapse",
+      "Chat interface streams Claude responses",
+      "Chat updates hypergraph based on conversation",
+      "All data persists to database and storage"
+    ],
+    "phase_2": [
+      "Users can write Python simulation code",
+      "Simulations run securely in Docker sandbox",
+      "Results display in UI with plots",
+      "Progress tracking works for long simulations",
+      "Simulation history preserved and viewable"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+# Claude Progress Tracker
+# This file tracks work completed across sessions
+
+## Project: Entailment Trees Web Application
+## Start Date: 2025-11-28
+
+## Session 1: Harness Setup
+- Created features.json with all Phase 1 & 2 tasks
+- Created init.sh environment setup script
+- Initialized progress tracking system
+- Created baseline git structure
+
+## Next Steps:
+- Begin Phase 1: Backend Setup
+- Reference features.json for task list
+- Update this file after each completed feature
+
+## Notes:
+- Always commit after completing a feature
+- Run tests before marking features complete
+- Keep progress descriptions concise and specific
