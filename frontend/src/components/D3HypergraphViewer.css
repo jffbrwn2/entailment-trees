@@ -1,0 +1,56 @@
+.d3-viewer-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.d3-viewer-svg {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+}
+
+.d3-viewer-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+}
+
+/* Node styles */
+.claim-node {
+  cursor: pointer;
+}
+
+.claim-node:hover circle {
+  filter: brightness(1.1);
+}
+
+.junction-node {
+  cursor: pointer;
+}
+
+.junction-node:hover circle {
+  filter: brightness(1.2);
+}
+
+/* Edge styles */
+.hyperedge {
+  transition: opacity 0.2s ease;
+}
+
+.hyperedge:hover {
+  opacity: 1 !important;
+}
+
+/* Expand indicator */
+.expand-indicator {
+  cursor: pointer;
+}
+
+.expand-indicator:hover circle {
+  filter: brightness(1.2);
+}

@@ -1,0 +1,192 @@
+import './SelectedItemDetail.css'
+
+interface Claim {
+  id: string
+  text: string
+  score: number
+  propagated_negative_log?: number
+  reasoning?: string
+  evidence?: Evidence[]
+  uncertainties?: string[]
+  tags?: string[]
+}
+
+interface Evidence {
+  type: 'simulation' | 'literature' | 'calculation'
+  source?: string
+  lines?: string
+  code?: string
+  reference_text?: string
+  equations?: string
+  program?: string
+}
+
+interface Implication {
+  id: string
+  premises: string[]
+  conclusion: string
+  type?: 'AND' | 'OR'
+  reasoning: string
+  entailment_status?: 'passed' | 'failed'
+  entailment_explanation?: string
+}
+
+interface SelectedItem {
+  type: 'claim' | 'implication'
+  id: string
+}
+
+interface Props {
+  selectedItem: SelectedItem | null
+  claims: Claim[]
+  implications: Implication[]
+  onClose: () => void
+}
+
+function getScoreClass(score: number): string {
+  if (score >= 7.5) return 'score-high'
+  if (score >= 5) return 'score-medium'
+  return 'score-low'
+}
+
+function SelectedItemDetail({ selectedItem, claims, implications, onClose }: Props) {
+  if (!selectedItem) {
+    return (
+      <div className="detail-panel detail-empty">
+        <p>Click on a node or edge to view details</p>
+      </div>
+    )
+  }
+
+  if (selectedItem.type === 'claim') {
+    const claim = claims.find(c => c.id === selectedItem.id)
+    if (!claim) return null
+
+    return (
+      <div className="detail-panel">
+        <div className="detail-header">
+          <span className="detail-id">{claim.id}</span>
+          <button className="detail-close" onClick={onClose}>×</button>
+        </div>
+
+        <div className="detail-text">{claim.text}</div>
+
+        <div className="detail-scores">
+          <span className={`detail-score ${getScoreClass(claim.score)}`}>
+            Score: {claim.score}/10
+          </span>
+          {claim.propagated_negative_log !== undefined && (
+            <span className="detail-propagated">
+              Propagated -log₂: {claim.propagated_negative_log.toFixed(3)}
+            </span>
+          )}
+        </div>
+
+        {claim.tags && claim.tags.length > 0 && (
+          <div className="detail-tags">
+            {claim.tags.map(tag => (
+              <span key={tag} className="detail-tag">{tag}</span>
+            ))}
+          </div>
+        )}
+
+        {claim.reasoning && (
+          <div className="detail-section">
+            <div className="detail-section-title">Reasoning</div>
+            <div className="detail-section-content">{claim.reasoning}</div>
+          </div>
+        )}
+
+        {claim.evidence && claim.evidence.length > 0 && (
+          <div className="detail-section">
+            <div className="detail-section-title">Evidence</div>
+            {claim.evidence.map((e, i) => (
+              <div key={i} className="evidence-item">
+                <div className="evidence-type">{e.type}</div>
+                {e.type === 'literature' && (
+                  <>
+                    <div className="evidence-source">{e.source}</div>
+                    {e.reference_text && (
+                      <div className="evidence-text">{e.reference_text}</div>
+                    )}
+                  </>
+                )}
+                {e.type === 'simulation' && (
+                  <>
+                    <div className="evidence-source">
+                      {e.source}{e.lines ? `:${e.lines}` : ''}
+                    </div>
+                    {e.code && (
+                      <pre className="evidence-code">{e.code}</pre>
+                    )}
+                  </>
+                )}
+                {e.type === 'calculation' && (
+                  <>
+                    {e.equations && (
+                      <div className="evidence-equations">{e.equations}</div>
+                    )}
+                    {e.program && (
+                      <pre className="evidence-code">{e.program}</pre>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {claim.uncertainties && claim.uncertainties.length > 0 && (
+          <div className="detail-section">
+            <div className="detail-section-title uncertainty-title">Uncertainties</div>
+            {claim.uncertainties.map((u, i) => (
+              <div key={i} className="uncertainty-item">{u}</div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (selectedItem.type === 'implication') {
+    const impl = implications.find(i => i.id === selectedItem.id)
+    if (!impl) return null
+
+    const formula = `(${impl.premises.join(', ')}) → ${impl.conclusion}`
+
+    return (
+      <div className="detail-panel">
+        <div className="detail-header">
+          <span className="detail-id">{impl.id}</span>
+          <button className="detail-close" onClick={onClose}>×</button>
+        </div>
+
+        <div className="detail-formula">{formula}</div>
+
+        {impl.entailment_status && (
+          <div className="detail-scores">
+            <span className={`entailment-status ${impl.entailment_status}`}>
+              Entailment: {impl.entailment_status === 'passed' ? '✓ Passed' : '✗ Failed'}
+            </span>
+          </div>
+        )}
+
+        <div className="detail-section">
+          <div className="detail-section-title">Reasoning</div>
+          <div className="detail-section-content">{impl.reasoning}</div>
+        </div>
+
+        {impl.entailment_explanation && (
+          <div className="detail-section">
+            <div className="detail-section-title">Entailment Check Details</div>
+            <pre className="entailment-explanation">{impl.entailment_explanation}</pre>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return null
+}
+
+export default SelectedItemDetail

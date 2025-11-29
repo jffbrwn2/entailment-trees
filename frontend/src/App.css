@@ -11,12 +11,72 @@
   padding: 0.75rem 1.5rem;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
+  gap: 1rem;
+}
+
+.header-left {
+  flex: 0 0 auto;
+}
+
+.header-center {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+}
+
+.header-right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .app-header h1 {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--text-primary);
+  margin: 0;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toolbar-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.toolbar-select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.toolbar-select:hover {
+  border-color: var(--accent);
+}
+
+.toolbar-button {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolbar-button:hover {
+  border-color: var(--accent);
+  background: var(--bg-secondary);
 }
 
 .app-main {
@@ -35,9 +95,32 @@
   background: var(--bg-primary);
 }
 
-.chat-panel {
+.right-panel {
   background: var(--bg-secondary);
   border-left: 1px solid var(--border);
+}
+
+.detail-pane {
+  overflow: hidden;
+}
+
+.chat-pane {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Vertical split styling */
+.split-vertical {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.split-vertical > .gutter {
+  background: var(--border);
+  cursor: row-resize;
 }
 
 .loading {
