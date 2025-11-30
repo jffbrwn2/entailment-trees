@@ -64,6 +64,7 @@ function App() {
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null)
   const [darkMode, setDarkMode] = useState(true)
   const [scoreMode, setScoreMode] = useState<'score' | 'propagated'>('propagated')
+  const [resetKey, setResetKey] = useState(0)
 
   // Apply dark/light mode
   useEffect(() => {
@@ -202,6 +203,13 @@ function App() {
           </div>
           <button
             className="toolbar-button"
+            onClick={() => setResetKey(k => k + 1)}
+            title="Reset graph layout"
+          >
+            Reset
+          </button>
+          <button
+            className="toolbar-button"
             onClick={() => setDarkMode(!darkMode)}
             title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
           >
@@ -224,6 +232,7 @@ function App() {
               selectedItem={selectedItem}
               onSelect={handleSelect}
               scoreMode={scoreMode}
+              resetKey={resetKey}
             />
           </div>
           <div className="panel right-panel">

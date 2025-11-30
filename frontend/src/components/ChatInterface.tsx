@@ -1,14 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
 import './ChatInterface.css'
 
+interface ToolUse {
+  name: string
+  status: 'running' | 'done' | 'error'
+}
+
 interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
-  toolUse?: {
-    name: string
-    status: 'running' | 'done' | 'error'
-  }
+  toolUses: ToolUse[]
 }
 
 interface Props {
@@ -20,7 +22,6 @@ function ChatInterface({ approachFolder, approachName }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
-  const [currentTool, setCurrentTool] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -42,6 +43,7 @@ function ChatInterface({ approachFolder, approachName }: Props) {
       id: Date.now().toString(),
       role: 'user',
       content: input.trim(),
+      toolUses: [],
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -52,7 +54,7 @@ function ChatInterface({ approachFolder, approachName }: Props) {
     const assistantMessageId = (Date.now() + 1).toString()
     setMessages((prev) => [
       ...prev,
-      { id: assistantMessageId, role: 'assistant', content: '' },
+      { id: assistantMessageId, role: 'assistant', content: '', toolUses: [] },
     ])
 
     try {
@@ -110,7 +112,19 @@ function ChatInterface({ approachFolder, approachName }: Props) {
       )
     } finally {
       setIsStreaming(false)
-      setCurrentTool(null)
+      // Mark any running tools as done when stream ends
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+                ...m,
+                toolUses: m.toolUses.map((t) =>
+                  t.status === 'running' ? { ...t, status: 'done' as const } : t
+                ),
+              }
+            : m
+        )
+      )
     }
   }
 
@@ -128,24 +142,35 @@ function ChatInterface({ approachFolder, approachName }: Props) {
         break
 
       case 'tool_use':
-        setCurrentTool(data.tool_name || null)
         setMessages((prev) =>
           prev.map((m) =>
             m.id === messageId
-              ? { ...m, toolUse: { name: data.tool_name || 'unknown', status: 'running' } }
+              ? {
+                  ...m,
+                  toolUses: [
+                    ...m.toolUses,
+                    { name: data.tool_name || 'unknown', status: 'running' as const },
+                  ],
+                }
               : m
           )
         )
         break
 
       case 'tool_result':
-        setCurrentTool(null)
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === messageId && m.toolUse
-              ? { ...m, toolUse: { ...m.toolUse, status: 'done' } }
-              : m
-          )
+          prev.map((m) => {
+            if (m.id !== messageId) return m
+            // Mark the most recent running tool with matching name as done
+            const toolUses = [...m.toolUses]
+            for (let i = toolUses.length - 1; i >= 0; i--) {
+              if (toolUses[i].name === data.tool_name && toolUses[i].status === 'running') {
+                toolUses[i] = { ...toolUses[i], status: 'done' }
+                break
+              }
+            }
+            return { ...m, toolUses }
+          })
         )
         break
 
@@ -199,23 +224,18 @@ function ChatInterface({ approachFolder, approachName }: Props) {
             <div className="message-content">
               {message.content || (message.role === 'assistant' && isStreaming && '...')}
             </div>
-            {message.toolUse && (
-              <div className={`tool-indicator ${message.toolUse.status}`}>
-                {message.toolUse.status === 'running' && (
-                  <span className="spinner" />
-                )}
-                {message.toolUse.name}
+            {message.toolUses.length > 0 && (
+              <div className="tool-indicators">
+                {message.toolUses.map((tool, index) => (
+                  <div key={index} className={`tool-indicator ${tool.status}`}>
+                    {tool.status === 'running' && <span className="spinner" />}
+                    {tool.name}
+                  </div>
+                ))}
               </div>
             )}
           </div>
         ))}
-
-        {currentTool && (
-          <div className="streaming-tool">
-            <span className="spinner" />
-            Running {currentTool}...
-          </div>
-        )}
 
         <div ref={messagesEndRef} />
       </div>

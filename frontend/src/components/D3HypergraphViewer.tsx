@@ -52,6 +52,7 @@ interface Props {
   scoreMode: 'score' | 'propagated'
   onSelect: (item: SelectedItem | null) => void
   selectedItem: SelectedItem | null
+  resetKey?: number
 }
 
 interface NodeData {
@@ -76,12 +77,23 @@ interface LinkData {
   implId: string
 }
 
-function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem }: Props) {
+function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, resetKey }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
   const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map())
   const conclusionToPremisesRef = useRef<Map<string, string[]>>(new Map())
+
+  // Refs for D3 elements to enable transitions
+  const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null)
+  const nodesDataRef = useRef<NodeData[]>([])
+  const linksDataRef = useRef<LinkData[]>([])
+  const isInitializedRef = useRef(false)
+
+  // Clear collapsed nodes when resetKey changes (separate effect to avoid render loop)
+  useEffect(() => {
+    setCollapsedNodes(new Set())
+  }, [resetKey])
 
   // Build implication map
   useEffect(() => {
@@ -101,6 +113,21 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem }: P
     if (!premises || premises.length === 0) return false
     return premises.some(p => collapsedNodes.has(p))
   }, [collapsedNodes])
+
+  // Get all descendants (premises, their premises, etc.) recursively
+  const getAllDescendants = useCallback((nodeId: string, visited = new Set<string>()): string[] => {
+    if (visited.has(nodeId)) return []
+    visited.add(nodeId)
+
+    const premises = conclusionToPremisesRef.current.get(nodeId)
+    if (!premises || premises.length === 0) return []
+
+    const descendants: string[] = [...premises]
+    premises.forEach(p => {
+      descendants.push(...getAllDescendants(p, visited))
+    })
+    return descendants
+  }, [])
 
   const getEffectiveScore = useCallback((claim: Claim) => {
     if (scoreMode === 'propagated' && claim.propagated_negative_log !== undefined) {
@@ -123,6 +150,30 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem }: P
       const g = Math.round(217 - (217 - 185) * t)
       const b = Math.round(34 + (80 - 34) * t)
       return `rgb(${r}, ${g}, ${b})`
+    }
+  }, [])
+
+  // Create curve path for edges
+  const createCurvePath = useCallback((d: LinkData) => {
+    const sourceX = d.source._animX !== undefined ? d.source._animX : d.source.x
+    const sourceY = d.source._animY !== undefined ? d.source._animY : d.source.y
+    const targetX = d.target._animX !== undefined ? d.target._animX : d.target.x
+    const targetY = d.target._animY !== undefined ? d.target._animY : d.target.y
+    const dx = targetX - sourceX
+    const dy = targetY - sourceY
+
+    if (d.type === 'premise-to-junction') {
+      const cp1X = sourceX + dx * 0.3
+      const cp1Y = sourceY + dy * 0.3
+      const cp2X = targetX - dx * 0.2
+      const cp2Y = targetY - dy * 0.2
+      return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`
+    } else {
+      const cp1X = sourceX + dx * 0.3
+      const cp1Y = sourceY + dy * 0.3 - 15
+      const cp2X = sourceX + dx * 0.7
+      const cp2Y = sourceY + dy * 0.7 - 15
+      return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`
     }
   }, [])
 
@@ -282,22 +333,69 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem }: P
     return { positions, levels }
   }, [hypergraph, collapsedNodes])
 
-  // Main render effect
+  // Animation helper for edges
+  const animateEdgesForNode = useCallback((node: NodeData) => {
+    if (!gRef.current) return
+
+    gRef.current.selectAll<SVGPathElement, LinkData>('.hyperedge').each(function(d) {
+      let updated = false
+
+      if (d.source.id === node.id) {
+        updated = true
+      } else if (d.target.id === node.id) {
+        updated = true
+      }
+
+      if (updated) {
+        const sourceX = d.source._animX !== undefined ? d.source._animX : d.source.x
+        const sourceY = d.source._animY !== undefined ? d.source._animY : d.source.y
+        const targetX = d.target._animX !== undefined ? d.target._animX : d.target.x
+        const targetY = d.target._animY !== undefined ? d.target._animY : d.target.y
+        const dx = targetX - sourceX
+        const dy = targetY - sourceY
+
+        let pathD: string
+        if (d.type === 'premise-to-junction') {
+          const cp1X = sourceX + dx * 0.3
+          const cp1Y = sourceY + dy * 0.3
+          const cp2X = targetX - dx * 0.2
+          const cp2Y = targetY - dy * 0.2
+          pathD = `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`
+        } else {
+          const cp1X = sourceX + dx * 0.3
+          const cp1Y = sourceY + dy * 0.3 - 15
+          const cp2X = sourceX + dx * 0.7
+          const cp2Y = sourceY + dy * 0.7 - 15
+          pathD = `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`
+        }
+
+        d3.select(this).attr('d', pathD)
+      }
+    })
+  }, [])
+
+  // Initialize SVG structure (on hypergraph change or reset)
   useEffect(() => {
-    if (!hypergraph || !svgRef.current || !containerRef.current) return
+    if (!hypergraph || !svgRef.current || !containerRef.current) {
+      isInitializedRef.current = false
+      return
+    }
 
     const container = containerRef.current
     const width = container.clientWidth
     const height = container.clientHeight || 600
 
-    // Clear previous
+    // Clear previous state on full re-render (including reset)
     d3.select(svgRef.current).selectAll('*').remove()
+    nodePositionsRef.current.clear()
+    isInitializedRef.current = false
 
     const svg = d3.select(svgRef.current)
       .attr('width', width)
       .attr('height', height)
 
     const g = svg.append('g')
+    gRef.current = g
 
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.1, 10])
@@ -311,55 +409,57 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem }: P
         onSelect(null)
       })
 
-    // Create nodes
+    // Defs
+    const defs = svg.append('defs')
+
+    defs.append('marker')
+      .attr('id', 'arrowhead')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 20)
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', 'var(--accent)')
+
+    // Create nodes data
     const claims: NodeData[] = hypergraph.claims.map(c => ({
       ...c,
       type: 'claim' as const,
-      x: 0,
-      y: 0
+      x: width / 2,
+      y: height / 2
     }))
 
     const junctions: NodeData[] = hypergraph.implications.map(impl => ({
       id: `junction_${impl.id}`,
       type: 'junction' as const,
-      x: 0,
-      y: 0,
+      x: width / 2,
+      y: height / 2,
       implication: impl
     }))
 
     const allNodes = [...claims, ...junctions]
+    nodesDataRef.current = allNodes
 
-    // Calculate layout
+    // Initial layout
     const visibleClaims = claims.filter(c => !collapsedNodes.has(c.id))
     const { positions } = calculateTreeLayout(visibleClaims, width, height)
 
-    // Apply positions
+    // Apply initial positions
     allNodes.forEach(node => {
       const pos = positions.get(node.id)
       if (pos) {
         node.x = pos.x
         node.y = pos.y
-      } else {
-        const savedPos = nodePositionsRef.current.get(node.id)
-        if (savedPos) {
-          node.x = savedPos.x
-          node.y = savedPos.y
-        } else {
-          node.x = width / 2
-          node.y = height / 2
-        }
       }
     })
 
-    // Create links
+    // Create links data
     const links: LinkData[] = []
     hypergraph.implications.forEach(impl => {
       const junctionId = `junction_${impl.id}`
-
-      if (collapsedNodes.has(impl.conclusion) ||
-          impl.premises.some(p => collapsedNodes.has(p))) {
-        return
-      }
 
       impl.premises.forEach(premise => {
         const sourceNode = allNodes.find(n => n.id === premise)
@@ -389,56 +489,114 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem }: P
         })
       }
     })
+    linksDataRef.current = links
 
-    // Defs
-    const defs = svg.append('defs')
+    // Create link group
+    g.append('g').attr('class', 'links-group')
 
-    defs.append('marker')
-      .attr('id', 'arrowhead')
-      .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 20)
-      .attr('refY', 0)
-      .attr('markerWidth', 6)
-      .attr('markerHeight', 6)
-      .attr('orient', 'auto')
-      .append('path')
-      .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', 'var(--accent)')
+    // Create node group
+    g.append('g').attr('class', 'nodes-group')
 
-    // Draw links
-    function createCurvePath(d: LinkData) {
-      const sourceX = d.source.x
-      const sourceY = d.source.y
-      const targetX = d.target.x
-      const targetY = d.target.y
-      const dx = targetX - sourceX
-      const dy = targetY - sourceY
+    isInitializedRef.current = true
+  }, [hypergraph, onSelect, resetKey]) // Re-init on hypergraph change or reset
 
-      if (d.type === 'premise-to-junction') {
-        const cp1X = sourceX + dx * 0.3
-        const cp1Y = sourceY + dy * 0.3
-        const cp2X = targetX - dx * 0.2
-        const cp2Y = targetY - dy * 0.2
-        return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`
-      } else {
-        const cp1X = sourceX + dx * 0.3
-        const cp1Y = sourceY + dy * 0.3 - 15
-        const cp2X = sourceX + dx * 0.7
-        const cp2Y = sourceY + dy * 0.7 - 15
-        return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`
+  // Update visualization (with transitions for collapse/expand)
+  useEffect(() => {
+    if (!hypergraph || !gRef.current || !isInitializedRef.current) return
+
+    const g = gRef.current
+    const container = containerRef.current
+    if (!container) return
+
+    const width = container.clientWidth
+    const height = container.clientHeight || 600
+    const allNodes = nodesDataRef.current
+    const links = linksDataRef.current
+
+    // Calculate new layout
+    const claims = allNodes.filter(n => n.type === 'claim')
+    const visibleClaims = claims.filter(c => !collapsedNodes.has(c.id))
+    const { positions } = calculateTreeLayout(visibleClaims, width, height)
+
+    // Track collapsed state for each node
+    allNodes.forEach(node => {
+      const isNowCollapsed = node.type === 'claim' ? collapsedNodes.has(node.id) : (() => {
+        const impl = node.implication
+        if (!impl) return false
+        return collapsedNodes.has(impl.conclusion) || impl.premises.some(p => collapsedNodes.has(p))
+      })()
+
+      const shouldBeVisible = positions.has(node.id) && !isNowCollapsed
+      ;(node as any)._wasCollapsed = !shouldBeVisible
+    })
+
+    // Helper to get parent position for animation
+    const getParentPosition = (nodeId: string): { x: number; y: number } => {
+      // Find which implication has this as a premise
+      for (const impl of hypergraph.implications) {
+        if (impl.premises.includes(nodeId)) {
+          const conclusionNode = allNodes.find(n => n.id === impl.conclusion)
+          if (conclusionNode) {
+            return { x: conclusionNode.x, y: conclusionNode.y }
+          }
+        }
       }
+      // For junctions, find parent conclusion
+      if (nodeId.startsWith('junction_')) {
+        const implId = nodeId.replace('junction_', '')
+        const impl = hypergraph.implications.find(i => i.id === implId)
+        if (impl) {
+          const conclusionNode = allNodes.find(n => n.id === impl.conclusion)
+          if (conclusionNode) {
+            return { x: conclusionNode.x, y: conclusionNode.y }
+          }
+        }
+      }
+      return { x: width / 2, y: height / 2 }
     }
 
-    g.append('g')
-      .selectAll('path')
-      .data(links)
-      .join('path')
+    // Update positions with animation
+    const transitionDuration = 400
+
+    // Update all nodes with new target positions
+    allNodes.forEach(node => {
+      const pos = positions.get(node.id)
+      if (pos) {
+        node.x = pos.x
+        node.y = pos.y
+      }
+    })
+
+    // Update edges
+    const linksGroup = g.select<SVGGElement>('.links-group')
+
+    // Determine visible links
+    const visibleLinks = links.filter(link => {
+      const impl = hypergraph.implications.find(i => i.id === link.implId)
+      if (!impl) return false
+      if (collapsedNodes.has(impl.conclusion)) return false
+      if (impl.premises.some(p => collapsedNodes.has(p))) return false
+      return true
+    })
+
+    const edgeSelection = linksGroup.selectAll<SVGPathElement, LinkData>('.hyperedge')
+      .data(visibleLinks, d => `${d.source.id}-${d.target.id}`)
+
+    // Exit edges - animate to zero length then remove
+    edgeSelection.exit()
+      .transition()
+      .duration(transitionDuration)
+      .attr('opacity', 0)
+      .remove()
+
+    // Enter edges - start at final position (no animation on initial load)
+    const enteringEdges = edgeSelection.enter()
+      .append('path')
       .attr('class', d => `hyperedge ${d.type}`)
       .attr('d', createCurvePath)
       .attr('stroke', d => {
         const impl = hypergraph.implications.find(i => i.id === d.implId)
         const status = impl?.entailment_status
-
         if (d.type === 'junction-to-conclusion') {
           if (status === 'failed') return '#f85149'
           if (status === 'passed') return 'var(--accent)'
@@ -446,12 +604,21 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem }: P
         }
         return 'var(--text-secondary)'
       })
-      .attr('stroke-width', d => {
-        const dx = Math.abs(d.target.x - d.source.x)
-        const isVertical = dx < 5
-        const baseWidth = d.type === 'junction-to-conclusion' ? 3 : 2
-        return isVertical ? baseWidth + 1 : baseWidth
+      .attr('stroke-width', d => d.type === 'junction-to-conclusion' ? 3 : 2)
+      .attr('fill', 'none')
+      .attr('stroke-linecap', 'round')
+      .attr('marker-end', d => d.type === 'junction-to-conclusion' ? 'url(#arrowhead)' : null)
+      .attr('cursor', 'pointer')
+      .attr('opacity', 0)
+      .on('click', (event, d) => {
+        event.stopPropagation()
+        onSelect({ type: 'implication', id: d.implId })
       })
+
+    // Animate entering edges - just fade in
+    enteringEdges
+      .transition()
+      .duration(transitionDuration)
       .attr('opacity', d => {
         if (!selectedItem) return 0.7
         if (selectedItem.type === 'claim') {
@@ -462,88 +629,49 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem }: P
         }
         return 0.7
       })
-      .attr('fill', 'none')
-      .attr('stroke-linecap', 'round')
-      .attr('marker-end', d => d.type === 'junction-to-conclusion' ? 'url(#arrowhead)' : null)
-      .attr('cursor', 'pointer')
-      .on('click', (event, d) => {
-        event.stopPropagation()
-        onSelect({ type: 'implication', id: d.implId })
-      })
 
-    // Drag handlers
-    function dragstarted(event: d3.D3DragEvent<SVGGElement, NodeData, NodeData>) {
-      d3.select(event.sourceEvent.currentTarget).raise()
-    }
-
-    function dragged(event: d3.D3DragEvent<SVGGElement, NodeData, NodeData>, d: NodeData) {
-      d.x = event.x
-      d.y = event.y
-      d3.select(event.sourceEvent.currentTarget)
-        .attr('transform', `translate(${d.x},${d.y})`)
-
-      // Update connected edges
-      g.selectAll<SVGPathElement, LinkData>('.hyperedge')
-        .attr('d', createCurvePath)
-    }
-
-    function dragended(_event: d3.D3DragEvent<SVGGElement, NodeData, NodeData>, d: NodeData) {
-      nodePositionsRef.current.set(d.id, { x: d.x, y: d.y })
-    }
-
-    // Draw nodes
-    const node = g.append('g')
-      .selectAll<SVGGElement, NodeData>('g')
-      .data(allNodes)
-      .join('g')
-      .attr('class', d => d.type === 'claim' ? 'claim-node' : 'junction-node')
-      .attr('transform', d => `translate(${d.x},${d.y})`)
-      .style('display', d => {
-        if (d.type === 'claim') {
-          return collapsedNodes.has(d.id) ? 'none' : null
-        }
-        // Junction visibility
-        const impl = d.implication!
-        if (collapsedNodes.has(impl.conclusion)) return 'none'
-        if (impl.premises.some(p => collapsedNodes.has(p))) return 'none'
-        return null
-      })
-      .call(d3.drag<SVGGElement, NodeData>()
-        .filter((event) => !event.target.closest('.expand-indicator'))
-        .on('start', dragstarted)
-        .on('drag', dragged)
-        .on('end', dragended))
-
-    // Claim nodes
-    const claimNodes = node.filter(d => d.type === 'claim')
-
-    claimNodes.append('circle')
-      .attr('r', 65)
-      .attr('fill', d => getScoreColor(getEffectiveScore(d as unknown as Claim)))
-      .attr('fill-opacity', 0.6)
-      .attr('stroke', d => getScoreColor(getEffectiveScore(d as unknown as Claim)))
-      .attr('stroke-width', d => {
-        if (!selectedItem) return 2
-        if (selectedItem.type === 'claim' && selectedItem.id === d.id) return 4
-        return 2
-      })
+    // Update existing edges
+    edgeSelection
+      .transition()
+      .duration(transitionDuration)
+      .attr('d', createCurvePath)
       .attr('opacity', d => {
-        if (!selectedItem) return 1
+        if (!selectedItem) return 0.7
         if (selectedItem.type === 'claim') {
-          return selectedItem.id === d.id ? 1 : 0.3
+          return d.premises.includes(selectedItem.id) || d.conclusion === selectedItem.id ? 1 : 0.2
         }
         if (selectedItem.type === 'implication') {
-          const impl = hypergraph.implications.find(i => i.id === selectedItem.id)
-          if (impl && (impl.premises.includes(d.id) || impl.conclusion === d.id)) return 1
-          return 0.3
+          return d.implId === selectedItem.id ? 1 : 0.2
         }
-        return 1
+        return 0.7
       })
-      .attr('cursor', 'pointer')
 
-    // Claim text
-    claimNodes.each(function(d) {
-      const text = d3.select(this).append('text')
+    // Update nodes
+    const nodesGroup = g.select<SVGGElement>('.nodes-group')
+
+    const nodeSelection = nodesGroup.selectAll<SVGGElement, NodeData>('.graph-node')
+      .data(allNodes, d => d.id)
+
+    // Enter new nodes (should not happen after init, but handle anyway)
+    const enteringNodes = nodeSelection.enter()
+      .append('g')
+      .attr('class', d => `graph-node ${d.type === 'claim' ? 'claim-node' : 'junction-node'}`)
+      .attr('transform', d => `translate(${d.x},${d.y}) scale(0)`)
+
+    // Add claim node visuals
+    enteringNodes.filter(d => d.type === 'claim').each(function(d) {
+      const node = d3.select(this)
+
+      node.append('circle')
+        .attr('r', 65)
+        .attr('fill', getScoreColor(getEffectiveScore(d as unknown as Claim)))
+        .attr('fill-opacity', 0.6)
+        .attr('stroke', getScoreColor(getEffectiveScore(d as unknown as Claim)))
+        .attr('stroke-width', 2)
+        .attr('cursor', 'pointer')
+
+      // Text
+      const text = node.append('text')
         .attr('text-anchor', 'middle')
         .attr('fill', 'var(--text-primary)')
         .attr('font-size', '10px')
@@ -565,8 +693,8 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem }: P
         line.push(words[i])
         tspan.text(line.join(' '))
 
-        const node = tspan.node()
-        if (node && node.getComputedTextLength() > maxWidth) {
+        const tspanNode = tspan.node()
+        if (tspanNode && tspanNode.getComputedTextLength() > maxWidth) {
           if (lineNumber >= maxLines - 1) {
             line.pop()
             tspan.text(line.join(' ') + '...')
@@ -585,104 +713,229 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem }: P
 
       const totalHeight = (lineNumber + 1) * lineHeight
       text.attr('transform', `translate(0, ${-totalHeight / 2 + 5})`)
+
+      node.append('title')
+        .text(`${d.id}\n${d.text}\nScore: ${d.score}/10`)
     })
 
-    // Expand/collapse indicators
-    claimNodes.filter(d => isConclusion(d.id))
-      .each(function(d) {
-        const parentG = d3.select(this)
-        const radius = 65
+    // Add junction node visuals
+    enteringNodes.filter(d => d.type === 'junction').each(function(d) {
+      const node = d3.select(this)
 
-        const indicatorG = parentG.append('g')
-          .attr('class', 'expand-indicator')
-          .attr('cursor', 'pointer')
-          .on('click', function(event) {
-            event.stopPropagation()
-            setCollapsedNodes(prev => {
-              const newSet = new Set(prev)
-              const premises = conclusionToPremisesRef.current.get(d.id)
-              if (!premises) return prev
+      node.append('circle')
+        .attr('r', 8)
+        .attr('fill', d.implication?.type === 'OR' ? '#d29922' : '#58a6ff')
+        .attr('stroke', d.implication?.type === 'OR' ? '#d29922' : '#58a6ff')
+        .attr('stroke-width', 2)
+        .attr('opacity', 0.9)
+        .attr('cursor', 'pointer')
 
-              const currentlyCollapsed = premises.some(p => prev.has(p))
-              if (currentlyCollapsed) {
-                // Expand
-                premises.forEach(p => newSet.delete(p))
-              } else {
-                // Collapse
-                premises.forEach(p => newSet.add(p))
-              }
-              return newSet
-            })
+      node.append('text')
+        .text(d.implication?.type === 'OR' ? '∨' : '∧')
+        .attr('text-anchor', 'middle')
+        .attr('dy', '0.35em')
+        .attr('fill', 'var(--bg-primary)')
+        .attr('font-size', '12px')
+        .attr('font-weight', '700')
+        .attr('pointer-events', 'none')
+
+      node.append('title')
+        .text(() => {
+          const impl = d.implication!
+          const type = impl.type || 'AND'
+          const symbol = type === 'OR' ? '∨' : '∧'
+          return `${type} junction\n${impl.id}: ${impl.premises.join(` ${symbol} `)} → ${impl.conclusion}`
+        })
+    })
+
+    // Merge and update all nodes
+    const allNodeElements = nodeSelection.merge(enteringNodes)
+
+    // Determine visibility and animate
+    allNodeElements.each(function(d) {
+      const node = d3.select(this)
+      const isVisible = (() => {
+        if (d.type === 'claim') return !collapsedNodes.has(d.id)
+        const impl = d.implication
+        if (!impl) return false
+        return !collapsedNodes.has(impl.conclusion) && !impl.premises.some(p => collapsedNodes.has(p))
+      })()
+
+      const currentTransform = node.attr('transform')
+      const isCurrentlyHidden = currentTransform?.includes('scale(0)')
+
+      if (isVisible && isCurrentlyHidden) {
+        // Expand animation - grow from parent position
+        const parentPos = getParentPosition(d.id)
+
+        node
+          .attr('transform', `translate(${parentPos.x},${parentPos.y}) scale(0)`)
+          .transition()
+          .duration(transitionDuration)
+          .ease(d3.easeCubicOut)
+          .attr('transform', `translate(${d.x},${d.y}) scale(1)`)
+          .tween('position', function() {
+            const interpolateX = d3.interpolate(parentPos.x, d.x)
+            const interpolateY = d3.interpolate(parentPos.y, d.y)
+            return function(t) {
+              d._animX = interpolateX(t)
+              d._animY = interpolateY(t)
+              animateEdgesForNode(d)
+            }
           })
+          .on('end', function() {
+            delete d._animX
+            delete d._animY
+          })
+      } else if (!isVisible && !isCurrentlyHidden) {
+        // Collapse animation - shrink to parent position
+        const parentPos = getParentPosition(d.id)
 
-        indicatorG.append('circle')
-          .attr('cx', radius * 0.6)
-          .attr('cy', radius * 0.6)
-          .attr('r', 12)
-          .attr('fill', 'var(--accent)')
-          .attr('stroke', 'var(--text-primary)')
-          .attr('stroke-width', 2)
-
-        const isCollapsed = arePremisesCollapsed(d.id)
-        indicatorG.append('text')
-          .attr('class', 'expand-symbol')
-          .attr('x', radius * 0.6)
-          .attr('y', radius * 0.6)
-          .attr('text-anchor', 'middle')
-          .attr('dy', '0.35em')
-          .attr('fill', 'var(--bg-primary)')
-          .attr('font-size', '14px')
-          .attr('font-weight', '700')
-          .attr('pointer-events', 'none')
-          .text(isCollapsed ? '+' : '−')
-      })
-
-    // Junction nodes
-    const junctionNodes = node.filter(d => d.type === 'junction')
-
-    junctionNodes.append('circle')
-      .attr('r', 8)
-      .attr('fill', d => d.implication?.type === 'OR' ? '#d29922' : '#58a6ff')
-      .attr('stroke', d => d.implication?.type === 'OR' ? '#d29922' : '#58a6ff')
-      .attr('stroke-width', 2)
-      .attr('opacity', 0.9)
-      .attr('cursor', 'pointer')
-
-    junctionNodes.append('text')
-      .text(d => d.implication?.type === 'OR' ? '∨' : '∧')
-      .attr('text-anchor', 'middle')
-      .attr('dy', '0.35em')
-      .attr('fill', 'var(--bg-primary)')
-      .attr('font-size', '12px')
-      .attr('font-weight', '700')
-      .attr('pointer-events', 'none')
-
-    // Click handlers
-    claimNodes.on('click', (event, d) => {
-      event.stopPropagation()
-      onSelect({ type: 'claim', id: d.id })
-    })
-
-    junctionNodes.on('click', (event, d) => {
-      event.stopPropagation()
-      if (d.implication) {
-        onSelect({ type: 'implication', id: d.implication.id })
+        node
+          .transition()
+          .duration(transitionDuration)
+          .ease(d3.easeCubicIn)
+          .attr('transform', `translate(${parentPos.x},${parentPos.y}) scale(0)`)
+          .tween('position', function() {
+            const startX = d.x
+            const startY = d.y
+            const interpolateX = d3.interpolate(startX, parentPos.x)
+            const interpolateY = d3.interpolate(startY, parentPos.y)
+            return function(t) {
+              d._animX = interpolateX(t)
+              d._animY = interpolateY(t)
+              animateEdgesForNode(d)
+            }
+          })
+          .on('end', function() {
+            delete d._animX
+            delete d._animY
+          })
+      } else if (isVisible) {
+        // Just update position with transition
+        node
+          .transition()
+          .duration(transitionDuration)
+          .ease(d3.easeCubicInOut)
+          .attr('transform', `translate(${d.x},${d.y}) scale(1)`)
       }
     })
 
-    // Tooltips
-    claimNodes.append('title')
-      .text(d => `${d.id}\n${d.text}\nScore: ${d.score}/10`)
+    // Update expand/collapse indicators
+    allNodeElements.filter(d => d.type === 'claim' && isConclusion(d.id)).each(function(d) {
+      const node = d3.select(this)
+      const radius = 65
 
-    junctionNodes.append('title')
-      .text(d => {
-        const impl = d.implication!
-        const type = impl.type || 'AND'
-        const symbol = type === 'OR' ? '∨' : '∧'
-        return `${type} junction\n${impl.id}: ${impl.premises.join(` ${symbol} `)} → ${impl.conclusion}`
+      // Remove old indicator
+      node.select('.expand-indicator').remove()
+
+      const indicatorG = node.append('g')
+        .attr('class', 'expand-indicator')
+        .attr('cursor', 'pointer')
+        .on('click', function(event) {
+          event.stopPropagation()
+          setCollapsedNodes(prev => {
+            const newSet = new Set(prev)
+            const premises = conclusionToPremisesRef.current.get(d.id)
+            if (!premises) return prev
+
+            // Get all descendants recursively
+            const allDescendants = getAllDescendants(d.id)
+
+            const currentlyCollapsed = premises.some(p => prev.has(p))
+            if (currentlyCollapsed) {
+              // Expand: remove all descendants from collapsed set
+              allDescendants.forEach(p => newSet.delete(p))
+            } else {
+              // Collapse: add all descendants to collapsed set
+              allDescendants.forEach(p => newSet.add(p))
+            }
+            return newSet
+          })
+        })
+
+      indicatorG.append('circle')
+        .attr('cx', radius * 0.6)
+        .attr('cy', radius * 0.6)
+        .attr('r', 12)
+        .attr('fill', 'var(--accent)')
+        .attr('stroke', 'var(--text-primary)')
+        .attr('stroke-width', 2)
+
+      const isCollapsed = arePremisesCollapsed(d.id)
+      indicatorG.append('text')
+        .attr('class', 'expand-symbol')
+        .attr('x', radius * 0.6)
+        .attr('y', radius * 0.6)
+        .attr('text-anchor', 'middle')
+        .attr('dy', '0.35em')
+        .attr('fill', 'var(--bg-primary)')
+        .attr('font-size', '14px')
+        .attr('font-weight', '700')
+        .attr('pointer-events', 'none')
+        .text(isCollapsed ? '+' : '−')
+    })
+
+    // Add drag behavior
+    const drag = d3.drag<SVGGElement, NodeData>()
+      .filter((event) => !event.target.closest('.expand-indicator'))
+      .on('start', function() {
+        d3.select(this).raise()
+      })
+      .on('drag', function(event, d) {
+        d.x = event.x
+        d.y = event.y
+        d3.select(this)
+          .attr('transform', `translate(${d.x},${d.y}) scale(1)`)
+
+        // Update connected edges immediately
+        g.selectAll<SVGPathElement, LinkData>('.hyperedge')
+          .attr('d', createCurvePath)
+      })
+      .on('end', function(_event, d) {
+        nodePositionsRef.current.set(d.id, { x: d.x, y: d.y })
       })
 
-  }, [hypergraph, scoreMode, collapsedNodes, selectedItem, onSelect, calculateTreeLayout, getScoreColor, getEffectiveScore, isConclusion, arePremisesCollapsed])
+    allNodeElements.call(drag)
+
+    // Add click handlers
+    allNodeElements.filter(d => d.type === 'claim')
+      .on('click', (event, d) => {
+        if (event.target.closest('.expand-indicator')) return
+        event.stopPropagation()
+        onSelect({ type: 'claim', id: d.id })
+      })
+
+    allNodeElements.filter(d => d.type === 'junction')
+      .on('click', (event, d) => {
+        event.stopPropagation()
+        if (d.implication) {
+          onSelect({ type: 'implication', id: d.implication.id })
+        }
+      })
+
+    // Update selection highlighting
+    allNodeElements.filter(d => d.type === 'claim')
+      .select('circle')
+      .attr('stroke-width', d => {
+        if (!selectedItem) return 2
+        if (selectedItem.type === 'claim' && selectedItem.id === d.id) return 4
+        return 2
+      })
+      .attr('opacity', d => {
+        if (!selectedItem) return 1
+        if (selectedItem.type === 'claim') {
+          return selectedItem.id === d.id ? 1 : 0.3
+        }
+        if (selectedItem.type === 'implication') {
+          const impl = hypergraph.implications.find(i => i.id === selectedItem.id)
+          if (impl && (impl.premises.includes(d.id) || impl.conclusion === d.id)) return 1
+          return 0.3
+        }
+        return 1
+      })
+
+  }, [hypergraph, collapsedNodes, selectedItem, scoreMode, onSelect, calculateTreeLayout, getScoreColor, getEffectiveScore, createCurvePath, animateEdgesForNode, isConclusion, arePremisesCollapsed, getAllDescendants])
 
   if (!hypergraph) {
     return (
