@@ -6,19 +6,23 @@ A tool for collaborating with an AI agent to rigorously evaluate ideas through s
 
 ### Prerequisites
 
-- Python 3.10+
-- [Pixi](https://pixi.sh/) package manager
+- Python 3.11-3.13
+- [uv](https://docs.astral.sh/uv/) package manager
+- Node.js 18+ (for web interface)
 
 ### Install
 
 ```bash
-# Install pixi if needed
-curl -fsSL https://pixi.sh/install.sh | bash
+# Install uv if needed
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Clone and install dependencies
 git clone https://github.com/jffbrwn2/entailment-trees.git
 cd entailment-trees
-pixi install
+uv sync
+
+# Install frontend dependencies
+cd frontend && npm install
 ```
 
 ### Set API Keys
@@ -37,10 +41,20 @@ Add these to your `~/.bashrc` or `~/.zshrc` to make them persistent.
 
 ## Quick Start
 
-### 1. Start the CLI
+### Option 1: Web Interface (Recommended)
+
+Start both the backend and frontend servers:
 
 ```bash
-pixi run python -m agent_system.agent_cli
+./start_web.sh
+```
+
+Then open http://localhost:5173 in your browser.
+
+### Option 2: CLI
+
+```bash
+uv run python -m agent_system.agent_cli
 ```
 
 ### 2. Create a New Approach

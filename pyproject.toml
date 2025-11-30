@@ -1,0 +1,36 @@
+[project]
+name = "ai-simulations"
+version = "0.1.0"
+description = "AI-powered simulations for evaluating neural recording device feasibility"
+authors = [
+    {name = "Jeff Lab", email = "jdotcafe@gmail.com"}
+]
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "numpy>=1.24,<2.0",
+    "matplotlib>=3.7",
+    "scipy>=1.10",
+    "streamlit>=1.28",
+    "plotly>=5.17",
+    "pandas>=2.0",
+    "pytest>=9.0.1,<10",
+    "python-dateutil>=2.9.0,<3",
+    "requests>=2.31",
+    "fastapi>=0.122.0,<0.123",
+    "uvicorn>=0.38.0,<0.39",
+    "watchdog>=6.0.0,<7",
+    "websockets>=15.0.1,<16",
+    "edison-client>=0.1.0",
+    "anthropic>=0.39.0",
+    "claude-agent-sdk",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent_system", "backend", "entailment_hypergraph"]
+
+[tool.uv]
+dev-dependencies = []

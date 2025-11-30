@@ -28,7 +28,7 @@ trap cleanup SIGINT SIGTERM
 echo ""
 echo "📦 Starting FastAPI backend on http://localhost:8000..."
 cd "$(dirname "$0")"
-.pixi/envs/default/bin/python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
+uv run python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 
 # Wait for backend to start

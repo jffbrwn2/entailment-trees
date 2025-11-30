@@ -72,14 +72,14 @@ else
     echo "   ⚠️  Warning: Python 3 not found in PATH"
 fi
 
-# Check for pixi (project uses pixi for dependency management)
-if command -v pixi &> /dev/null; then
-    echo "   ✓ Pixi found: $(pixi --version)"
-    echo "   📦 Installing Python dependencies via pixi..."
-    pixi install
+# Check for uv (project uses uv for dependency management)
+if command -v uv &> /dev/null; then
+    echo "   ✓ uv found: $(uv --version)"
+    echo "   📦 Installing Python dependencies via uv..."
+    uv sync
 else
-    echo "   ℹ️  Pixi not found - project uses pixi for dependencies"
-    echo "   Install pixi: curl -fsSL https://pixi.sh/install.sh | bash"
+    echo "   ℹ️  uv not found - project uses uv for dependencies"
+    echo "   Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
 fi
 
 # 4. Check Node.js environment (for frontend)
@@ -164,8 +164,9 @@ echo "   4. Update claude-progress.txt after each feature"
 echo "   5. Commit changes with descriptive messages"
 echo ""
 echo "📖 Quick Commands:"
-echo "   • Start backend dev server: cd backend && uvicorn main:app --reload"
-echo "   • Start frontend dev server: cd frontend && npm run dev"
+echo "   • Start both servers: ./start_web.sh"
+echo "   • Start backend only: uv run python -m uvicorn backend.main:app --reload"
+echo "   • Start frontend only: cd frontend && npm run dev"
 echo "   • View progress: cat claude-progress.txt"
 echo "   • View features: cat features.json | jq '.phases'"
 echo ""
