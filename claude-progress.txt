@@ -1,0 +1,85 @@
+# Claude Progress Tracker
+# This file tracks work completed across sessions
+
+## Project: Entailment Trees Web Application
+## Start Date: 2025-11-28
+
+## Session 1: Harness Setup
+- Created features.json with all Phase 1 & 2 tasks (original full-stack plan)
+- Created init.sh environment setup script
+- Initialized progress tracking system
+- Created baseline git structure
+
+## Session 2: Architecture Pivot to Local-First
+- Discussed requirements with user:
+  - Few collaborators (not public)
+  - BYOK (user brings own API key)
+  - Ephemeral storage (no persistence needed initially)
+  - Public URL eventually, but local-first development
+- Reviewed existing code:
+  - agent_system/claude_client.py uses Claude Agent SDK with streaming
+  - entailment_hypergraph/index.html has full visualization (~100KB)
+  - CLI works well, just needs web UI
+- Decided: Build local web app first, defer hosting questions
+- Rewrote features.json v2.0 with simplified local-first plan:
+  - 6 features instead of 11
+  - No auth, database, cloud storage
+  - Focus: FastAPI backend + React frontend + port visualization
+  - Key insight: Modify ClaudeCodeClient to yield streams (not print to stdout)
+
+## Session 3: Implementation Sprint
+Implemented all Phase 1 features in one session:
+
+### 1. Streaming Refactor ✓
+- Added StreamEvent types: TextEvent, ToolUseEvent, ToolResultEvent, ErrorEvent, DoneEvent
+- Added query_stream() async generator to ClaudeCodeClient
+- CLI still works unchanged
+- Commit: bd42645
+
+### 2. FastAPI Backend ✓
+- Created backend/main.py with FastAPI app
+- Endpoints: /health, /api/approaches, /api/chat (SSE), /ws/hypergraph/{folder}
+- Chat endpoint streams events via Server-Sent Events
+- WebSocket pushes hypergraph updates to connected clients
+- Tested: Server starts, health check passes
+- Commit: e5d7656
+
+### 3. React Frontend ✓
+- Created frontend/ with Vite + React + TypeScript
+- Split pane layout (60% viz, 40% chat) using react-split
+- ApproachSelector dropdown with create modal
+- ChatInterface with SSE streaming and tool indicators
+- HypergraphVisualizer with basic claim list (full viz deferred)
+- Dark theme matching existing visualizer
+- Build verified working
+- Commit: 83c6ba4
+
+### 4. Integration Script ✓
+- Created start_web.sh to launch both servers
+- Frontend proxies /api and /ws to backend
+
+## What's Working:
+- Backend starts on localhost:8000 with API docs
+- Frontend builds and runs on localhost:5173
+- Approaches list from existing folders
+- Basic hypergraph display with live WebSocket updates
+- Chat interface ready for streaming (needs end-to-end test)
+
+## What's Next:
+1. End-to-end testing: Run both servers, test full flow
+2. Port full visualization from entailment_hypergraph/index.html to React
+3. Test chat streaming with actual Claude responses
+4. Polish and bug fixes
+
+## Architecture:
+```
+Browser (React) <--HTTP/SSE/WS--> FastAPI (localhost:8000) <--> agent_system <--> Claude SDK
+```
+
+## To Run:
+```bash
+./start_web.sh
+# Or manually:
+# Terminal 1: pixi run python -m uvicorn backend.main:app --port 8000
+# Terminal 2: cd frontend && npm run dev
+```

@@ -1,0 +1,887 @@
+{
+  "metadata": {
+    "name": "new-limb",
+    "description": "Evaluating: humans can learn to use new limbs",
+    "created": "2025-11-25",
+    "last_updated": "2025-11-26",
+    "version": "1.0"
+  },
+  "claims": [
+    {
+      "id": "hypothesis",
+      "text": "humans can learn to use new limbs",
+      "score": 5.0,
+      "reasoning": "Initial hypothesis to be evaluated",
+      "uncertainties": [
+        "Not yet investigated"
+      ],
+      "tags": [
+        "HYPOTHESIS"
+      ]
+    },
+    {
+      "id": "c1",
+      "text": "adult humans can achieve functional control of supernumerary limbs through cortical reorganization within practical training timescales",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Extent of adult neural plasticity",
+        "Whether plasticity extends to non-native body configurations"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c2",
+      "text": "a bidirectional interface can be created between the new limb and the human nervous system",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Required bandwidth for control signals",
+        "Surgical vs non-invasive approaches",
+        "Biocompatibility and long-term stability"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c3",
+      "text": "humans can develop automatic, multi-tasking control of non-native movement patterns through deliberate practice",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Cognitive load of controlling additional degrees of freedom",
+        "Training time required",
+        "Transfer of existing motor schemas vs learning from scratch"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c4",
+      "text": "supernumerary limbs can be fully incorporated into functional body schema enabling intuitive sensorimotor control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Types of sensory feedback needed (proprioception, touch, etc.)",
+        "Time to develop sense of embodiment",
+        "Conflict with existing body representation"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c5",
+      "text": "motor cortex shows measurable reorganization in response to prosthetic training in adult subjects",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Magnitude of reorganization observable",
+        "Time course of cortical changes",
+        "fMRI or other imaging evidence"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c6",
+      "text": "unused cortical territory exists that could be recruited for supernumerary limb control without disrupting existing motor function",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Amount of unused motor cortex",
+        "Whether recruitment causes interference",
+        "Evidence from polydactyly or similar conditions"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c7",
+      "text": "adults can learn complex novel motor skills (musical instruments, sports) to proficiency within 6-12 months of daily practice",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Comparison between traditional and non-native motor learning",
+        "Age effects on motor learning rates",
+        "Transfer of learning principles"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c8",
+      "text": "brain-machine interfaces can achieve bidirectional communication with sufficient bandwidth for limb control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Required bandwidth for smooth motor control",
+        "Current BMI bandwidth capabilities"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c9",
+      "text": "motor commands can be decoded from neural signals with sufficient accuracy and latency for real-time limb control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Decoding accuracy requirements",
+        "Maximum acceptable latency for motor control"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c10",
+      "text": "sensory feedback can be encoded and delivered to the nervous system in a format the brain can interpret",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Encoding strategies for different sensory modalities",
+        "Neural stimulation parameters"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c11",
+      "text": "the interface can be maintained safely over long periods without tissue damage or immune rejection",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Long-term biocompatibility of implanted materials",
+        "Inflammatory response to chronic implants"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c12",
+      "text": "humans can simultaneously perform 2+ independent motor tasks (e.g., drumming polyrhythms, typing while walking)",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Complexity limits on dual-task performance",
+        "Practice requirements for multi-tasking",
+        "Neural basis of parallel motor control"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c13",
+      "text": "abstract motor tasks can be learned without relying on existing body movement primitives (e.g., cursor control via novel neural patterns)",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Examples from BMI experiments",
+        "Learning speed compared to embodied movements",
+        "Degree of abstraction achievable"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c14",
+      "text": "trained motor skills transition from effortful to automatic control after sufficient practice (power law of practice applies)",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Practice hours needed for automaticity",
+        "Whether novel BMI control follows same learning curves",
+        "Neurophysiological markers of automaticity"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c15",
+      "text": "the brain can develop proprioceptive awareness of new limb position and movement",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Neural basis of proprioception for non-native body parts",
+        "Required sensory feedback signals"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c16",
+      "text": "tactile and force feedback from new limb can be integrated into somatosensory cortex",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Somatosensory cortex capacity for new body part representations",
+        "Sensory stimulation parameters"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c17",
+      "text": "the sense of embodiment can extend to supernumerary limbs with appropriate sensorimotor feedback",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Requirements for rubber hand illusion-like effects",
+        "Temporal and spatial constraints on sensorimotor contingencies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c18",
+      "text": "invasive cortical interfaces can achieve bidirectional communication with bandwidth sufficient for multi-DOF limb control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Recording channels needed for decoding",
+        "Stimulation parameters for sensory feedback",
+        "Combined read/write bandwidth requirements"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c19",
+      "text": "non-invasive interfaces can achieve bidirectional communication with bandwidth sufficient for basic limb control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Spatial and temporal resolution of non-invasive methods",
+        "Signal-to-noise ratio limitations",
+        "Feasibility of non-invasive stimulation"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c20",
+      "text": "peripheral nerve interfaces can provide bidirectional pathways with bandwidth sufficient for limb sensorimotor control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Available nerve pathways for interface",
+        "Nerve regeneration and interface stability",
+        "Bandwidth capacity of peripheral nerves"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c21",
+      "text": "invasive cortical recording can extract motor intent signals with >90% accuracy",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Number of neurons needed to record",
+        "Decoding algorithm performance",
+        "Signal stability over time"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c22",
+      "text": "cortical stimulation can deliver interpretable sensory signals at >10 Hz update rate",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Stimulation patterns for different sensations",
+        "Spatial specificity of stimulation",
+        "Perceptual latency"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c24",
+      "text": "motor cortex can generate volitional commands for additional limbs when provided with appropriate feedback",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Evidence from multi-limb BMI experiments",
+        "Feedback requirements for motor learning",
+        "Neural capacity for expanded motor repertoire"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c25",
+      "text": "cortical recording accuracy >90% and sensory stimulation >10 Hz together meet bandwidth requirements for coordinated multi-DOF limb movement",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "DOF complexity requirements",
+        "Smoothness and coordination metrics",
+        "Comparison to natural limb bandwidth"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c26",
+      "text": "adult stroke patients show cortical remapping of motor function within 3-6 months of rehabilitation",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Extent of remapping",
+        "Age effects",
+        "Comparison to novel vs recovery tasks"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c27",
+      "text": "musicians and athletes demonstrate new cortical activations for trained skills measurable via fMRI",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Time course of changes",
+        "Degree of reorganization vs tuning",
+        "Specificity of changes"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c28",
+      "text": "premotor and supplementary motor areas show spare capacity not maximally recruited during normal limb use",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Amount of spare capacity",
+        "Whether spare capacity can be accessed for novel tasks",
+        "Evidence from imaging studies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c29",
+      "text": "humans achieve functional typing speed (40+ WPM) within 6 months of daily practice",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Comparison to BMI control tasks",
+        "Age effects on learning rate",
+        "Transfer to non-keyboard motor learning"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c31",
+      "text": "subjects in BMI experiments learn arbitrary cursor control mappings without body movement within weeks",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Performance ceiling compared to embodied control",
+        "Number of DOFs controlled",
+        "Literature examples from Carmena, Nicolelis, etc."
+      ],
+      "tags": []
+    },
+    {
+      "id": "c32",
+      "text": "Utah array recordings demonstrate stable single-unit discrimination for >3 years in some subjects",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Percentage of electrodes maintaining quality",
+        "Subject-to-subject variability",
+        "Long-term trends beyond 3 years"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c33",
+      "text": "ICMS (intracortical microstimulation) can evoke distinguishable tactile percepts in somatosensory cortex",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Number of distinguishable percepts",
+        "Temporal resolution",
+        "Naturalness of sensations"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c34",
+      "text": "biocompatible electrode coatings (PEDOT, parylene-C) reduce inflammatory response compared to bare metal",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Long-term efficacy >5 years",
+        "Impact on signal quality",
+        "Human vs animal data"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c37",
+      "text": "motor learning paradigms that work for stroke rehabilitation and skill acquisition also apply to prosthetic adaptation",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Transfer of learning principles across contexts",
+        "Specific adaptations needed for prosthetics",
+        "Evidence from prosthetic training studies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c38",
+      "text": "spare cortical capacity can be functionally recruited for novel motor tasks without disrupting existing motor control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Amount of capacity available",
+        "Interference effects on existing functions",
+        "Evidence from dual-task studies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c40",
+      "text": "when dual-task interference is sufficiently reduced through automatization, true simultaneous performance becomes possible",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Threshold for true simultaneity",
+        "Neural mechanisms of parallel control",
+        "Task complexity limits"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c41",
+      "text": "stable single-unit discrimination enables motor decoding algorithms to achieve >90% accuracy",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Number of units required",
+        "Decoding algorithm performance",
+        "Published accuracy benchmarks"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c42",
+      "text": "ICMS can deliver distinguishable percepts at stimulation rates exceeding 10 Hz",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Maximum distinguishable rate",
+        "Percept quality at high rates",
+        "Evidence from temporal discrimination studies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c43",
+      "text": "body schema mechanisms for replacement limbs can generalize to supernumerary limb configurations",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Fundamental difference between replacement and addition",
+        "Evidence from supernumerary limb experiments",
+        "Neural constraints on limb number"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c44",
+      "text": "proprioceptive drift indicates the brain is incorporating fake limb position into body representation",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Relationship between drift and embodiment",
+        "Whether drift implies active proprioception of fake limb",
+        "Neural mechanisms underlying drift"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c45",
+      "text": "ICMS-evoked percepts can be coupled with prosthetic limb sensors to provide closed-loop tactile feedback",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Sensor-to-stimulation mapping",
+        "Naturalness of evoked sensations",
+        "Examples from literature"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c47",
+      "text": "reduced inflammatory response is sufficient to prevent long-term tissue damage and immune rejection",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Threshold for 'reduced' inflammation",
+        "Long-term follow-up data",
+        "Chronic vs acute inflammation effects"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c48",
+      "text": "supernumerary limb control utilizes the same cortical recruitment and motor learning processes that enable complex skill acquisition",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Similarity of neural mechanisms",
+        "Whether adding limbs differs fundamentally from skill learning",
+        "Evidence from neuroscience studies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c49",
+      "text": "reaching 40+ WPM typing speed represents achieving proficiency in a complex motor skill",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Definition of proficiency",
+        "Comparison to other skill benchmarks",
+        "Performance plateau indicators"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c51",
+      "text": "neural interfaces for supernumerary limbs are implemented with biocompatible electrode coatings",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Standard practice in interface design",
+        "Alternative approaches",
+        "Cost-benefit tradeoffs"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c52",
+      "text": "piano learners achieve basic proficiency within 6-12 months of daily practice",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Definition of basic proficiency for piano",
+        "Practice intensity requirements",
+        "Comparison to typing learning rates"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c53",
+      "text": "tennis players reach intermediate skill level within 6-12 months of regular training",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Definition of intermediate level",
+        "Training frequency requirements",
+        "Age effects on athletic skill acquisition"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c54",
+      "text": "body schema mechanisms with appropriate sensorimotor feedback generate a sense of embodiment",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Requirements for sensorimotor contingencies",
+        "Neural basis of embodiment from body schema",
+        "Evidence from neuroscience studies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c56",
+      "text": "extensive practice of motor tasks like drumming polyrhythms leads to sufficient automatization",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Hours of practice required",
+        "Evidence from expertise studies",
+        "Task complexity limits"
+      ],
+      "tags": []
+    }
+  ],
+  "implications": [
+    {
+      "id": "i1",
+      "premises": [
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "conclusion": "hypothesis",
+      "type": "AND",
+      "reasoning": "For humans to learn to use new limbs, the brain must have the plasticity to adapt (c1), there must be a working interface to connect the limb (c2), humans must be capable of learning the required motor patterns (c3), and the brain must be able to integrate sensory feedback from the limb (c4). All four are necessary requirements.",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "Let me analyze this logical entailment carefully.\n\n**Analyzing the logical relationship:**\n\nThe conclusion states: \"humans can learn to use new limbs\"\n\nLet me check each premise against the conclusion:\n\n- **c1**: \"adult humans can achieve functional control of supernumerary limbs\" - This is essentially a more specific restatement of the conclusion. If humans can achieve functional control of supernumerary (extra) limbs, then they can learn to use new limbs.\n\n- **c2**: \"a bidirectional interface can be created\" - This describes a technical capability/precondition, not achievement of learning.\n\n- **c3**: \"humans can develop automatic, multi-tasking control of non-native movement patterns\" - This describes learning capability for new movement patterns.\n\n- **c4**: \"supernumerary limbs can be fully incorporated into functional body schema enabling intuitive sensorimotor control\" - This is another way of saying the limbs can be used functionally.\n\n**Checking for degeneracy:**\nThe conclusion \"humans can learn to use new limbs\" essentially entails c1 (if humans can learn to use new limbs, then they can achieve functional control of supernumerary limbs). This is a degenerate case where C \u2192 c1.\n\nSimilarly, c4 (full incorporation enabling intuitive control) is nearly equivalent to saying humans can use the new limbs. The conclusion likely entails c4 as well.\n\n**Checking for redundancy:**\nEven if c1 alone doesn't create degeneracy, c1 by itself is sufficient to conclude that \"humans can learn to use new limbs\" - making c2, c3, and c4 potentially redundant.\n\nVALID: NO\n\nEXPLANATION: This is a degenerate entailment. Premise c1 (\"adult humans can achieve functional control of supernumerary limbs\") is essentially a restatement of the conclusion with minor specificity added. The conclusion directly entails c1 and c4, violating the requirement that premises be more specific than the conclusion.\n\nSUGGESTIONS: The conclusion should be more specific than any individual premise. Consider a conclusion like \"adult humans can achieve fully-integrated, multi-tasking control of robotic supernumerary limbs through neural interfaces\" which would require all premises working together. Alternatively, restructure so premises describe necessary capabilities/conditions that together enable the conclusion, rather than restating it.\n\nREDUNDANT_PREMISES: c2, c3 (if only checking sufficiency from c1 alone)\nDEGENERATE_PREMISES: c1, c4"
+    },
+    {
+      "id": "i2",
+      "premises": [
+        "c5",
+        "c6",
+        "c7",
+        "c48"
+      ],
+      "conclusion": "c1",
+      "type": "AND",
+      "reasoning": "For adults to achieve functional supernumerary limb control (c1), we need cortical reorganization (c5), available territory (c6), practical timescales (c7), AND that supernumerary control uses these same mechanisms (c48).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "Let me analyze this logical entailment carefully.\n\n**Analyzing the logical flow:**\n\nThe conclusion states: \"adult humans can achieve functional control of supernumerary limbs through cortical reorganization within practical training timescales\"\n\nLet me check each premise:\n- c5: Establishes that cortical reorganization occurs in adults (addresses mechanism)\n- c6: Establishes that unused cortical territory exists (addresses feasibility/capacity)\n- c7: Establishes that adults can learn complex motor skills in 6-12 months (addresses timescale)\n- c48: Establishes that supernumerary limb control uses the same processes as complex skill acquisition (bridges supernumerary limbs to known capabilities)\n\n**Checking for redundancy:**\n- Remove c5: Without it, we lose evidence that cortical reorganization actually occurs in adults\n- Remove c6: Without it, we can't establish feasibility (might disrupt existing function)\n- Remove c7: Without it, we lose the \"practical training timescales\" support\n- Remove c48: Without it, we can't connect supernumerary limbs to the general motor learning evidence\n\nAll premises appear necessary.\n\n**Checking for degeneracy:**\nDoes the conclusion entail any premise?\n- c1 \u2192 c5? No, the conclusion doesn't imply measurable reorganization happens with prosthetics\n- c1 \u2192 c6? No, the conclusion doesn't imply unused territory exists\n- c1 \u2192 c7? No, the conclusion doesn't imply adults can learn instruments/sports\n- c1 \u2192 c48? **YES** - If adults can achieve functional control of supernumerary limbs through cortical reorganization in practical timescales, this strongly implies that supernumerary limb control uses the same processes as other complex skills. c48 is essentially a restatement of what makes c1 possible.\n\n**Logical gap check:**\nThe reasoning would work: cortical reorganization happens (c5) + unused territory exists (c6) + adults learn complex skills quickly (c7) \u2192 conclusion about supernumerary limbs. But we need c48 to bridge this. However, c48 is so close to the conclusion itself that it's degenerate.\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: c48\n\nVALID: NO\nEXPLANATION: Premise c48 is degenerate - the conclusion that adults can achieve functional control of supernumerary limbs through cortical reorganization entails that this process utilizes the same cortical recruitment mechanisms. This creates a near-circular logical structure where c48 essentially restates what the conclusion assumes.\nSUGGESTIONS: Replace c48 with more specific empirical evidence, such as neuroimaging studies showing specific cortical regions activated during supernumerary limb attempts, or animal models demonstrating successful supernumerary limb control through identified neural pathways."
+    },
+    {
+      "id": "i3",
+      "premises": [
+        "c8",
+        "c9",
+        "c10",
+        "c11"
+      ],
+      "conclusion": "c2",
+      "type": "AND",
+      "reasoning": "For a bidirectional interface to work (c2), it must have sufficient bandwidth (c8), decode motor commands accurately (c9), encode sensory feedback the brain can interpret (c10), and be safe long-term (c11).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "passed",
+      "entailment_explanation": "REDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\nVALID: YES\n\nEXPLANATION: The four premises together provide necessary and sufficient components for a bidirectional interface: c8 establishes the possibility of bidirectional communication with adequate bandwidth, c9 covers the motor control direction (brain\u2192limb), c10 covers the sensory feedback direction (limb\u2192brain), and c11 ensures long-term viability. These collectively entail that such a bidirectional interface can be created.\n\nSUGGESTIONS: N/A"
+    },
+    {
+      "id": "i4",
+      "premises": [
+        "c12",
+        "c13",
+        "c14"
+      ],
+      "conclusion": "c3",
+      "type": "AND",
+      "reasoning": "For humans to develop automatic, multi-tasking control of non-native movements through practice (c3), they must be able to control additional DOFs simultaneously (c12), learn movements without existing correspondences (c13), and develop automaticity through training (c14). The conclusion synthesizes these into practical multi-tasking capability.",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "passed",
+      "entailment_explanation": "VALID: YES\nEXPLANATION: The conclusion logically follows from the conjunction of all three premises. [c12] establishes multi-tasking capability, [c13] establishes that non-native movement patterns can be learned, and [c14] establishes that practiced skills become automatic. Together, these three components necessarily entail that humans can develop automatic, multi-tasking control of non-native patterns through practice.\nSUGGESTIONS: N/A\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\n**Analysis:**\n1. **Logical flow**: The conclusion requires all three components:\n   - \"multi-tasking control\" requires [c12]\n   - \"non-native movement patterns\" requires [c13]\n   - \"automatic\" + \"through deliberate practice\" requires [c14]\n\n2. **Minimal premise set**: Each premise contributes a distinct necessary element:\n   - Without [c12]: No justification for multi-tasking capability\n   - Without [c13]: Limited to native/existing movement patterns only\n   - Without [c14]: No justification for transition to automaticity through practice\n\n3. **Non-degenerate entailment**: The conclusion does NOT entail any individual premise:\n   - [c3] doesn't imply [c12] (automatic multi-tasking of non-native patterns doesn't prove independent motor tasks are possible in general)\n   - [c3] doesn't imply [c13] (the conclusion is about developed skills, not the learning mechanism)\n   - [c3] doesn't imply [c14] (doesn't specify power law or general principle of skill transition)\n\nThe premises are appropriately more specific than the conclusion, and their conjunction is both necessary and sufficient."
+    },
+    {
+      "id": "i5",
+      "premises": [
+        "c15",
+        "c16",
+        "c17",
+        "c24"
+      ],
+      "conclusion": "c4",
+      "type": "AND",
+      "reasoning": "For supernumerary limbs to be fully incorporated into functional body schema enabling intuitive control (c4), the brain must develop proprioceptive awareness (c15), integrate tactile/force feedback (c16), extend embodiment to the limb (c17), AND generate volitional motor commands for it (c24). Together these complete the sensorimotor loop for intuitive control.",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "Let me analyze this logical entailment carefully.\n\n## Analysis\n\n**Checking the logical flow:**\n\nThe premises cover:\n- [c15] Proprioceptive awareness development for new limbs\n- [c16] Tactile/force feedback integration into somatosensory cortex\n- [c17] Sense of embodiment extension to supernumerary limbs\n- [c24] Motor cortex generating volitional commands for additional limbs\n\nThe conclusion states: Supernumerary limbs can be **fully incorporated into functional body schema** enabling **intuitive sensorimotor control**\n\n**Checking for MINIMAL premise set:**\nEach premise addresses a distinct component:\n- c15: proprioceptive awareness (sensing position/movement)\n- c16: tactile/force feedback (sensory integration)\n- c17: embodiment (feeling of ownership)\n- c24: volitional motor commands (motor control)\n\nAll four appear necessary for \"full incorporation\" and \"intuitive sensorimotor control.\"\n\n**Checking for DEGENERATE entailment:**\nDoes the conclusion [c4] entail any individual premise?\n- \"Fully incorporated into functional body schema\" is more general than any single premise\n- However, \"intuitive sensorimotor control\" is essentially a high-level restatement of what c15+c16+c17+c24 describe collectively\n- The conclusion doesn't clearly go beyond summarizing the premises\n\n**Logical gaps:**\nThe conclusion uses \"fully incorporated\" and \"intuitive\" - these are qualitative assessments that aren't strictly deducible from the premises. The premises describe capabilities but don't guarantee \"full\" or \"intuitive\" integration.\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None (though borderline - the conclusion is very close to being a summary)\n\nVALID: NO\n\nEXPLANATION: While the premises support the conclusion, there's a logical gap between having the component capabilities (proprioception, feedback integration, embodiment, motor commands) and achieving \"fully incorporated\" and \"intuitive\" control. The conclusion makes stronger claims about completeness and intuitiveness than the premises justify.\n\nSUGGESTIONS: Either weaken the conclusion to \"supernumerary limbs can be incorporated into body schema enabling sensorimotor control\" (removing \"fully\" and \"intuitive\"), or add premises establishing that these four components are sufficient for full and intuitive integration."
+    },
+    {
+      "id": "i6",
+      "premises": [
+        "c18",
+        "c19",
+        "c20"
+      ],
+      "conclusion": "c8",
+      "type": "OR",
+      "reasoning": "Bidirectional BMI bandwidth requirements can be met via invasive cortical interfaces (c18), non-invasive interfaces (c19), or peripheral nerve interfaces (c20). Any one approach achieving sufficient bidirectional bandwidth would satisfy c8.",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "VALID: NO\n\nEXPLANATION: The premises describe three specific types of interfaces (invasive cortical, non-invasive, and peripheral nerve), but the conclusion jumps to \"brain-machine interfaces\" as a general category. There is a logical gap because peripheral nerve interfaces are not brain-machine interfaces\u2014they interface with nerves, not the brain\u2014so even if all premises are true, they don't guarantee the conclusion about BMIs specifically.\n\nSUGGESTIONS: To make this valid, you would need either: (1) an intermediate claim establishing that invasive cortical and non-invasive interfaces are types of brain-machine interfaces, and that at least one of these (not the peripheral nerve option) is true, OR (2) reword the conclusion to be broader, such as \"neural interfaces can achieve bidirectional communication with sufficient bandwidth for limb control\" to encompass all three types mentioned."
+    },
+    {
+      "id": "i9",
+      "premises": [
+        "c21",
+        "c22",
+        "c25"
+      ],
+      "conclusion": "c18",
+      "type": "AND",
+      "reasoning": "For invasive cortical interfaces to achieve bidirectional communication with sufficient bandwidth for multi-DOF limb control (c18), they must extract motor intent accurately (c21), deliver sensory feedback at sufficient rates (c22), and these performance metrics must meet the bandwidth requirements for coordinated limb movement (c25).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "Let me analyze this logical entailment step by step.\n\n**Step 1: Check if conclusion follows from premises**\n\n- c21: invasive cortical recording extracts motor intent at >90% accuracy\n- c22: cortical stimulation delivers sensory signals at >10 Hz\n- c25: these capabilities together meet bandwidth requirements for multi-DOF limb movement\n- c18 (conclusion): invasive cortical interfaces achieve bidirectional communication with sufficient bandwidth for multi-DOF limb control\n\nThe premises establish: (1) motor intent extraction capability, (2) sensory signal delivery capability, and (3) that these together meet bandwidth requirements. The conclusion claims bidirectional communication with sufficient bandwidth is achieved.\n\n**Step 2: Check for redundancy**\n\nCan we remove any premise and still reach the conclusion?\n- Without c21 or c22: We wouldn't have one direction of communication\n- Without c25: We would know the individual capabilities exist but not that they **together** meet the bandwidth requirements\n\nAll three premises appear necessary.\n\n**Step 3: Check for degeneracy**\n\nDoes c18 entail any individual premise?\n- Does \"bidirectional communication with sufficient bandwidth for multi-DOF control\" entail \"recording accuracy >90%\"? YES - if the conclusion is true, it implies the specific recording accuracy mentioned in c21.\n- Does it entail \"stimulation >10 Hz\"? YES - similarly for c22.\n- Does it entail c25? YES - c25 essentially restates that the capabilities meet bandwidth requirements, which is what c18 claims.\n\n**c25 is particularly problematic**: it says \"recording accuracy >90% and sensory stimulation >10 Hz together meet bandwidth requirements for coordinated multi-DOF limb movement\" - this is essentially a restatement of the conclusion itself.\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: c25\n\nVALID: NO\nEXPLANATION: c25 is degenerate - it essentially restates the conclusion that the combined capabilities meet bandwidth requirements for multi-DOF control. The conclusion entails c25, making this a near-circular reasoning pattern (C \u2227 other premises \u2192 C).\nSUGGESTIONS: Remove c25 and add intermediate claims that explain WHY >90% accuracy and >10 Hz rate are sufficient (e.g., specific information-theoretic requirements, DOF coordination thresholds, or comparative benchmarks that establish these as threshold values)."
+    },
+    {
+      "id": "i11",
+      "premises": [
+        "c26",
+        "c27",
+        "c37"
+      ],
+      "conclusion": "c5",
+      "type": "AND",
+      "reasoning": "Evidence that motor cortex shows measurable reorganization in response to prosthetic training (c5) comes from stroke patients showing remapping (c26), skill training producing new activations (c27), and the bridging principle that these learning paradigms apply to prosthetics (c37).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "Let me analyze this logical entailment carefully.\n\n**Analyzing the logical flow:**\n\nThe premises establish:\n- c26: Stroke patients show cortical remapping (motor cortex reorganization in a specific population)\n- c27: Musicians/athletes show new cortical activations (motor cortex reorganization in another population)\n- c37: Motor learning paradigms from stroke/skill acquisition apply to prosthetic adaptation\n\nThe conclusion states: Motor cortex shows reorganization in response to prosthetic training in adults.\n\n**Checking the logical entailment:**\n\nThe argument structure is:\n1. Stroke patients show cortical reorganization (c26)\n2. Musicians/athletes show cortical reorganization (c27)\n3. The same learning paradigms apply to prosthetics (c37)\n4. Therefore, prosthetic training causes cortical reorganization (c5)\n\nThis requires an inferential leap. From \"the same paradigms apply\" (c37), we need to infer that prosthetic training will produce similar outcomes (cortical reorganization). This is a reasonable inductive inference, but there's a logical gap: c37 only says the paradigms \"apply,\" not that they produce the same neuroplastic effects.\n\n**Checking for redundancy:**\n\nIf we remove c26 OR c27, we still have examples of motor learning producing cortical changes + the claim that these paradigms apply to prosthetics. Both c26 and c27 serve the same logical function (establishing that motor learning causes reorganization), making at least one redundant.\n\n**Checking for degeneracy:**\n\nThe conclusion does NOT entail any individual premise (c5 doesn't imply c26, c27, or c37), so this is non-degenerate.\n\nVALID: NO\n\nEXPLANATION: While the inference is reasonable, there's a logical gap: c37 states the paradigms \"apply\" to prosthetics but doesn't explicitly state they produce the same neuroplastic outcomes. Additionally, c26 and c27 are redundant\u2014both provide examples of motor learning causing cortical reorganization, but only one is logically necessary.\n\nREDUNDANT_PREMISES: c26 or c27 (one of these is redundant)\n\nDEGENERATE_PREMISES: None\n\nSUGGESTIONS: Either (1) add an intermediate claim like \"when motor learning paradigms apply to a domain, they produce similar cortical reorganization effects\" to bridge the gap, OR (2) remove one of c26/c27 and strengthen c37 to explicitly state that prosthetic adaptation produces cortical reorganization outcomes similar to stroke rehabilitation and skill acquisition."
+    },
+    {
+      "id": "i12",
+      "premises": [
+        "c28",
+        "c38"
+      ],
+      "conclusion": "c6",
+      "type": "AND",
+      "reasoning": "The existence of unused cortical territory that could be recruited for supernumerary limbs (c6) is supported by evidence of spare capacity (c28) and the principle that this capacity can be recruited without disruption (c38).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "Let me analyze this logical entailment carefully.\n\n**Analyzing the logical relationship:**\n\nPremise [c28]: Premotor and supplementary motor areas show spare capacity not maximally recruited during normal limb use\n\nPremise [c38]: Spare cortical capacity can be functionally recruited for novel motor tasks without disrupting existing motor control\n\nConclusion [c6]: Unused cortical territory exists that could be recruited for supernumerary limb control without disrupting existing motor function\n\n**Checking the logic:**\n\n1. **Does the conclusion follow?** \n   - [c28] establishes that spare capacity exists in specific motor areas\n   - [c38] establishes that spare capacity can be recruited for novel tasks without disruption\n   - [c6] concludes that unused territory exists that could be recruited for supernumerary limb control without disruption\n   \n   The conclusion logically follows: [c28] provides the existence claim (spare capacity exists), and [c38] provides the functional claim (it can be recruited without disruption).\n\n2. **Checking for REDUNDANT premises:**\n   - Removing [c28]: We'd only know spare capacity *can* be recruited but not that it *exists* \u2192 conclusion weakened\n   - Removing [c38]: We'd only know spare capacity exists but not that it can be recruited without disruption \u2192 conclusion weakened\n   - Both premises are necessary \u2192 No redundancy\n\n3. **Checking for DEGENERATE entailment:**\n   - Does [c6] \u2192 [c28]? If unused territory exists that could be recruited, does that mean premotor/supplementary areas show spare capacity? Not necessarily - the unused territory could be elsewhere.\n   - Does [c6] \u2192 [c38]? If unused territory could be recruited for supernumerary limbs, does that mean spare capacity can be recruited for novel tasks generally? Yes, this is essentially restated.\n   \n   **[c38] appears degenerate** - the conclusion essentially restates this premise with \"supernumerary limb control\" as a specific instance of \"novel motor tasks.\"\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: c38\n\nVALID: NO\nEXPLANATION: The conclusion essentially restates premise [c38] by substituting \"supernumerary limb control\" for \"novel motor tasks,\" making this a degenerate entailment. The premises should be more specific than the conclusion, not vice versa.\nSUGGESTIONS: Reformulate to make premises more specific decompositions of the conclusion, or add intermediate claims that bridge between general \"novel motor tasks\" and specific \"supernumerary limb control\" requirements."
+    },
+    {
+      "id": "i13",
+      "premises": [
+        "c29",
+        "c49",
+        "c52",
+        "c53"
+      ],
+      "conclusion": "c7",
+      "type": "AND",
+      "reasoning": "Evidence that adults achieve proficiency in complex skills within 6-12 months (c7) comes from: typing (c29), piano (c52), tennis (c53), all showing this timeline, plus typing represents proficiency (c49).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "VALID: NO\nEXPLANATION: The conclusion makes a general claim about \"adults\" learning complex motor skills, but the premises only provide examples of specific skills (typing, piano, tennis) without establishing that these examples generalize to all complex motor skills or that the subjects were necessarily adults. The logical gap is inductive generalization - moving from specific instances to a universal claim about all complex novel motor skills.\nSUGGESTIONS: Need intermediate claims such as: (1) typing, piano, and tennis are representative examples of complex motor skills, (2) the timeframe generalizes across complex motor skills, (3) the learners in c29, c52, c53 were adults, and (4) a bridge claim that establishes the pattern observed in these specific cases applies broadly to the category of \"complex novel motor skills.\"\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None"
+    },
+    {
+      "id": "i14",
+      "premises": [
+        "c56",
+        "c40"
+      ],
+      "conclusion": "c12",
+      "type": "AND",
+      "reasoning": "Evidence that humans can simultaneously perform motor tasks (c12) comes from: extensive practice leads to sufficient automatization (c56), and automatization enables simultaneous performance (c40).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "Let me analyze this logical entailment carefully.\n\n**Analyzing the logical flow:**\n\nPremise [c56]: Extensive practice \u2192 sufficient automatization\nPremise [c40]: Sufficient automatization (reduced dual-task interference) \u2192 true simultaneous performance possible\nConclusion [c12]: Humans can simultaneously perform 2+ independent motor tasks\n\n**Logical chain:**\nThe premises create a chain: extensive practice \u2192 automatization \u2192 simultaneous performance becomes *possible*\n\n**Critical Issues:**\n\n1. **Logical gap**: The premises establish that simultaneous performance becomes *possible* under certain conditions (extensive practice leading to automatization). However, the conclusion asserts that humans *can* perform these tasks as a general capability. There's a gap between \"becomes possible with extensive practice\" and a general statement about human capability.\n\n2. **Checking for redundancy**: \n   - [c56] is necessary (establishes how to achieve automatization)\n   - [c40] is necessary (links automatization to simultaneous performance)\n   - Neither can be removed without breaking the chain.\n\n3. **Checking for degeneracy**:\n   - Does [c12] \u2192 [c56]? No. The conclusion doesn't entail that extensive practice is needed.\n   - Does [c12] \u2192 [c40]? No. The conclusion doesn't entail the automatization mechanism.\n   - However, [c12] could be seen as nearly equivalent to the consequent of [c40], just with added examples.\n\n**The main issue**: The premises describe a *conditional pathway* (IF extensive practice, THEN automatization, THEN possible), but the conclusion makes an *unconditional capability statement*. The conclusion would logically follow if we added an implicit premise that \"humans do engage in extensive practice\" or if the conclusion were softened to \"can (with extensive practice).\"\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\nVALID: NO\nEXPLANATION: The premises establish that simultaneous performance becomes *possible* through a specific pathway (extensive practice \u2192 automatization), but the conclusion asserts a general capability statement without confirming that this pathway is actually realized. There's a gap between conditional possibility and actual capability.\nSUGGESTIONS: Add a premise stating \"humans do engage in extensive practice of such motor tasks\" or modify the conclusion to \"humans can simultaneously perform 2+ independent motor tasks when they have extensively practiced them.\""
+    },
+    {
+      "id": "i15",
+      "premises": [
+        "c31"
+      ],
+      "conclusion": "c13",
+      "type": "AND",
+      "reasoning": "Evidence that abstract motor tasks can be learned without body movement primitives (c13) is demonstrated by BMI cursor control experiments (c31) where subjects learn arbitrary neural-to-cursor mappings.",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "passed",
+      "entailment_explanation": "REDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\nVALID: YES\n\nEXPLANATION: The premise describes a specific empirical finding (learning arbitrary cursor control without body movement), which serves as a concrete instance that supports the more general conclusion about abstract motor task learning without body movement primitives. The conclusion properly generalizes from the specific BMI cursor control example to the broader principle, with cursor control explicitly mentioned as an exemplar in the conclusion itself.\n\nSUGGESTIONS: N/A"
+    },
+    {
+      "id": "i16",
+      "premises": [
+        "c32",
+        "c41"
+      ],
+      "conclusion": "c21",
+      "type": "AND",
+      "reasoning": "Evidence that invasive cortical recording can extract motor intent with >90% accuracy (c21) requires stable recordings (c32) and the bridging claim that stable discrimination enables high-accuracy decoding (c41).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "passed",
+      "entailment_explanation": "Let me analyze this logical entailment step by step.\n\n**Analyzing the logical flow:**\n\nFrom the premises:\n- c32: Utah arrays can maintain stable single-unit discrimination for >3 years (in some subjects)\n- c41: Stable single-unit discrimination \u2192 motor decoding algorithms achieve >90% accuracy\n\nThis creates a chain: Utah arrays \u2192 stable discrimination \u2192 >90% accuracy in motor decoding\n\nThe conclusion states: invasive cortical recording can extract motor intent signals with >90% accuracy\n\n**Checking for logical gaps:**\n\n1. The premises specifically discuss Utah arrays (a type of invasive cortical recording)\n2. The premises lead to \">90% accuracy\" in motor decoding\n3. The conclusion broadens this to \"invasive cortical recording\" generally and refers to \"motor intent signals\"\n\n**Checking MINIMAL premise set:**\nBoth premises are necessary:\n- Without c32, we don't establish that the stable discrimination is achievable\n- Without c41, we don't connect stable discrimination to the >90% accuracy\nNeither is redundant.\n\n**Checking NON-DEGENERATE entailment:**\nDoes c21 entail c32? No - the conclusion doesn't specify Utah arrays or 3-year stability.\nDoes c21 entail c41? No - the conclusion doesn't mention the stable discrimination requirement.\nThe premises are more specific than the conclusion, so this is non-degenerate.\n\n**Logical validity:**\nThe entailment is valid. Utah arrays are a form of invasive cortical recording, and motor decoding of >90% accuracy effectively means extracting motor intent signals with that accuracy level.\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\nVALID: YES\n\nEXPLANATION: The premises form a valid logical chain: Utah arrays (invasive cortical recording) achieve stable discrimination, which enables >90% accuracy in motor decoding (extracting motor intent). The conclusion correctly generalizes this specific finding to invasive cortical recording capability.\n\nSUGGESTIONS: N/A"
+    },
+    {
+      "id": "i17",
+      "premises": [
+        "c42"
+      ],
+      "conclusion": "c22",
+      "type": "AND",
+      "reasoning": "Evidence that cortical stimulation can deliver interpretable sensory signals at >10 Hz (c22) comes from ICMS delivering distinguishable percepts at rates exceeding 10 Hz (c42).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "I'll analyze the logical relationship between the premise and conclusion.\n\n**Analysis:**\n\n1. **Checking the logical flow:**\n   - Premise [c42]: ICMS can deliver distinguishable percepts at stimulation rates exceeding 10 Hz\n   - Conclusion [c22]: cortical stimulation can deliver interpretable sensory signals at >10 Hz update rate\n\n2. **Examining the relationship:**\n   - ICMS (Intracortical Microstimulation) is a specific type of cortical stimulation\n   - \"Distinguishable percepts\" is very similar to \"interpretable sensory signals\"\n   - \"Stimulation rates exceeding 10 Hz\" = \">10 Hz update rate\"\n   \n3. **Checking for degeneracy:**\n   - The conclusion is essentially a generalized restatement of the premise\n   - ICMS is a subset of cortical stimulation, so if cortical stimulation can deliver signals at >10 Hz, then ICMS (being cortical stimulation) can also deliver signals at >10 Hz\n   - This means: conclusion [c22] \u2192 premise [c42]\n   - This is a degenerate entailment where the premise is MORE SPECIFIC than the conclusion, and the conclusion could directly entail the premise\n\n4. **Checking minimality:**\n   - Only one premise, so no redundancy issue\n\n**REDUNDANT_PREMISES:** None\n\n**DEGENERATE_PREMISES:** c42\n\n**VALID:** NO\n\n**EXPLANATION:** This is a degenerate entailment. The premise is simply a more specific instance of the conclusion (ICMS is a type of cortical stimulation), making this essentially a trivial entailment of the form \"specific case \u2192 general case,\" which doesn't represent meaningful logical decomposition.\n\n**SUGGESTIONS:** To fix this, either: (1) add additional premises that provide supporting evidence beyond just restating the conclusion more specifically, or (2) make the conclusion more specific than just generalizing ICMS to all cortical stimulation, requiring actual synthesis of multiple pieces of information."
+    },
+    {
+      "id": "i18",
+      "premises": [
+        "c43",
+        "c54"
+      ],
+      "conclusion": "c17",
+      "type": "AND",
+      "reasoning": "Evidence that embodiment extends to supernumerary limbs (c17) requires: body schema mechanisms generalize to supernumerary configurations (c43), and these mechanisms with sensorimotor feedback generate embodiment (c54).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "passed",
+      "entailment_explanation": "Let me analyze this logical entailment step by step.\n\n**Analyzing the logical flow:**\n\nFrom [c43]: Body schema mechanisms can generalize from replacement limbs \u2192 to supernumerary limbs\nFrom [c54]: Body schema mechanisms + sensorimotor feedback \u2192 sense of embodiment\n\nCombined reasoning:\n1. Body schema mechanisms work for supernumerary limbs (c43)\n2. Body schema mechanisms with sensorimotor feedback generate embodiment (c54)\n3. Therefore: Supernumerary limbs with sensorimotor feedback can generate embodiment (c17)\n\nThis appears to be valid syllogistic reasoning.\n\n**Checking for REDUNDANT premises:**\n- Removing [c43]: We'd only know body schema mechanisms generate embodiment, but not that they work for supernumerary limbs. Cannot reach conclusion.\n- Removing [c54]: We'd only know mechanisms can generalize to supernumerary limbs, but not that they generate embodiment. Cannot reach conclusion.\n\nBoth premises are necessary. No redundancy.\n\n**Checking for DEGENERATE entailment:**\n- Does [c17] \u2192 [c43]? No. The conclusion is specifically about supernumerary limbs with feedback generating embodiment, which doesn't entail that mechanisms can generalize from replacement to supernumerary limbs.\n- Does [c17] \u2192 [c54]? No. The conclusion is specific to supernumerary limbs, while [c54] is a general statement about body schema mechanisms.\n\nThe premises are more specific/foundational than the conclusion. Not degenerate.\n\nVALID: YES\nEXPLANATION: The conclusion logically follows through valid syllogistic reasoning: [c43] establishes that body schema mechanisms work for supernumerary limbs, and [c54] establishes that such mechanisms with sensorimotor feedback generate embodiment, therefore embodiment can extend to supernumerary limbs with appropriate feedback.\nSUGGESTIONS: None needed.\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None"
+    },
+    {
+      "id": "i19",
+      "premises": [
+        "c44"
+      ],
+      "conclusion": "c15",
+      "type": "AND",
+      "reasoning": "Evidence that the brain develops proprioceptive awareness of new limbs (c15) comes from the interpretation that proprioceptive drift indicates brain incorporation of fake limb position into body representation (c44).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "Let me analyze the logical relationship between the premise and conclusion.\n\n**Analyzing the entailment:**\n\nPremise [c44]: proprioceptive drift indicates the brain is incorporating fake limb position into body representation\n\nConclusion [c15]: the brain can develop proprioceptive awareness of new limb position and movement\n\n**Logical relationship:**\nThe premise states that proprioceptive drift shows the brain incorporating a *fake* limb position. The conclusion claims the brain can develop proprioceptive awareness of *new* limb position and movement.\n\nWhile these are related concepts, there's a logical gap:\n- The premise is about incorporating a *fake* limb (illusion-based)\n- The conclusion is about *new* limb position generally (could include real prosthetics, extensions, etc.)\n- The premise mentions \"drift\" as evidence, but doesn't necessarily prove general capability\n- The premise doesn't explicitly address \"movement\" awareness, only position\n\n**Checking for redundancy and degeneracy:**\n- Only one premise, so no redundancy issue\n- The conclusion is actually broader/more general than the premise. The premise is a specific instance (fake limb incorporation) that could serve as evidence for the broader capability, but it's not degenerate (conclusion doesn't entail the premise)\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\nVALID: NO\n\nEXPLANATION: The premise describes a specific phenomenon (incorporating fake limb position via proprioceptive drift) while the conclusion makes a broader claim about developing proprioceptive awareness of new limb position and movement generally. The premise provides evidence but doesn't logically necessitate the full scope of the conclusion.\n\nSUGGESTIONS: Add intermediate claims such as: \"incorporating fake limb position demonstrates the brain's plasticity in proprioceptive awareness\" or \"what applies to fake limbs generalizes to new limb positions.\" Alternatively, narrow the conclusion to specifically address fake limbs rather than \"new limb position\" generally."
+    },
+    {
+      "id": "i20",
+      "premises": [
+        "c33",
+        "c45"
+      ],
+      "conclusion": "c16",
+      "type": "AND",
+      "reasoning": "Evidence that tactile feedback can be integrated into somatosensory cortex (c16) requires ICMS-evoked percepts (c33) and the bridging claim that these can be coupled with prosthetic sensors for closed-loop feedback (c45).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "failed",
+      "entailment_explanation": "REDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\nVALID: NO\n\nEXPLANATION: The premises establish that ICMS can evoke tactile percepts and be coupled with prosthetic sensors for feedback, but do not logically entail that this feedback \"can be integrated into somatosensory cortex.\" The conclusion makes a claim about integration that goes beyond what the premises state\u2014the premises describe evoking percepts and coupling with sensors, but integration is a broader concept requiring the cortex to functionally incorporate and use this information, which is not explicitly covered.\n\nSUGGESTIONS: Add an intermediate claim bridging the gap, such as \"closed-loop tactile feedback from prosthetic sensors is processed and integrated by somatosensory cortex\" or \"ICMS-evoked percepts in somatosensory cortex constitute functional integration of prosthetic sensor information.\" Alternatively, clarify whether \"evoked percepts\" in the premises is meant to be synonymous with \"integration\" in the conclusion."
+    },
+    {
+      "id": "i21",
+      "premises": [
+        "c34",
+        "c47",
+        "c51"
+      ],
+      "conclusion": "c11",
+      "type": "AND",
+      "reasoning": "For long-term safe interface maintenance (c11), we need: biocompatible coatings reduce inflammation (c34), this prevents damage/rejection (c47), and these coatings are actually used in supernumerary limb interfaces (c51).",
+      "last_checked": "2025-11-26T09:48:10.914614",
+      "entailment_status": "passed",
+      "entailment_explanation": "Let me analyze this logical entailment step by step.\n\n## Analysis\n\n**Tracing the logical chain:**\n1. [c34] biocompatible coatings reduce inflammatory response\n2. [c47] reduced inflammatory response \u2192 prevents long-term tissue damage and immune rejection\n3. [c51] neural interfaces for supernumerary limbs use biocompatible coatings\n4. [c11] Conclusion: the interface can be maintained safely over long periods\n\n**Logical flow:**\n- From c51 + c34: Neural interfaces use coatings that reduce inflammatory response\n- From c47: This reduced response is sufficient to prevent tissue damage and immune rejection\n- Therefore: The interface can be maintained safely (c11)\n\n**Checking for redundancy:**\n- c34 is necessary (establishes what biocompatible coatings do)\n- c47 is necessary (establishes sufficiency for prevention)\n- c51 is necessary (establishes that these interfaces actually use these coatings)\n- All three premises are required for the chain of reasoning\n\n**Checking for degeneracy:**\n- Does c11 \u2192 c34? No. The conclusion doesn't tell us anything about what specific coatings do.\n- Does c11 \u2192 c47? No. The conclusion doesn't specify the causal mechanism.\n- Does c11 \u2192 c51? No. The conclusion doesn't specify implementation details.\n\nThe premises are more specific than the conclusion and provide different aspects needed for the entailment.\n\n**Logical gaps:**\nNone significant. The chain is sound: implementation (c51) + mechanism (c34) + sufficiency condition (c47) = safe long-term maintenance (c11).\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\nVALID: YES\n\nEXPLANATION: The logical chain is complete: c51 establishes the interfaces use biocompatible coatings, c34 shows these coatings reduce inflammation, and c47 establishes this reduction is sufficient to prevent the damage mentioned in c11. All premises are necessary and non-degenerate.\n\nSUGGESTIONS: N/A"
+    }
+  ]
+}

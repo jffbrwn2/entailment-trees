@@ -1,0 +1,857 @@
+{
+  "metadata": {
+    "name": "new-limb",
+    "description": "Evaluating: humans can learn to use new limbs",
+    "created": "2025-11-25",
+    "last_updated": "2025-11-25",
+    "version": "1.0"
+  },
+  "claims": [
+    {
+      "id": "hypothesis",
+      "text": "humans can learn to use new limbs",
+      "score": 5.0,
+      "reasoning": "Initial hypothesis to be evaluated",
+      "uncertainties": [
+        "Not yet investigated"
+      ],
+      "tags": [
+        "HYPOTHESIS"
+      ]
+    },
+    {
+      "id": "c1",
+      "text": "adult humans can achieve functional control of supernumerary limbs through cortical reorganization within practical training timescales",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Extent of adult neural plasticity",
+        "Whether plasticity extends to non-native body configurations"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c2",
+      "text": "a bidirectional interface can be created between the new limb and the human nervous system",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Required bandwidth for control signals",
+        "Surgical vs non-invasive approaches",
+        "Biocompatibility and long-term stability"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c3",
+      "text": "humans can develop automatic, multi-tasking control of non-native movement patterns through deliberate practice",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Cognitive load of controlling additional degrees of freedom",
+        "Training time required",
+        "Transfer of existing motor schemas vs learning from scratch"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c4",
+      "text": "supernumerary limbs can be fully incorporated into functional body schema enabling intuitive sensorimotor control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Types of sensory feedback needed (proprioception, touch, etc.)",
+        "Time to develop sense of embodiment",
+        "Conflict with existing body representation"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c5",
+      "text": "motor cortex shows measurable reorganization in response to prosthetic training in adult subjects",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Magnitude of reorganization observable",
+        "Time course of cortical changes",
+        "fMRI or other imaging evidence"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c6",
+      "text": "unused cortical territory exists that could be recruited for supernumerary limb control without disrupting existing motor function",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Amount of unused motor cortex",
+        "Whether recruitment causes interference",
+        "Evidence from polydactyly or similar conditions"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c7",
+      "text": "adults can learn complex novel motor skills (musical instruments, sports) to proficiency within 6-12 months of daily practice",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Comparison between traditional and non-native motor learning",
+        "Age effects on motor learning rates",
+        "Transfer of learning principles"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c8",
+      "text": "brain-machine interfaces can achieve bidirectional communication with sufficient bandwidth for limb control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Required bandwidth for smooth motor control",
+        "Current BMI bandwidth capabilities"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c9",
+      "text": "motor commands can be decoded from neural signals with sufficient accuracy and latency for real-time limb control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Decoding accuracy requirements",
+        "Maximum acceptable latency for motor control"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c10",
+      "text": "sensory feedback can be encoded and delivered to the nervous system in a format the brain can interpret",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Encoding strategies for different sensory modalities",
+        "Neural stimulation parameters"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c11",
+      "text": "the interface can be maintained safely over long periods without tissue damage or immune rejection",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Long-term biocompatibility of implanted materials",
+        "Inflammatory response to chronic implants"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c12",
+      "text": "humans can simultaneously perform 2+ independent motor tasks (e.g., drumming polyrhythms, typing while walking)",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Complexity limits on dual-task performance",
+        "Practice requirements for multi-tasking",
+        "Neural basis of parallel motor control"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c13",
+      "text": "abstract motor tasks can be learned without relying on existing body movement primitives (e.g., cursor control via novel neural patterns)",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Examples from BMI experiments",
+        "Learning speed compared to embodied movements",
+        "Degree of abstraction achievable"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c14",
+      "text": "trained motor skills transition from effortful to automatic control after sufficient practice (power law of practice applies)",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Practice hours needed for automaticity",
+        "Whether novel BMI control follows same learning curves",
+        "Neurophysiological markers of automaticity"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c15",
+      "text": "the brain can develop proprioceptive awareness of new limb position and movement",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Neural basis of proprioception for non-native body parts",
+        "Required sensory feedback signals"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c16",
+      "text": "tactile and force feedback from new limb can be integrated into somatosensory cortex",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Somatosensory cortex capacity for new body part representations",
+        "Sensory stimulation parameters"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c17",
+      "text": "the sense of embodiment can extend to supernumerary limbs with appropriate sensorimotor feedback",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Requirements for rubber hand illusion-like effects",
+        "Temporal and spatial constraints on sensorimotor contingencies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c18",
+      "text": "invasive cortical interfaces can achieve bidirectional communication with bandwidth sufficient for multi-DOF limb control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Recording channels needed for decoding",
+        "Stimulation parameters for sensory feedback",
+        "Combined read/write bandwidth requirements"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c19",
+      "text": "non-invasive interfaces can achieve bidirectional communication with bandwidth sufficient for basic limb control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Spatial and temporal resolution of non-invasive methods",
+        "Signal-to-noise ratio limitations",
+        "Feasibility of non-invasive stimulation"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c20",
+      "text": "peripheral nerve interfaces can provide bidirectional pathways with bandwidth sufficient for limb sensorimotor control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Available nerve pathways for interface",
+        "Nerve regeneration and interface stability",
+        "Bandwidth capacity of peripheral nerves"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c21",
+      "text": "invasive cortical recording can extract motor intent signals with >90% accuracy",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Number of neurons needed to record",
+        "Decoding algorithm performance",
+        "Signal stability over time"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c22",
+      "text": "cortical stimulation can deliver interpretable sensory signals at >10 Hz update rate",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Stimulation patterns for different sensations",
+        "Spatial specificity of stimulation",
+        "Perceptual latency"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c23",
+      "text": "invasive interfaces maintain signal quality for >5 years without degradation",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Electrode impedance changes over time",
+        "Glial scarring effects",
+        "Material degradation"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c24",
+      "text": "motor cortex can generate volitional commands for additional limbs when provided with appropriate feedback",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Evidence from multi-limb BMI experiments",
+        "Feedback requirements for motor learning",
+        "Neural capacity for expanded motor repertoire"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c25",
+      "text": "cortical recording accuracy >90% and sensory stimulation >10 Hz together meet bandwidth requirements for coordinated multi-DOF limb movement",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "DOF complexity requirements",
+        "Smoothness and coordination metrics",
+        "Comparison to natural limb bandwidth"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c26",
+      "text": "adult stroke patients show cortical remapping of motor function within 3-6 months of rehabilitation",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Extent of remapping",
+        "Age effects",
+        "Comparison to novel vs recovery tasks"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c27",
+      "text": "musicians and athletes demonstrate new cortical activations for trained skills measurable via fMRI",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Time course of changes",
+        "Degree of reorganization vs tuning",
+        "Specificity of changes"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c28",
+      "text": "premotor and supplementary motor areas show spare capacity not maximally recruited during normal limb use",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Amount of spare capacity",
+        "Whether spare capacity can be accessed for novel tasks",
+        "Evidence from imaging studies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c29",
+      "text": "humans achieve functional typing speed (40+ WPM) within 6 months of daily practice",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Comparison to BMI control tasks",
+        "Age effects on learning rate",
+        "Transfer to non-keyboard motor learning"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c30",
+      "text": "dual-task interference decreases with practice as tasks become automatized (Stroop effect, divided attention studies)",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Limits on automatization for novel tasks",
+        "Number of parallel tasks sustainable",
+        "Resource competition models"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c31",
+      "text": "subjects in BMI experiments learn arbitrary cursor control mappings without body movement within weeks",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Performance ceiling compared to embodied control",
+        "Number of DOFs controlled",
+        "Literature examples from Carmena, Nicolelis, etc."
+      ],
+      "tags": []
+    },
+    {
+      "id": "c32",
+      "text": "Utah array recordings demonstrate stable single-unit discrimination for >3 years in some subjects",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Percentage of electrodes maintaining quality",
+        "Subject-to-subject variability",
+        "Long-term trends beyond 3 years"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c33",
+      "text": "ICMS (intracortical microstimulation) can evoke distinguishable tactile percepts in somatosensory cortex",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Number of distinguishable percepts",
+        "Temporal resolution",
+        "Naturalness of sensations"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c34",
+      "text": "biocompatible electrode coatings (PEDOT, parylene-C) reduce inflammatory response compared to bare metal",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Long-term efficacy >5 years",
+        "Impact on signal quality",
+        "Human vs animal data"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c35",
+      "text": "rubber hand illusion demonstrates rapid body schema plasticity with synchronous visuotactile feedback",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Extension to supernumerary vs replacement limbs",
+        "Role of motor control in embodiment",
+        "Individual differences"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c36",
+      "text": "proprioceptive drift occurs toward fake limbs with appropriate sensory feedback within minutes",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Magnitude of drift for supernumerary limbs",
+        "Stability over extended periods",
+        "Requirements for drift induction"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c37",
+      "text": "motor learning paradigms that work for stroke rehabilitation and skill acquisition also apply to prosthetic adaptation",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Transfer of learning principles across contexts",
+        "Specific adaptations needed for prosthetics",
+        "Evidence from prosthetic training studies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c38",
+      "text": "spare cortical capacity can be functionally recruited for novel motor tasks without disrupting existing motor control",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Amount of capacity available",
+        "Interference effects on existing functions",
+        "Evidence from dual-task studies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c39",
+      "text": "learning timelines for diverse complex motor skills (typing, instruments, sports) fall within similar 6-12 month ranges",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Cross-skill comparison studies",
+        "Definition of proficiency across domains",
+        "Individual variability"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c40",
+      "text": "when dual-task interference is sufficiently reduced through automatization, true simultaneous performance becomes possible",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Threshold for true simultaneity",
+        "Neural mechanisms of parallel control",
+        "Task complexity limits"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c41",
+      "text": "stable single-unit discrimination enables motor decoding algorithms to achieve >90% accuracy",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Number of units required",
+        "Decoding algorithm performance",
+        "Published accuracy benchmarks"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c42",
+      "text": "ICMS can deliver distinguishable percepts at stimulation rates exceeding 10 Hz",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Maximum distinguishable rate",
+        "Percept quality at high rates",
+        "Evidence from temporal discrimination studies"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c43",
+      "text": "body schema mechanisms for replacement limbs can generalize to supernumerary limb configurations",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Fundamental difference between replacement and addition",
+        "Evidence from supernumerary limb experiments",
+        "Neural constraints on limb number"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c44",
+      "text": "proprioceptive drift indicates the brain is incorporating fake limb position into body representation",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Relationship between drift and embodiment",
+        "Whether drift implies active proprioception of fake limb",
+        "Neural mechanisms underlying drift"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c45",
+      "text": "ICMS-evoked percepts can be coupled with prosthetic limb sensors to provide closed-loop tactile feedback",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Sensor-to-stimulation mapping",
+        "Naturalness of evoked sensations",
+        "Examples from literature"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c46",
+      "text": "stable long-term recordings correlate with absence of progressive tissue damage",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Histological studies of chronic implants",
+        "Signal quality as proxy for tissue health",
+        "Failure mode analysis"
+      ],
+      "tags": []
+    },
+    {
+      "id": "c47",
+      "text": "reduced inflammatory response is sufficient to prevent long-term tissue damage and immune rejection",
+      "score": 0,
+      "reasoning": "Not yet evaluated",
+      "evidence": [],
+      "uncertainties": [
+        "Threshold for 'reduced' inflammation",
+        "Long-term follow-up data",
+        "Chronic vs acute inflammation effects"
+      ],
+      "tags": []
+    }
+  ],
+  "implications": [
+    {
+      "id": "i1",
+      "premises": [
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ],
+      "conclusion": "hypothesis",
+      "type": "AND",
+      "reasoning": "For humans to learn to use new limbs, the brain must have the plasticity to adapt (c1), there must be a working interface to connect the limb (c2), humans must be capable of learning the required motor patterns (c3), and the brain must be able to integrate sensory feedback from the limb (c4). All four are necessary requirements.",
+      "last_checked": "2025-11-25T23:00:50.525603"
+    },
+    {
+      "id": "i2",
+      "premises": [
+        "c5",
+        "c6",
+        "c7"
+      ],
+      "conclusion": "c1",
+      "type": "AND",
+      "reasoning": "For adults to achieve functional supernumerary limb control through cortical reorganization within practical timescales (c1), the cortex must be capable of reorganizing for new motor outputs (c5), the motor homunculus must be able to expand (c6), and neural plasticity must be sufficient for learning within reasonable timeframes (c7). Together these establish both capability and feasibility.",
+      "last_checked": "2025-11-26T02:25:27.986621"
+    },
+    {
+      "id": "i3",
+      "premises": [
+        "c8",
+        "c9",
+        "c10",
+        "c11"
+      ],
+      "conclusion": "c2",
+      "type": "AND",
+      "reasoning": "For a bidirectional interface to work (c2), it must have sufficient bandwidth (c8), decode motor commands accurately (c9), encode sensory feedback the brain can interpret (c10), and be safe long-term (c11).",
+      "last_checked": "2025-11-26T02:23:05.008825"
+    },
+    {
+      "id": "i4",
+      "premises": [
+        "c12",
+        "c13",
+        "c14"
+      ],
+      "conclusion": "c3",
+      "type": "AND",
+      "reasoning": "For humans to develop automatic, multi-tasking control of non-native movements through practice (c3), they must be able to control additional DOFs simultaneously (c12), learn movements without existing correspondences (c13), and develop automaticity through training (c14). The conclusion synthesizes these into practical multi-tasking capability.",
+      "last_checked": "2025-11-26T02:25:27.986621"
+    },
+    {
+      "id": "i5",
+      "premises": [
+        "c15",
+        "c16",
+        "c17",
+        "c24"
+      ],
+      "conclusion": "c4",
+      "type": "AND",
+      "reasoning": "For supernumerary limbs to be fully incorporated into functional body schema enabling intuitive control (c4), the brain must develop proprioceptive awareness (c15), integrate tactile/force feedback (c16), extend embodiment to the limb (c17), AND generate volitional motor commands for it (c24). Together these complete the sensorimotor loop for intuitive control.",
+      "last_checked": "2025-11-26T02:25:27.986621"
+    },
+    {
+      "id": "i6",
+      "premises": [
+        "c18"
+      ],
+      "conclusion": "c8",
+      "type": "OR",
+      "reasoning": "Bidirectional BMI bandwidth requirements can be met via invasive cortical interfaces (c18), non-invasive interfaces (c19), or peripheral nerve interfaces (c20). Any one approach achieving sufficient bidirectional bandwidth would satisfy c8.",
+      "last_checked": "2025-11-26T02:23:05.008825"
+    },
+    {
+      "id": "i7",
+      "premises": [
+        "c19"
+      ],
+      "conclusion": "c8",
+      "type": "OR",
+      "reasoning": "Alternative pathway: non-invasive interfaces achieving bidirectional communication with sufficient bandwidth would satisfy the general requirement.",
+      "last_checked": "2025-11-26T02:23:05.008825"
+    },
+    {
+      "id": "i8",
+      "premises": [
+        "c20"
+      ],
+      "conclusion": "c8",
+      "type": "OR",
+      "reasoning": "Alternative pathway: peripheral nerve interfaces providing sufficient bidirectional bandwidth would satisfy the requirement.",
+      "last_checked": "2025-11-26T02:23:05.008825"
+    },
+    {
+      "id": "i9",
+      "premises": [
+        "c21",
+        "c22",
+        "c25"
+      ],
+      "conclusion": "c18",
+      "type": "AND",
+      "reasoning": "For invasive cortical interfaces to achieve bidirectional communication with sufficient bandwidth for multi-DOF limb control (c18), they must extract motor intent accurately (c21), deliver sensory feedback at sufficient rates (c22), and these performance metrics must meet the bandwidth requirements for coordinated limb movement (c25).",
+      "last_checked": "2025-11-26T02:25:27.986621"
+    },
+    {
+      "id": "i11",
+      "premises": [
+        "c26",
+        "c27",
+        "c37"
+      ],
+      "conclusion": "c5",
+      "type": "AND",
+      "reasoning": "Evidence that motor cortex shows measurable reorganization in response to prosthetic training (c5) comes from stroke patients showing remapping (c26), skill training producing new activations (c27), and the bridging principle that these learning paradigms apply to prosthetics (c37).",
+      "last_checked": null
+    },
+    {
+      "id": "i12",
+      "premises": [
+        "c28",
+        "c38"
+      ],
+      "conclusion": "c6",
+      "type": "AND",
+      "reasoning": "The existence of unused cortical territory that could be recruited for supernumerary limbs (c6) is supported by evidence of spare capacity (c28) and the principle that this capacity can be recruited without disruption (c38).",
+      "last_checked": null
+    },
+    {
+      "id": "i13",
+      "premises": [
+        "c29",
+        "c39"
+      ],
+      "conclusion": "c7",
+      "type": "AND",
+      "reasoning": "Evidence that adults can learn complex novel motor skills to proficiency within 6-12 months (c7) is demonstrated by typing acquisition (c29) and the generalization that diverse motor skills follow similar timelines (c39).",
+      "last_checked": null
+    },
+    {
+      "id": "i14",
+      "premises": [
+        "c30",
+        "c40"
+      ],
+      "conclusion": "c12",
+      "type": "AND",
+      "reasoning": "Evidence that humans can simultaneously perform 2+ independent motor tasks (c12) comes from dual-task interference reduction (c30) and the principle that sufficient automatization enables true simultaneous performance (c40).",
+      "last_checked": null
+    },
+    {
+      "id": "i15",
+      "premises": [
+        "c31"
+      ],
+      "conclusion": "c13",
+      "type": "AND",
+      "reasoning": "Evidence that abstract motor tasks can be learned without body movement primitives (c13) is demonstrated by BMI cursor control experiments (c31) where subjects learn arbitrary neural-to-cursor mappings.",
+      "last_checked": "2025-11-26T02:27:56.688882"
+    },
+    {
+      "id": "i16",
+      "premises": [
+        "c32",
+        "c41"
+      ],
+      "conclusion": "c21",
+      "type": "AND",
+      "reasoning": "Evidence that invasive cortical recording can extract motor intent with >90% accuracy (c21) requires stable recordings (c32) and the bridging claim that stable discrimination enables high-accuracy decoding (c41).",
+      "last_checked": null
+    },
+    {
+      "id": "i17",
+      "premises": [
+        "c33",
+        "c42"
+      ],
+      "conclusion": "c22",
+      "type": "AND",
+      "reasoning": "Evidence that cortical stimulation can deliver interpretable sensory signals at >10 Hz (c22) requires that ICMS evokes distinguishable percepts (c33) and that this works at rates exceeding 10 Hz (c42).",
+      "last_checked": null
+    },
+    {
+      "id": "i18",
+      "premises": [
+        "c35",
+        "c36",
+        "c43"
+      ],
+      "conclusion": "c17",
+      "type": "AND",
+      "reasoning": "Evidence that embodiment can extend to supernumerary limbs (c17) requires rubber hand illusion (c35), proprioceptive drift (c36), and the critical bridging claim that these replacement-limb mechanisms generalize to supernumerary configurations (c43).",
+      "last_checked": null
+    },
+    {
+      "id": "i19",
+      "premises": [
+        "c36",
+        "c44"
+      ],
+      "conclusion": "c15",
+      "type": "AND",
+      "reasoning": "Evidence that the brain develops proprioceptive awareness of new limbs (c15) requires proprioceptive drift (c36) and the interpretation that drift indicates incorporation into body representation (c44).",
+      "last_checked": null
+    },
+    {
+      "id": "i20",
+      "premises": [
+        "c33",
+        "c45"
+      ],
+      "conclusion": "c16",
+      "type": "AND",
+      "reasoning": "Evidence that tactile feedback can be integrated into somatosensory cortex (c16) requires ICMS-evoked percepts (c33) and the bridging claim that these can be coupled with prosthetic sensors for closed-loop feedback (c45).",
+      "last_checked": null
+    },
+    {
+      "id": "i21",
+      "premises": [
+        "c32",
+        "c34",
+        "c46",
+        "c47"
+      ],
+      "conclusion": "c11",
+      "type": "AND",
+      "reasoning": "For long-term safe interface maintenance (c11), we need stable recordings (c32), biocompatible coatings (c34), evidence that stability correlates with tissue health (c46), and that reduced inflammation prevents damage (c47).",
+      "last_checked": null
+    }
+  ]
+}

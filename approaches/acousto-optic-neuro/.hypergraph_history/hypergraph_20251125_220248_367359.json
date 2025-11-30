@@ -3,7 +3,7 @@
     "name": "acousto-optic-neuro",
     "description": "Evaluating: Ultrasound can be used to increase the spatial resolution of fNIRS through the acoustooptic effect",
     "created": "2025-11-22",
-    "last_updated": "2025-11-28",
+    "last_updated": "2025-11-25",
     "version": "1.0"
   },
   "claims": [
@@ -17,8 +17,7 @@
       ],
       "tags": [
         "HYPOTHESIS"
-      ],
-      "propagated_negative_log": 3.736694392990631
+      ]
     },
     {
       "id": "c1",
@@ -39,8 +38,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:41:14.028050",
-      "modified_at": "2025-11-25T21:41:27.334521",
-      "propagated_negative_log": 0.5145731728297583
+      "modified_at": "2025-11-25T21:41:27.334521"
     },
     {
       "id": "c2",
@@ -61,8 +59,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:42:55.689351",
-      "modified_at": "2025-11-25T21:43:09.477762",
-      "propagated_negative_log": 0.5145731728297583
+      "modified_at": "2025-11-25T21:43:09.477762"
     },
     {
       "id": "c3",
@@ -83,8 +80,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:38:51.738413",
-      "modified_at": "2025-11-25T21:39:04.329314",
-      "propagated_negative_log": 1.7369655941662063
+      "modified_at": "2025-11-25T21:39:04.329314"
     },
     {
       "id": "c4",
@@ -105,8 +101,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:37:50.433577",
-      "modified_at": "2025-11-25T21:38:03.230184",
-      "propagated_negative_log": 0.5145731728297583
+      "modified_at": "2025-11-25T21:38:03.230184"
     },
     {
       "id": "c14",
@@ -123,8 +118,7 @@
       "uncertainties": [],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:37:02.728367",
-      "modified_at": "2025-11-25T21:37:12.948262",
-      "propagated_negative_log": -0.0
+      "modified_at": "2025-11-25T21:37:12.948262"
     },
     {
       "id": "c16",
@@ -143,8 +137,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:44:30.328532",
-      "modified_at": "2025-11-25T21:44:42.631090",
-      "propagated_negative_log": -0.0
+      "modified_at": "2025-11-25T21:44:42.631090"
     },
     {
       "id": "c5",
@@ -164,8 +157,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:45:26.065831",
-      "modified_at": "2025-11-25T21:45:37.825855",
-      "propagated_negative_log": 1.0291463456595167
+      "modified_at": "2025-11-25T21:45:37.825855"
     },
     {
       "id": "c6",
@@ -190,8 +182,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:47:35.971868",
-      "modified_at": "2025-11-25T21:47:49.931337",
-      "propagated_negative_log": 0.15200309344504995
+      "modified_at": "2025-11-25T21:47:49.931337"
     },
     {
       "id": "c7",
@@ -215,8 +206,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:43:43.277602",
-      "modified_at": "2025-11-25T21:43:55.188693",
-      "propagated_negative_log": 0.15200309344504995
+      "modified_at": "2025-11-25T21:43:55.188693"
     },
     {
       "id": "c12",
@@ -233,8 +223,7 @@
       "uncertainties": [],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:45:45.749090",
-      "modified_at": "2025-11-25T21:45:58.269988",
-      "propagated_negative_log": 1.8889686876112564
+      "modified_at": "2025-11-25T21:45:58.269988"
     },
     {
       "id": "c11",
@@ -254,8 +243,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:46:43.053687",
-      "modified_at": "2025-11-25T21:46:55.548295",
-      "propagated_negative_log": 1.543719518489275
+      "modified_at": "2025-11-25T21:46:55.548295"
     },
     {
       "id": "c13",
@@ -274,8 +262,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:48:12.866672",
-      "modified_at": "2025-11-25T21:48:25.555759",
-      "propagated_negative_log": 1.695722611934325
+      "modified_at": "2025-11-25T21:48:25.555759"
     },
     {
       "id": "c17",
@@ -295,8 +282,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:47:57.259051",
-      "modified_at": "2025-11-25T21:48:07.325257",
-      "propagated_negative_log": 0.15200309344504995
+      "modified_at": "2025-11-25T21:48:07.325257"
     },
     {
       "id": "c18",
@@ -316,8 +302,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:48:31.145366",
-      "modified_at": "2025-11-25T21:48:47.119418",
-      "propagated_negative_log": 1.847725705379375
+      "modified_at": "2025-11-25T21:48:47.119418"
     },
     {
       "id": "c19",
@@ -336,8 +321,7 @@
       ],
       "tags": [],
       "last_evidence_modified": "2025-11-25T21:48:53.349562",
-      "modified_at": "2025-11-25T21:49:05.667680",
-      "propagated_negative_log": 3.736694392990631
+      "modified_at": "2025-11-25T21:49:05.667680"
     }
   ],
   "implications": [
@@ -352,9 +336,7 @@
       "conclusion": "c5",
       "type": "AND",
       "reasoning": "Using the acousto-optic formula delta_phi = (2*pi/lambda)*delta_n*L with lambda~800nm, delta_n>10^-6, L>1mm: delta_phi = (2*pi/800e-9)*(1e-6)*(1e-3) = 7.85e-3 radians, which is >5*10^-3",
-      "last_checked": "2025-11-26T10:24:06.952353",
-      "entailment_status": "failed",
-      "entailment_explanation": "Let me analyze this logical entailment step by step.\n\n## Analysis\n\n**Given premises:**\n- c1: \u0394n > 10^-6\n- c2: L > 1mm = 10^-3 m\n- c14: \u03bb \u2248 700-900nm\n- c16: \u0394\u03c6 = (2\u03c0/\u03bb) \u00d7 \u0394n \u00d7 L\n\n**Conclusion to verify:**\n- c5: \u0394\u03c6 > 5\u00d710^-3 radians\n\n**Checking the calculation:**\n\nUsing the formula from c16 with minimum values:\n- Maximum \u03bb = 900nm = 900\u00d710^-9 m\n- Minimum \u0394n = 10^-6\n- Minimum L = 10^-3 m\n\n\u0394\u03c6 = (2\u03c0 / 900\u00d710^-9) \u00d7 10^-6 \u00d7 10^-3\n\u0394\u03c6 = (2\u03c0 \u00d7 10^-9) / 900\u00d710^-9\n\u0394\u03c6 = 2\u03c0 \u00d7 10^-9 / 9\u00d710^-7\n\u0394\u03c6 = 2\u03c0 / 900\n\u0394\u03c6 \u2248 6.98\u00d710^-3 radians\n\nThis is indeed > 5\u00d710^-3 radians. \u2713\n\n**Checking for redundancy:**\n- c1: Required (provides \u0394n bound)\n- c2: Required (provides L bound)\n- c14: Required (provides \u03bb bound)\n- c16: Required (provides the formula)\n\nAll premises are necessary.\n\n**Checking for degeneracy:**\nDoes c5 \u2192 any premise? \n- c5 alone doesn't tell us about individual values of \u0394n, L, or \u03bb\n- c5 doesn't specify the formula relationship\n- No individual premise can be derived from c5 alone\n\nThe premises properly decompose the conclusion into specific components.\n\n**REDUNDANT_PREMISES:** None\n\n**DEGENERATE_PREMISES:** None\n\n---\n\n**VALID:** YES\n\n**EXPLANATION:** The conclusion logically follows by substituting the bounds from c1, c2, and c14 into the formula c16. The calculation yields \u0394\u03c6 \u2248 6.98\u00d710^-3 > 5\u00d710^-3 radians, confirming the entailment.\n\n**SUGGESTIONS:** N/A - The entailment is valid."
+      "last_checked": "2025-11-25T21:51:08.530084"
     },
     {
       "id": "i2",
@@ -365,9 +347,7 @@
       "conclusion": "c11",
       "type": "AND",
       "reasoning": "If phase modulation (>5*10^-3 rad) significantly exceeds shot noise limit (10^-3 to 10^-4 rad) by at least 5x, then modulated signal is clearly detectable above noise",
-      "last_checked": "2025-11-26T10:24:06.952353",
-      "entailment_status": "failed",
-      "entailment_explanation": "Let me analyze this logical entailment carefully.\n\n**Analyzing the premises and conclusion:**\n\n- c5: Phase modulation depth > 5\u00d710\u207b\u00b3 radians (signal strength)\n- c4: Phase sensitivity = 10\u207b\u00b3 to 10\u207b\u2074 radians (noise floor)\n- c11: Modulated signal is detectable above noise\n\n**Logical analysis:**\n\n1. **Does the conclusion follow?** YES. For a signal to be detectable above noise, the signal strength must exceed the noise floor. Since 5\u00d710\u207b\u00b3 > 10\u207b\u00b3 (the upper bound of noise), the signal exceeds the noise threshold, making it detectable.\n\n2. **Are both premises necessary?**\n   - c5 is necessary (provides signal strength)\n   - c4 is necessary (provides noise threshold for comparison)\n   - Both are needed to establish the signal-to-noise comparison\n\n3. **Checking for degeneracy:**\n   - Does c11 \u2192 c5? No. \"Signal is detectable\" doesn't tell us the specific modulation depth is >5\u00d710\u207b\u00b3\n   - Does c11 \u2192 c4? No. \"Signal is detectable\" doesn't tell us the specific noise sensitivity range\n   - The conclusion is more general than either premise\n\n4. **Logical gap check:** There's an implicit assumption that \"signal > noise threshold\" means \"detectable above noise,\" which is a reasonable physical/engineering principle.\n\n**REDUNDANT_PREMISES:** None\n\n**DEGENERATE_PREMISES:** None\n\n**VALID:** YES\n\n**EXPLANATION:** The conclusion logically follows because the signal strength (>5\u00d710\u207b\u00b3 radians) exceeds the noise floor (10\u207b\u00b3 to 10\u207b\u2074 radians), establishing detectability. Both premises are necessary and non-degenerate.\n\n**SUGGESTIONS:** N/A - The entailment is valid."
+      "last_checked": "2025-11-25T21:51:08.530084"
     },
     {
       "id": "i3",
@@ -378,9 +358,7 @@
       "conclusion": "c12",
       "type": "AND",
       "reasoning": "Mathematical comparison: if focal spot <5mm and native fNIRS resolution is 1-3cm, then focal spot provides finer localization",
-      "last_checked": "2025-11-26T10:24:06.952353",
-      "entailment_status": "passed",
-      "entailment_explanation": "VALID: YES\nEXPLANATION: The conclusion logically follows from comparing the two spatial measurements in the premises. Since <5mm (ultrasound) is objectively smaller/finer than 1-3cm (10-30mm, fNIRS), the conclusion that ultrasound provides finer localization is a valid logical inference from the stated numerical values.\nSUGGESTIONS: N/A\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\n**Analysis:**\n1. Both premises are necessary: c3 provides the ultrasound measurement, c7 provides the fNIRS measurement. Neither alone would support the comparative conclusion.\n2. The premises are more specific than the conclusion: They provide exact measurements (numerical values and context), while the conclusion makes a comparative claim about which is \"finer.\"\n3. The logical gap is minimal and bridged by basic mathematical comparison (<5mm vs 1-3cm = 10-30mm), which is a reasonable inference step.\n4. This is non-degenerate: The conclusion does not entail either individual premise (knowing ultrasound is finer than fNIRS doesn't tell you the specific measurements)."
+      "last_checked": "2025-11-25T21:51:08.530084"
     },
     {
       "id": "i4",
@@ -391,9 +369,7 @@
       "conclusion": "c13",
       "type": "AND",
       "reasoning": "If ultrasound spatially tags NIR photons AND the modulated signal is detectable above noise, then tagged photons form a detectable signal from the focal volume",
-      "last_checked": "2025-11-26T10:24:06.952353",
-      "entailment_status": "failed",
-      "entailment_explanation": "Let me analyze this logical entailment carefully.\n\n**Analysis:**\n\n1. **Does the conclusion follow from the premises?**\n   - [c6]: Ultrasound spatially tags NIR photons in the focal region\n   - [c11]: Modulated signal is detectable above noise\n   - [c13]: Ultrasound-tagged photons form a detectable signal from the focal volume\n   \n   The conclusion combines the spatial origin (from c6's focal region) with detectability (from c11). This appears to follow logically.\n\n2. **Checking for REDUNDANT premises:**\n   - Can we reach [c13] with only [c6]? No - we'd know photons are tagged from a focal volume but not that they're detectable.\n   - Can we reach [c13] with only [c11]? No - we'd know something is detectable but not what or from where.\n   - Both premises are necessary. **No redundancy.**\n\n3. **Checking for DEGENERATE entailment:**\n   - Does [c13] \u2192 [c6]? If ultrasound-tagged photons form a detectable signal from the focal volume, does that necessarily mean ultrasound modulation tags photons in the focal region? **YES** - the conclusion essentially contains c6's core claim.\n   - Does [c13] \u2192 [c11]? If ultrasound-tagged photons form a detectable signal, does that mean the modulated signal is detectable? **YES** - detectability is directly stated in both.\n   \n   The conclusion appears to be essentially a restatement combining both premises without adding logical depth. It's nearly equivalent to \"P AND Q \u2192 (P AND Q)\".\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: c6, c11\n\nVALID: NO\nEXPLANATION: This is a degenerate entailment where the conclusion is essentially a rephrasing of the conjunction of the premises rather than a logical consequence that's more general or derived. The conclusion directly entails both individual premises, indicating it's merely restating them.\nSUGGESTIONS: The conclusion should derive something new from the premises, such as a capability enabled by this combination (e.g., \"enables optical imaging through scattering media at the focal depth\") rather than simply recombining the premise statements."
+      "last_checked": "2025-11-25T21:51:08.530084"
     },
     {
       "id": "i5",
@@ -404,9 +380,7 @@
       "conclusion": "c18",
       "type": "AND",
       "reasoning": "If tagged photons form a detectable signal from focal volume AND photons outside focal volume are unmodulated, then detecting only tagged photons restricts measurements to the focal volume",
-      "last_checked": "2025-11-26T10:24:06.952353",
-      "entailment_status": "passed",
-      "entailment_explanation": "Let me analyze this logical entailment carefully.\n\n**Analyzing the premises and conclusion:**\n\nPremise [c13]: Ultrasound-tagged photons form a detectable signal originating from the ultrasound focal volume\nPremise [c17]: Photons not passing through ultrasound focal volume are unmodulated\n\nConclusion [c18]: Detecting only ultrasound-tagged photons restricts fNIRS measurements to the ultrasound focal volume\n\n**Checking logical flow:**\n\n1. From [c13]: Tagged photons come from the focal volume\n2. From [c17]: Non-focal photons are unmodulated (not tagged)\n3. Together: Only focal volume photons are tagged; non-focal photons are untagged\n4. Conclusion: If we detect only tagged photons, we measure only the focal volume\n\nThe logic appears sound: the premises establish that tagging is exclusive to the focal volume, and the conclusion follows that selective detection of tagged photons isolates that volume.\n\n**Checking for REDUNDANT premises:**\n- Remove [c13]: Without it, [c17] only tells us non-focal photons are unmodulated, but doesn't establish that tagged photons exist or originate from focal volume. Cannot reach conclusion.\n- Remove [c17]: Without it, [c13] tells us tagged photons come from focal volume, but doesn't exclude the possibility that non-focal photons are also tagged. Cannot establish restriction.\n\nBoth premises are necessary.\n\n**Checking for DEGENERATE entailment:**\n- Does [c18] \u2192 [c13]? If measurements are restricted to focal volume, does that necessarily mean tagged photons form a detectable signal from there? No, the conclusion is about measurement restriction, not signal formation.\n- Does [c18] \u2192 [c17]? If measurements are restricted to focal volume, does that mean non-focal photons are unmodulated? No, the conclusion doesn't directly entail the modulation status of non-focal photons.\n\nNo degenerate relationship detected.\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\nVALID: YES\n\nEXPLANATION: The premises establish that only photons from the ultrasound focal volume are tagged (modulated), while all others are unmodulated. This logically entails that detecting only tagged photons restricts measurements to that focal volume.\n\nSUGGESTIONS: N/A"
+      "last_checked": "2025-11-25T21:51:08.530084"
     },
     {
       "id": "i6",
@@ -417,9 +391,7 @@
       "conclusion": "c19",
       "type": "AND",
       "reasoning": "If fNIRS measurements are restricted to ultrasound focal volume AND this volume is smaller than native fNIRS resolution, then the resulting imaging achieves ultrasound spatial resolution",
-      "last_checked": "2025-11-26T10:24:06.952353",
-      "entailment_status": "passed",
-      "entailment_explanation": "Let me analyze this logical entailment carefully.\n\n**Analyzing the logical flow:**\n\nPremise [c18]: Detecting only ultrasound-tagged photons restricts fNIRS measurements to the ultrasound focal volume\n\nPremise [c12]: Ultrasound focal spot size of <5mm provides finer localization than 1-3cm fNIRS resolution\n\nConclusion [c19]: Restricting fNIRS measurements to ultrasound focal volume achieves fNIRS imaging at ultrasound spatial resolution\n\n**Checking the logic:**\n\n1. [c18] tells us that a detection method restricts fNIRS to the ultrasound focal volume\n2. [c12] tells us that the ultrasound focal spot is smaller (<5mm) than fNIRS resolution (1-3cm)\n3. [c19] concludes that this restriction achieves imaging at ultrasound spatial resolution\n\n**Checking for redundancy:**\n- Without [c18]: We wouldn't know that the restriction to focal volume occurs\n- Without [c12]: We wouldn't know that ultrasound resolution is finer than fNIRS resolution\n- Both premises appear necessary\n\n**Checking for degeneracy:**\n- Does [c19] entail [c18]? No - the conclusion doesn't tell us HOW the restriction happens\n- Does [c19] entail [c12]? No - the conclusion doesn't specify the actual resolution values\n- Neither premise is degenerate\n\n**Logical gap analysis:**\nThe premises establish (1) restriction to focal volume and (2) ultrasound has finer resolution. However, the conclusion claims that restricting to the focal volume \"achieves\" imaging at ultrasound resolution. This requires an implicit assumption: that restricting measurements to a smaller volume automatically confers that volume's spatial resolution to the imaging technique. This is a reasonable physical inference but represents a small logical gap.\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\nVALID: YES\n\nEXPLANATION: The premises establish that fNIRS is restricted to the ultrasound focal volume (c18) and that this volume has finer spatial resolution than native fNIRS (c12). Together, these logically support that the restriction achieves imaging at the finer ultrasound resolution.\n\nSUGGESTIONS: N/A"
+      "last_checked": "2025-11-25T21:51:08.530084"
     },
     {
       "id": "i7",
@@ -429,9 +401,7 @@
       "conclusion": "hypothesis",
       "type": "AND",
       "reasoning": "If fNIRS imaging at ultrasound spatial resolution is achievable, then ultrasound can be used to increase fNIRS spatial resolution via acousto-optic effect",
-      "last_checked": "2025-11-26T10:24:06.952353",
-      "entailment_status": "failed",
-      "entailment_explanation": "Let me analyze the logical relationship between the premise and conclusion.\n\n**Analyzing the entailment:**\n\nPremise [c19]: Restricting fNIRS measurements to ultrasound focal volume achieves fNIRS imaging at ultrasound spatial resolution\n\nConclusion [hypothesis]: Ultrasound can be used to increase the spatial resolution of fNIRS through the acoustooptic effect\n\n**Checking logical flow:**\n\n1. The premise states that a specific technique (restricting fNIRS measurements to ultrasound focal volume) achieves higher resolution\n2. The conclusion claims ultrasound can increase fNIRS spatial resolution via the acoustooptic effect\n3. The premise describes the outcome (achieving ultrasound-level resolution) but doesn't explain the mechanism (acoustooptic effect)\n4. The premise assumes this is an improvement but doesn't explicitly state it \"increases\" resolution\n\n**Checking for degeneracy:**\n- Does the conclusion entail the premise? Not quite - the conclusion is about the general capability and mechanism, while the premise is about a specific implementation and outcome\n- However, they are very closely related - the premise is essentially describing the same concept in more specific terms\n\n**Checking for redundancy:**\n- Only one premise exists, so no redundancy issue\n\n**Logical gaps:**\n- The premise doesn't mention the \"acoustooptic effect\" as the mechanism\n- The premise doesn't explicitly state this represents an \"increase\" in resolution (though it's implied that ultrasound has better spatial resolution than standard fNIRS)\n\nREDUNDANT_PREMISES: None\nDEGENERATE_PREMISES: None\n\nVALID: NO\n\nEXPLANATION: The premise describes a technique and its outcome but doesn't establish the mechanism (acoustooptic effect) or explicitly state that ultrasound resolution is higher than baseline fNIRS resolution. These are logical gaps between premise and conclusion.\n\nSUGGESTIONS: Add intermediate claims such as: (1) \"Ultrasound has higher spatial resolution than conventional fNIRS\", (2) \"The acoustooptic effect enables restriction of fNIRS measurements to ultrasound focal volume\", or (3) \"Restricting measurements to a focal volume operates through the acoustooptic effect.\""
+      "last_checked": "2025-11-25T21:51:08.530084"
     }
   ]
 }

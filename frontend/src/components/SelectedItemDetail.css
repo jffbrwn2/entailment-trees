@@ -1,0 +1,226 @@
+.detail-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.detail-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  min-height: 100px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.detail-id {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.detail-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.detail-close:hover {
+  color: var(--text-primary);
+}
+
+.detail-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.detail-formula {
+  font-family: 'SF Mono', Monaco, monospace;
+  color: var(--accent);
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.detail-scores {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.detail-score {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.score-high {
+  background: rgba(63, 185, 80, 0.2);
+  color: #3fb950;
+}
+
+.score-medium {
+  background: rgba(210, 153, 34, 0.2);
+  color: #d29922;
+}
+
+.score-low {
+  background: rgba(248, 81, 73, 0.2);
+  color: #f85149;
+}
+
+.detail-propagated {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--accent);
+}
+
+.entailment-status {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.entailment-status.passed {
+  background: rgba(63, 185, 80, 0.15);
+  color: #3fb950;
+}
+
+.entailment-status.failed {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+}
+
+.detail-tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.detail-tag {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  background: rgba(248, 81, 73, 0.2);
+  color: var(--danger);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.detail-section {
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.detail-section-title {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.uncertainty-title {
+  color: var(--warning);
+}
+
+.detail-section-content {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.evidence-item {
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--accent);
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+}
+
+.evidence-type {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.7rem;
+  color: var(--accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.evidence-source {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.evidence-text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.evidence-code {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  background: var(--bg-primary);
+  padding: 0.5rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.evidence-equations {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  margin-bottom: 0.5rem;
+}
+
+.uncertainty-item {
+  background: rgba(210, 153, 34, 0.1);
+  border-left: 3px solid var(--warning);
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.entailment-explanation {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+  margin: 0;
+}

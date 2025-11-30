@@ -1,0 +1,215 @@
+{
+  "project": "Entailment Trees Web Application (Local-First)",
+  "version": "2.0",
+  "approach": "local-first",
+  "description": "Web UI for existing agent_system. Runs locally, no auth/cloud needed. Hosting deferred.",
+  "phases": {
+    "phase_1_local_web": {
+      "name": "Phase 1: Local Web App",
+      "features": [
+        {
+          "id": "streaming-refactor",
+          "name": "Refactor ClaudeCodeClient for Web Streaming",
+          "status": "pending",
+          "description": "Modify ClaudeCodeClient to yield chunks instead of printing to stdout",
+          "tasks": [
+            "Add async generator method query_stream() that yields text chunks",
+            "Yield tool use notifications (so UI can show 'Running simulation...')",
+            "Keep existing query() method working for CLI compatibility",
+            "Test that CLI still works after changes"
+          ],
+          "acceptance_criteria": [
+            "query_stream() yields chunks as they arrive from Claude SDK",
+            "Tool use events yielded with type indicator",
+            "CLI agent_cli.py still works unchanged",
+            "Can consume stream from both sync and async contexts"
+          ],
+          "files_to_modify": [
+            "agent_system/claude_client.py"
+          ]
+        },
+        {
+          "id": "fastapi-backend",
+          "name": "FastAPI Backend",
+          "status": "pending",
+          "description": "Create FastAPI server wrapping agent_system with SSE streaming",
+          "tasks": [
+            "Create backend/main.py with FastAPI app",
+            "POST /api/chat - SSE streaming endpoint for chat",
+            "GET /api/approaches - list approaches",
+            "POST /api/approaches - create new approach",
+            "GET /api/approaches/{name}/hypergraph - get hypergraph JSON",
+            "WebSocket /ws/hypergraph/{name} - live hypergraph updates",
+            "Configure CORS for localhost:5173"
+          ],
+          "acceptance_criteria": [
+            "Server runs on localhost:8000",
+            "Chat endpoint streams responses via SSE",
+            "Can list, create, load approaches via API",
+            "Hypergraph updates push via WebSocket",
+            "CORS allows frontend requests"
+          ],
+          "files_to_create": [
+            "backend/main.py",
+            "backend/routes/__init__.py",
+            "backend/routes/chat.py",
+            "backend/routes/approaches.py"
+          ]
+        },
+        {
+          "id": "react-frontend",
+          "name": "React Frontend Shell",
+          "status": "pending",
+          "description": "Create React app with split-pane layout",
+          "tasks": [
+            "Initialize Vite + React + TypeScript project in frontend/",
+            "Install dependencies: react-split-pane (or similar), axios",
+            "Create split-pane layout component (60% viz, 40% chat)",
+            "Create ApproachSelector sidebar/dropdown component",
+            "Set up React Router for navigation"
+          ],
+          "acceptance_criteria": [
+            "Frontend runs on localhost:5173",
+            "Split pane renders with resizable divider",
+            "Can select/create approaches from sidebar",
+            "Layout responsive and usable"
+          ],
+          "files_to_create": [
+            "frontend/package.json",
+            "frontend/src/App.tsx",
+            "frontend/src/components/Layout.tsx",
+            "frontend/src/components/ApproachSelector.tsx"
+          ]
+        },
+        {
+          "id": "chat-interface",
+          "name": "Chat Interface Component",
+          "status": "pending",
+          "description": "Build chat UI that consumes SSE stream from backend",
+          "tasks": [
+            "Create ChatInterface component with message history",
+            "Implement SSE client to consume /api/chat stream",
+            "Show streaming text as it arrives",
+            "Show tool use indicators (e.g., 'Running simulation...')",
+            "Auto-scroll to bottom on new messages",
+            "Input box with send button"
+          ],
+          "acceptance_criteria": [
+            "Messages stream in real-time (not waiting for completion)",
+            "Tool use shows visual indicator",
+            "Message history preserved in session",
+            "Can send new messages while previous still streaming"
+          ],
+          "files_to_create": [
+            "frontend/src/components/ChatInterface.tsx",
+            "frontend/src/hooks/useChat.ts",
+            "frontend/src/services/api.ts"
+          ]
+        },
+        {
+          "id": "visualization-port",
+          "name": "Port Hypergraph Visualization to React",
+          "status": "pending",
+          "description": "Convert existing index.html visualization to React component",
+          "tasks": [
+            "Extract core visualization logic from index.html",
+            "Create HypergraphVisualizer React component",
+            "Integrate with D3.js or keep vanilla JS in useEffect",
+            "Connect to WebSocket for live updates",
+            "Preserve all existing features (expand/collapse, colors, details panel)",
+            "Add 'click node to set chat context' interaction"
+          ],
+          "acceptance_criteria": [
+            "Visualization renders identically to current index.html",
+            "Nodes expand/collapse with animations",
+            "Score colors (red-yellow-green gradient) work",
+            "Details panel shows on node click",
+            "Live updates when hypergraph.json changes",
+            "Clicking node adds context to chat input"
+          ],
+          "files_to_create": [
+            "frontend/src/components/HypergraphVisualizer.tsx",
+            "frontend/src/hooks/useHypergraph.ts"
+          ],
+          "reference": "entailment_hypergraph/index.html"
+        },
+        {
+          "id": "integration-testing",
+          "name": "Integration & Polish",
+          "status": "pending",
+          "description": "End-to-end testing and UX polish",
+          "tasks": [
+            "Test full flow: create approach -> chat -> run simulation -> view results",
+            "Ensure hypergraph updates reflect in visualization immediately",
+            "Add loading states and error handling",
+            "Create start script that launches both backend and frontend",
+            "Write basic README for running locally"
+          ],
+          "acceptance_criteria": [
+            "Full user journey works end-to-end",
+            "No console errors in normal operation",
+            "Graceful error messages for failures",
+            "Single command to start (e.g., ./start_web.sh)"
+          ],
+          "files_to_create": [
+            "start_web.sh"
+          ]
+        }
+      ]
+    },
+    "phase_2_hosting": {
+      "name": "Phase 2: Hosting (Deferred)",
+      "status": "deferred",
+      "description": "Figure out hosting after local version works. Key questions to resolve:",
+      "open_questions": [
+        "Simulation execution: Pyodide in browser? Backend sandboxing? User runs locally?",
+        "API key handling: BYOK with key stored in browser? Backend proxy?",
+        "State persistence: Just download JSON? Simple paste-bin service?",
+        "Deployment: Vercel + Railway? Single container? Static + serverless?"
+      ],
+      "features": []
+    }
+  },
+  "technical_stack": {
+    "backend": {
+      "framework": "FastAPI",
+      "language": "Python 3.12",
+      "key_dependency": "agent_system (existing)"
+    },
+    "frontend": {
+      "framework": "React 18",
+      "language": "TypeScript",
+      "build_tool": "Vite",
+      "visualization": "Ported from existing index.html (D3.js or vanilla)"
+    }
+  },
+  "architecture": {
+    "diagram": "Browser (React) <--HTTP/WS--> FastAPI (localhost:8000) <--> agent_system <--> Claude SDK",
+    "data_flow": [
+      "1. User types in chat",
+      "2. Frontend POSTs to /api/chat with message",
+      "3. Backend calls ClaudeCodeClient.query_stream()",
+      "4. Chunks yielded back via SSE to frontend",
+      "5. If hypergraph.json changes, WebSocket pushes update",
+      "6. Visualization re-renders with new data"
+    ]
+  },
+  "deferred_from_original": [
+    "Authentication (Clerk)",
+    "Cloud database (PostgreSQL)",
+    "Cloud storage (S3/R2)",
+    "Docker sandboxing",
+    "User accounts",
+    "Deployment configuration"
+  ],
+  "completion_criteria": {
+    "phase_1": [
+      "Can create new approach from web UI",
+      "Chat streams Claude responses in real-time",
+      "Simulations run and results appear in chat",
+      "Hypergraph visualization updates live as chat modifies it",
+      "Can click nodes to add context to chat",
+      "All existing CLI functionality accessible via web"
+    ]
+  }
+}
