@@ -75,6 +75,11 @@ if command -v open &> /dev/null; then
     open http://localhost:5173
 elif command -v xdg-open &> /dev/null; then
     xdg-open http://localhost:5173
+elif command -v start &> /dev/null; then
+    start http://localhost:5173
+else
+    echo ""
+    echo "Open your browser to: http://localhost:5173"
 fi
 
 # Wait for processes
