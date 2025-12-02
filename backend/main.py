@@ -336,7 +336,18 @@ async def chat_stream(request: ChatRequest):
         ):
             orchestrator.load_approach(approach_dir)
 
+    # Capture hypergraph state before processing to detect changes
+    hypergraph_before = None
+    if orchestrator.current_session:
+        hypergraph_path = orchestrator.current_session.approach_dir / "hypergraph.json"
+        if hypergraph_path.exists():
+            try:
+                hypergraph_before = hypergraph_path.read_text()
+            except Exception:
+                pass
+
     async def generate():
+        nonlocal hypergraph_before
         try:
             # Get system prompt based on current mode
             system_prompt = None
@@ -359,10 +370,20 @@ async def chat_stream(request: ChatRequest):
                 elif isinstance(event, DoneEvent):
                     yield f"data: {json.dumps({'type': 'done', 'full_response': event.full_response})}\n\n"
 
-                    # Notify WebSocket clients that hypergraph may have changed
+                    # Only notify WebSocket clients if hypergraph actually changed
                     if orchestrator.current_session:
                         folder = orchestrator.current_session.approach_dir.name
-                        await notify_hypergraph_update(folder)
+                        hypergraph_path = orchestrator.current_session.approach_dir / "hypergraph.json"
+                        hypergraph_after = None
+                        if hypergraph_path.exists():
+                            try:
+                                hypergraph_after = hypergraph_path.read_text()
+                            except Exception:
+                                pass
+
+                        # Only send update if content changed
+                        if hypergraph_after != hypergraph_before:
+                            await notify_hypergraph_update(folder)
 
                     # Save session_id for future resumption
                     if orchestrator.current_session and orchestrator.claude_client.session_id:
