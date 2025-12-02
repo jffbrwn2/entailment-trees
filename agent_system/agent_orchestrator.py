@@ -5,6 +5,7 @@ Provides hypergraph structure and context to Claude Code, which does the heavy l
 of writing simulations, running them, and searching literature.
 """
 
+import json
 from pathlib import Path
 from typing import Optional, Dict, Any
 from dataclasses import dataclass, field
@@ -14,6 +15,27 @@ from .hypergraph_manager import HypergraphManager
 from .config import AgentConfig
 from .claude_client import ClaudeCodeClient, ClaudeResponse, ClientMode
 from .conversation_logger import ConversationLogger
+
+
+def _load_session_id(approach_dir: Path) -> Optional[str]:
+    """Load session ID from approach's session.json file."""
+    session_file = approach_dir / "session.json"
+    if session_file.exists():
+        try:
+            with open(session_file) as f:
+                data = json.load(f)
+                return data.get("session_id")
+        except Exception:
+            pass
+    return None
+
+
+def _save_session_id(approach_dir: Path, session_id: str) -> None:
+    """Save session ID to approach's session.json file."""
+    session_file = approach_dir / "session.json"
+    data = {"session_id": session_id, "updated_at": datetime.now().isoformat()}
+    with open(session_file, "w") as f:
+        json.dump(data, f, indent=2)
 
 
 @dataclass
@@ -116,11 +138,16 @@ class AgentOrchestrator:
         )
         self.claude_client.switch_mode(approach_mode)
 
+        # New approach - no session to resume yet
+        self.claude_client.set_session_id(None)
+        print(f"[SESSION] Starting new session for {folder_name}")
+
         return {
             "session": {
                 "name": name,
                 "folder": str(folder_name),
-                "path": str(approach_dir)
+                "path": str(approach_dir),
+                "session_id": None
             },
             "hypergraph": hypergraph,
             "system_prompt": self.get_system_prompt()
@@ -170,11 +197,21 @@ class AgentOrchestrator:
         )
         self.claude_client.switch_mode(approach_mode)
 
+        # Load session_id from file for conversation resumption
+        saved_session_id = _load_session_id(approach_dir)
+        if saved_session_id:
+            self.claude_client.set_session_id(saved_session_id)
+            print(f"[SESSION] Resuming session: {saved_session_id[:40]}...")
+        else:
+            self.claude_client.set_session_id(None)
+            print(f"[SESSION] Starting new session for {approach_dir.name}")
+
         return {
             "session": {
                 "name": name,
                 "folder": str(approach_dir.name),
-                "path": str(approach_dir)
+                "path": str(approach_dir),
+                "session_id": saved_session_id
             },
             "hypergraph": hypergraph,
             "system_prompt": self.get_system_prompt()
@@ -228,6 +265,10 @@ When the user is ready to evaluate a specific idea, suggest they use /new to sta
 
         # SDK handles conversation continuity automatically
         response = self.claude_client.query(user_input, system_prompt=system_prompt)
+
+        # Save session_id for future resumption (if we got one from the response)
+        if self.current_session and self.claude_client.session_id:
+            _save_session_id(self.current_session.approach_dir, self.claude_client.session_id)
 
         # Increment turn counter if in approach mode
         if self.current_session:

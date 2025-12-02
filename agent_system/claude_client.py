@@ -16,6 +16,7 @@ from claude_agent_sdk import (
     ClaudeSDKClient,
     ClaudeAgentOptions,
     AssistantMessage,
+    ResultMessage,
     TextBlock,
     ToolUseBlock,
     ToolResultBlock,
@@ -921,11 +922,20 @@ class ClaudeCodeClient:
         self.current_system_prompt: Optional[str] = None
         self._loop = None
         self.logger = logger
+        self.session_id: Optional[str] = None  # Session ID for resuming conversations
 
         # Set global logger for hooks
         if logger:
             global _current_logger
             _current_logger = logger
+
+    def set_session_id(self, session_id: Optional[str]) -> None:
+        """Set the session ID for conversation resumption."""
+        self.session_id = session_id
+
+    def get_session_id(self) -> Optional[str]:
+        """Get the current session ID."""
+        return self.session_id
 
     def _get_or_create_loop(self):
         """Get or create event loop for async operations."""
@@ -1011,6 +1021,7 @@ class ClaudeCodeClient:
                 allowed_tools=allowed if allowed else None,
                 cwd=str(self.mode.working_dir),
                 mcp_servers=mcp_servers_dict,
+                resume=self.session_id,  # Resume previous session if set
                 hooks={
                     "PostToolUse": [
                         HookMatcher(hooks=[tool_logging_hook])
@@ -1034,14 +1045,20 @@ class ClaudeCodeClient:
 
         # Send query
         try:
-            await self.sdk_client.query(prompt)
+            # Use session_id if set (for resuming conversations)
+            query_session_id = self.session_id or "default"
+            await self.sdk_client.query(prompt, session_id=query_session_id)
 
             # Collect response content with streaming
             response_text = []
             last_was_tool = False
 
             async for message in self.sdk_client.receive_response():
-                if isinstance(message, AssistantMessage):
+                # Capture session ID from result message (sent at end of response)
+                if isinstance(message, ResultMessage):
+                    if hasattr(message, 'session_id') and message.session_id:
+                        self.session_id = message.session_id
+                elif isinstance(message, AssistantMessage):
                     for block in message.content:
                         if isinstance(block, TextBlock):
                             # Add spacing before text if previous was a tool
@@ -1149,6 +1166,7 @@ class ClaudeCodeClient:
                 allowed_tools=allowed if allowed else None,
                 cwd=str(self.mode.working_dir),
                 mcp_servers=mcp_servers_dict,
+                resume=self.session_id,  # Resume previous session if set
                 hooks={
                     "PostToolUse": [
                         HookMatcher(hooks=[tool_logging_hook])
@@ -1172,14 +1190,20 @@ class ClaudeCodeClient:
 
         # Send query and stream responses
         try:
-            await self.sdk_client.query(prompt)
+            # Use session_id if set (for resuming conversations)
+            query_session_id = self.session_id or "default"
+            await self.sdk_client.query(prompt, session_id=query_session_id)
 
             response_text = []
             # Track tool names by ID for proper matching when multiple tools run in parallel
             tool_id_to_name: Dict[str, str] = {}
 
             async for message in self.sdk_client.receive_response():
-                if isinstance(message, AssistantMessage):
+                # Capture session ID from result message (sent at end of response)
+                if isinstance(message, ResultMessage):
+                    if hasattr(message, 'session_id') and message.session_id:
+                        self.session_id = message.session_id
+                elif isinstance(message, AssistantMessage):
                     for block in message.content:
                         if isinstance(block, TextBlock):
                             response_text.append(block.text)

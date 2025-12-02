@@ -30,6 +30,7 @@ from agent_system import (
     DoneEvent,
 )
 from agent_system.config import AgentConfig
+from agent_system.conversation_logger import list_conversation_logs, load_conversation_log
 
 
 # Global orchestrator instance (one per server for now)
@@ -60,7 +61,12 @@ app = FastAPI(
 # Configure CORS for local development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -229,6 +235,82 @@ async def get_approach_status(folder: str) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# Conversation history endpoints
+@app.get("/api/approaches/{folder}/conversations")
+async def list_conversations(folder: str) -> list[dict]:
+    """List all conversation logs for an approach."""
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    # Get the approach name from hypergraph metadata
+    approach_dir = orchestrator.config.approaches_dir / folder
+    if not approach_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
+
+    # Load hypergraph to get approach name
+    hypergraph_path = approach_dir / "hypergraph.json"
+    approach_name = folder
+    if hypergraph_path.exists():
+        with open(hypergraph_path) as f:
+            data = json.load(f)
+            approach_name = data.get("metadata", {}).get("name", folder)
+
+    # List conversations for this approach
+    logs_dir = orchestrator.config.logs_dir
+    log_files = list_conversation_logs(logs_dir, approach_name=approach_name)
+
+    conversations = []
+    for log_file in log_files:
+        try:
+            log = load_conversation_log(log_file)
+            conversations.append({
+                "session_id": log.session_id,
+                "started_at": log.started_at,
+                "ended_at": log.ended_at,
+                "num_turns": len(log.turns),
+                "filename": log_file.name,
+            })
+        except Exception:
+            continue
+
+    return conversations
+
+
+@app.get("/api/conversations/{filename}")
+async def get_conversation(filename: str) -> dict:
+    """Load a specific conversation log."""
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    log_file = orchestrator.config.logs_dir / filename
+    if not log_file.exists():
+        raise HTTPException(status_code=404, detail=f"Conversation log not found: {filename}")
+
+    try:
+        log = load_conversation_log(log_file)
+        return {
+            "session_id": log.session_id,
+            "approach_name": log.approach_name,
+            "started_at": log.started_at,
+            "ended_at": log.ended_at,
+            "turns": [
+                {
+                    "turn_number": turn.turn_number,
+                    "user_input": turn.user_input,
+                    "claude_response": turn.claude_response,
+                    "timestamp": turn.timestamp,
+                    "tools_used": [
+                        {"tool_name": tool.tool_name, "result": tool.result}
+                        for tool in turn.tools_used
+                    ]
+                }
+                for turn in log.turns
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # Chat endpoint with SSE streaming
 @app.post("/api/chat")
 async def chat_stream(request: ChatRequest):
@@ -281,6 +363,14 @@ async def chat_stream(request: ChatRequest):
                     if orchestrator.current_session:
                         folder = orchestrator.current_session.approach_dir.name
                         await notify_hypergraph_update(folder)
+
+                    # Save session_id for future resumption
+                    if orchestrator.current_session and orchestrator.claude_client.session_id:
+                        from agent_system.agent_orchestrator import _save_session_id
+                        _save_session_id(
+                            orchestrator.current_session.approach_dir,
+                            orchestrator.claude_client.session_id
+                        )
 
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
