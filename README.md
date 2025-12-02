@@ -8,6 +8,14 @@ A tool for collaborating with an AI agent to rigorously evaluate ideas through s
 3. Chat with the agent to research claims - it searches literature, writes simulations, and runs calculations
 4. Watch the hypergraph visualization update as evidence accumulates and scores propagate
 
+## Requirements
+
+- **Node.js 18+** - [Download here](https://nodejs.org/) or use `nvm install 20`
+- **Python 3.10+** - Installed automatically by the setup script via uv
+- **Anthropic API key** - [Get one here](https://console.anthropic.com/settings/keys)
+
+> ⚠️ **Anaconda/Conda users:** Conda often has outdated Node.js versions (e.g., v6.x). Install Node.js separately from https://nodejs.org/ or use nvm.
+
 ## Quick Start
 
 ```bash
