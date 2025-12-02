@@ -311,6 +311,35 @@ async def get_conversation(filename: str) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/approaches/{folder}/new-session")
+async def new_session(folder: str) -> dict:
+    """Start a new chat session for an approach (clears conversation state)."""
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    approach_dir = orchestrator.config.approaches_dir / folder
+    if not approach_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
+
+    # Clear the session_id to start fresh conversation
+    if orchestrator.claude_client:
+        orchestrator.claude_client.session_id = None
+        # End current logging session and start new one
+        if orchestrator.claude_client.logger:
+            orchestrator.claude_client.logger.end_session()
+            # Get approach name for new session
+            hypergraph_path = approach_dir / "hypergraph.json"
+            approach_name = folder
+            if hypergraph_path.exists():
+                import json
+                with open(hypergraph_path) as f:
+                    data = json.load(f)
+                    approach_name = data.get("metadata", {}).get("name", folder)
+            orchestrator.claude_client.logger.start_session(approach_name)
+
+    return {"success": True, "message": "New session started"}
+
+
 # Chat endpoint with SSE streaming
 @app.post("/api/chat")
 async def chat_stream(request: ChatRequest):

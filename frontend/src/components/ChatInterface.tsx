@@ -13,6 +13,14 @@ interface Message {
   toolUses: ToolUse[]
 }
 
+interface Conversation {
+  session_id: string
+  started_at: string
+  ended_at: string | null
+  num_turns: number
+  filename: string
+}
+
 interface Props {
   approachFolder: string | null
   approachName: string | null
@@ -22,6 +30,8 @@ function ChatInterface({ approachFolder, approachName }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [selectedConversation, setSelectedConversation] = useState<string>('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
@@ -32,31 +42,66 @@ function ChatInterface({ approachFolder, approachName }: Props) {
 
   // Clear messages and optionally load history when approach changes
   useEffect(() => {
-    // Clear current messages
+    // Clear current messages and conversations
     setMessages([])
+    setConversations([])
+    setSelectedConversation('')
     inputRef.current?.focus()
 
-    // If we have an approach, try to load the most recent conversation
+    // If we have an approach, fetch conversations and load the most recent
     if (approachFolder) {
-      loadRecentConversation(approachFolder)
+      fetchConversations(approachFolder)
     }
   }, [approachFolder])
 
-  const loadRecentConversation = async (folder: string) => {
+  const handleNewChat = async () => {
+    if (!approachFolder || isStreaming) return
+
     try {
-      // Get list of conversations for this approach
+      const response = await fetch(`/api/approaches/${approachFolder}/new-session`, {
+        method: 'POST',
+      })
+      if (response.ok) {
+        setMessages([])
+        setSelectedConversation('')
+        inputRef.current?.focus()
+        // Refresh conversations list
+        fetchConversations(approachFolder)
+      }
+    } catch (error) {
+      console.error('Failed to start new chat:', error)
+    }
+  }
+
+  const fetchConversations = async (folder: string) => {
+    try {
       const response = await fetch(`/api/approaches/${folder}/conversations`)
       if (!response.ok) return
 
-      const conversations = await response.json()
-      if (conversations.length === 0) return
+      const convos: Conversation[] = await response.json()
+      setConversations(convos)
 
-      // Load the most recent conversation
-      const mostRecent = conversations[0]
-      const logResponse = await fetch(`/api/conversations/${mostRecent.filename}`)
-      if (!logResponse.ok) return
+      // Auto-load the most recent conversation
+      if (convos.length > 0) {
+        setSelectedConversation(convos[0].filename)
+        loadConversation(convos[0].filename)
+      }
+    } catch (error) {
+      console.error('Failed to fetch conversations:', error)
+    }
+  }
 
-      const log = await logResponse.json()
+  const loadConversation = async (filename: string) => {
+    if (!filename) {
+      setMessages([])
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/conversations/${filename}`)
+      if (!response.ok) return
+
+      const log = await response.json()
 
       // Convert turns to messages format
       const loadedMessages: Message[] = []
@@ -82,8 +127,20 @@ function ChatInterface({ approachFolder, approachName }: Props) {
 
       setMessages(loadedMessages)
     } catch (error) {
-      console.error('Failed to load conversation history:', error)
+      console.error('Failed to load conversation:', error)
     }
+  }
+
+  const handleConversationChange = (filename: string) => {
+    setSelectedConversation(filename)
+    loadConversation(filename)
+  }
+
+  const formatConversationLabel = (conv: Conversation) => {
+    const date = new Date(conv.started_at)
+    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric' })
+    return `${dateStr} ${timeStr} (${conv.num_turns} turns)`
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -251,7 +308,35 @@ function ChatInterface({ approachFolder, approachName }: Props) {
   return (
     <div className="chat-interface">
       <div className="chat-header">
-        <h2>{approachName || 'Chat'}</h2>
+        <div className="chat-header-top">
+          <h2>{approachName || 'Chat'}</h2>
+          {approachFolder && (
+            <button
+              className="new-chat-button"
+              onClick={handleNewChat}
+              disabled={isStreaming}
+              title="Start a new conversation"
+            >
+              + New Chat
+            </button>
+          )}
+        </div>
+        {approachFolder && conversations.length > 0 && (
+          <div className="conversation-selector">
+            <select
+              value={selectedConversation}
+              onChange={(e) => handleConversationChange(e.target.value)}
+              disabled={isStreaming}
+            >
+              <option value="">New conversation</option>
+              {conversations.map((conv) => (
+                <option key={conv.filename} value={conv.filename}>
+                  {formatConversationLabel(conv)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {!approachFolder && (
           <p className="hint">Select or create an approach to begin</p>
         )}

@@ -9,10 +9,64 @@
   border-bottom: 1px solid var(--border);
 }
 
+.chat-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .chat-header h2 {
   font-size: 1rem;
   font-weight: 600;
   margin-bottom: 0.25rem;
+}
+
+.new-chat-button {
+  padding: 0.35rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.new-chat-button:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--text-secondary);
+}
+
+.new-chat-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.conversation-selector {
+  margin-top: 0.5rem;
+}
+
+.conversation-selector select {
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.conversation-selector select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.conversation-selector select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .chat-header .hint {
