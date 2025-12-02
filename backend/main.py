@@ -235,6 +235,30 @@ async def get_approach_status(folder: str) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/approaches/{folder}/cleanup")
+async def cleanup_hypergraph(folder: str) -> dict:
+    """Remove unreachable nodes from the hypergraph."""
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    approach_dir = orchestrator.config.approaches_dir / folder
+    if not approach_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
+
+    mgr = HypergraphManager(approach_dir)
+    try:
+        removed = mgr.remove_unreachable_nodes()
+        # Notify WebSocket clients of the update
+        await notify_hypergraph_update(folder)
+        return {
+            "success": True,
+            "removed_count": len(removed),
+            "removed_nodes": removed
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 # Conversation history endpoints
 @app.get("/api/approaches/{folder}/conversations")
 async def list_conversations(folder: str) -> list[dict]:

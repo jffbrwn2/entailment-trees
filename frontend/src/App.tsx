@@ -173,6 +173,28 @@ function App() {
     setSelectedItem(null)
   }, [])
 
+  const handleCleanup = async () => {
+    if (!currentApproach) return
+
+    try {
+      const response = await fetch(`/api/approaches/${currentApproach.folder}/cleanup`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+      if (data.success) {
+        if (data.removed_count > 0) {
+          alert(`Removed ${data.removed_count} unreachable node(s)`)
+        } else {
+          alert('No unreachable nodes found. Hypergraph is clean!')
+        }
+        // Refresh hypergraph (WebSocket should handle this, but fetch just in case)
+        fetchHypergraph(currentApproach.folder)
+      }
+    } catch (error) {
+      console.error('Failed to cleanup hypergraph:', error)
+    }
+  }
+
   if (loading) {
     return (
       <div className="loading">
@@ -214,6 +236,14 @@ function App() {
             title="Reset graph layout"
           >
             Reset
+          </button>
+          <button
+            className="toolbar-button"
+            onClick={handleCleanup}
+            disabled={!currentApproach}
+            title="Remove unreachable nodes from hypergraph"
+          >
+            Clean Up
           </button>
           <button
             className="toolbar-button"
