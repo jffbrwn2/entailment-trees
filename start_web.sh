@@ -8,7 +8,7 @@ echo "🚀 Starting Entailment Trees Web Application"
 echo "=============================================="
 
 # Check if we're in the project root
-if [ ! -f "features.json" ]; then
+if [ ! -f "pyproject.toml" ]; then
     echo "❌ Error: Must run from project root directory"
     exit 1
 fi

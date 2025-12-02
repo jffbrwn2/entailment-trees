@@ -1,18 +1,21 @@
-# pixi environments
-.pixi/*
-!.pixi/config.toml
-
 # Server logs
 server.log
 
 # Conversation logs (contain full conversation history)
 logs/
 
-# Architecture docs (work in progress)
+# Development artifacts (not needed for users)
+claude-progress.txt
+features.json
+HARNESS.md
+REALTIME_VIZ.md
 ARCHITECTURE.md
-
-# Web implementation research
 WEB_IMPLEMENTATION_RESEARCH.md
+hypergraph_server.py
+start_visualization.sh
+pixi.toml
+pixi.lock
+.pixi/
 
 # Python
 __pycache__/
