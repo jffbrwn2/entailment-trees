@@ -146,9 +146,16 @@ function App() {
       })
       const data = await response.json()
       if (data.success) {
-        await fetchApproaches()
-        // Select the newly created approach
-        const newApproach = approaches.find(a => a.folder === data.folder)
+        // Load the approach on the backend first
+        await fetch(`/api/approaches/${data.folder}/load`, { method: 'POST' })
+
+        // Fetch the updated approaches list
+        const listResponse = await fetch('/api/approaches')
+        const updatedApproaches = await listResponse.json()
+        setApproaches(updatedApproaches)
+
+        // Find and select the newly created approach from the fresh list
+        const newApproach = updatedApproaches.find((a: Approach) => a.folder === data.folder)
         if (newApproach) {
           setCurrentApproach(newApproach)
         }
