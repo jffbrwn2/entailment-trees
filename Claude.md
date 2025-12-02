@@ -49,8 +49,8 @@ Every approach must have an entailment tree to make feasibility assessment rigor
 - **AND relationship**: Combined score = sum_i(-log(score_i/10))
   - All premises must be true for parent to be true
   - Lower combined score = better (less uncertainty)
-- **OR relationship**: Combined score = max_i(-log(score_i/10))
-  - Any premise being true makes parent true
+- **OR relationship**: Combined score = min_i(-log(score_i/10))
+  - Any premise being true makes parent true (best premise wins)
   - Generally prefer separate trees for different approaches rather than OR nodes
 
 *Documentation for Each Node:*

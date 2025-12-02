@@ -529,7 +529,7 @@ python -m http.server 8765
 
         For leaf nodes: propagated_negative_log = -log2(score/10)
         For AND nodes: propagated_negative_log = sum(children_propagated_negative_log)
-        For OR nodes: propagated_negative_log = max(children_propagated_negative_log)
+        For OR nodes: propagated_negative_log = min(children_propagated_negative_log)
 
         Args:
             hypergraph: Optional hypergraph dict. If None, loads from disk.
@@ -607,8 +607,8 @@ python -m http.server 8765
                 # AND: sum of children negative logs
                 propagated_log = sum(children_logs)
             elif impl_type == 'OR':
-                # OR: max of children negative logs
-                propagated_log = max(children_logs) if children_logs else float('inf')
+                # OR: min of children negative logs (best/most likely premise wins)
+                propagated_log = min(children_logs) if children_logs else float('inf')
             else:
                 # Unknown type, treat as AND
                 propagated_log = sum(children_logs)
