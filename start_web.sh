@@ -70,5 +70,12 @@ echo ""
 echo "Press Ctrl+C to stop"
 echo "=============================================="
 
+# Open browser
+if command -v open &> /dev/null; then
+    open http://localhost:5173
+elif command -v xdg-open &> /dev/null; then
+    xdg-open http://localhost:5173
+fi
+
 # Wait for processes
 wait

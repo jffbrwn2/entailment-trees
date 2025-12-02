@@ -1,49 +1,32 @@
-# Entailment Trees 
+# Entailment Trees
 
 A tool for collaborating with an AI agent to rigorously evaluate ideas through structured reasoning, simulations, and literature research.
 
-## Installation
-
-### Prerequisites
-
-- Python 3.11-3.13
-- [uv](https://docs.astral.sh/uv/) package manager
-- Node.js 18+ (for web interface)
-
-### Install
+## Quick Start
 
 ```bash
-# Install uv if needed
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Clone and install dependencies
 git clone https://github.com/jffbrwn2/entailment-trees.git
 cd entailment-trees
-uv sync
-
-# Install frontend dependencies
-cd frontend && npm install
+./setup.sh
 ```
 
-### Set API Keys
+The setup script will:
+1. Install [uv](https://docs.astral.sh/uv/) if needed
+2. Check for Node.js 18+
+3. Install all dependencies
+4. Check for your Anthropic API key
+5. Offer to launch the web app
 
-Required:
+**Need an API key?** Get one at: https://console.anthropic.com/settings/keys
+
+Then set it:
 ```bash
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-Optional (for enhanced scientific literature search):
-```bash
-export EDISON_API_KEY="your-edison-key"
-```
+## Usage
 
-Add these to your `~/.bashrc` or `~/.zshrc` to make them persistent.
-
-## Quick Start
-
-### Option 1: Web Interface (Recommended)
-
-Start both the backend and frontend servers:
+Once set up, start the web app anytime with:
 
 ```bash
 ./start_web.sh
@@ -51,174 +34,43 @@ Start both the backend and frontend servers:
 
 Then open http://localhost:5173 in your browser.
 
-### Option 2: CLI
+### What You Can Do
 
-```bash
-uv run python -m agent_system.agent_cli
-```
+1. **Create an approach** - Start evaluating a new idea or hypothesis
+2. **Chat with the agent** - Ask questions, request simulations, explore literature
+3. **Visualize the hypergraph** - See claims, evidence, and logical relationships
+4. **Track progress** - Watch scores update as evidence accumulates
 
-### 2. Create a New Approach
-
-```
-> /new
-What would you like to call this approach? ultrasound-neural-sensing
-What idea or claim would you like to evaluate?
-> We can detect neural signals using ultrasound reflections
-```
-
-### 3. Chat with the Agent
+### Example Conversation
 
 ```
-> What are the key physical parameters we need to understand?
+You: Can we detect neural signals using ultrasound reflections?
 
-Agent: To detect neural signals with ultrasound, we need to understand:
-1. The amplitude of electrical signals from neurons
-2. How these signals affect acoustic impedance in tissue
-3. The sensitivity of ultrasound detectors
-...
+Agent: I'll break this down into testable claims:
 
-> Can you write a simulation to estimate the signal strength?
-
-Agent: I'll create a simulation that models:
-- Ionic current from action potentials
-- Resulting electromagnetic fields
-- Acoustic impedance changes
-...
-```
-
-The agent will write code, run simulations, and update the hypergraph with evidence.
-
-### 4. Visualize the Hypergraph
-
-Start the real-time visualization server:
-
-```bash
-./start_visualization.sh
-```
-
-Open in browser:
-```
-http://localhost:8765/
-```
-
-The visualization updates automatically as the agent works! (Note: Sometimes you have to refresh the page to see the updates.)
-
-## Example 1: Generate First Layer of Entailment Graph
-
-```
-> /new
-What would you like to call this approach? acoustic-neural-interface
-What idea or claim would you like to evaluate?
-> Acoustic waves can modulate neural activity for brain-computer interfaces
-
-> Can you break down this hypothesis into the first layer of testable claims?
-
-Agent: I'll decompose this into fundamental premises:
-
-c1: "Acoustic waves can propagate through skull/brain with sufficient amplitude"
+c1: "Ultrasound can propagate through skull with sufficient amplitude"
     Score: TBD (needs simulation)
 
-c2: "Acoustic waves can create mechanical forces on neural membranes"
+c2: "Neural activity causes detectable acoustic impedance changes"
     Score: TBD (needs calculation)
 
-c3: "Mechanical forces can affect ion channel gating"
-    Score: TBD (needs literature)
-
-c4: "Ion channel changes can trigger/modulate action potentials"
-    Score: 9/10 (well-established)
-
-c5: "The effect has useful signal-to-noise ratio"
-    Score: TBD (critical blocker)
-
-Created implication:
-(c1 AND c2 AND c3 AND c4 AND c5) → Hypothesis
+c3: "Signal-to-noise ratio is sufficient for detection"
+    Score: TBD (critical unknown)
 
 Which claim should we investigate first?
 ```
 
-## Example 2: Browsing GAP-MAP Research Database
+The agent writes simulations, searches literature, and updates the hypergraph with evidence.
 
+## Optional: Edison Scientific
+
+For enhanced literature search, set:
+```bash
+export EDISON_API_KEY="your-edison-key"
 ```
-> Can you list the research gaps in the Biology field from GAP-MAP?
-
-Agent: I'll query the GAP-MAP database to find biology research gaps...
-
-[Agent uses gapmap_client to browse catalogued problems]
-
-Agent: Found 23 research gaps in Biology, including:
-
-1. "Predicting protein folding from sequence alone"
-   Status: Active area of research
-   Related capabilities: AlphaFold, RoseTTAFold
-
-2. "Non-invasive continuous glucose monitoring"
-   Status: Partially solved
-   Related capabilities: Optical sensing, microneedle arrays
-
-3. "Real-time whole-brain neural activity recording"
-   Status: Open problem
-   Related capabilities: Voltage imaging, optogenetics
-
-Would you like to see proposed solutions for any of these gaps?
-```
-
-## Example 3: Using Edison for Literature Search
-
-```
-> Can you use Edison to find papers about the amplitude of EEG signals?
-
-Agent: I'll submit a literature search task to Edison Scientific...
-
-[Agent submits async task to Edison]
-
-Agent: Edison is searching scientific literature... (task ID: abc123)
-
-[Polls for completion]
-
-Agent: Found evidence from literature:
-
-"Typical EEG signal amplitudes range from 10-100 microvolts (µV) at the scalp surface,
-with alpha waves (8-13 Hz) typically around 50 µV and beta waves (13-30 Hz) around
-10-30 µV." [Source: Clinical Neurophysiology, 2019]
-
-Adding this to the hypergraph as literature evidence with score 9/10 (well-established).
-```
-
-## CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `/new` | Start a new approach |
-| `/list` | List existing approaches |
-| `/load` | Load an existing approach |
-| `/status` | Show current hypergraph statistics |
-| `/validate` | Check hypergraph structure |
-| `/cleanup` | Remove unreachable nodes from hypergraph |
-| `/history` | View hypergraph version history |
-| `/restore` | Restore a previous hypergraph version |
-| `/set-model` | Change the evaluation model used for scoring |
-| `/viz` | Show visualization instructions |
-| `/help` | Show all commands |
-| `/quit` | Exit |
 
 ## Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) - System design and architecture
-- [CLAUDE.md](CLAUDE.md) - Guidelines for the AI agent
-- [entailment_hypergraph/README.md](entailment_hypergraph/README.md) - Hypergraph structure and validation
-
-## Troubleshooting
-
-**API key not found:**
-```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
-echo $ANTHROPIC_API_KEY  # Verify it's set
-```
-
-**Visualization not updating:**
-Use the WebSocket server: `./start_visualization.sh`
-
-**Type checking fails:**
-```bash
-python typecheck_hypergraph.py approaches/your-approach/hypergraph.json
-```
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System design
+- [CLAUDE.md](CLAUDE.md) - Agent guidelines
+- [entailment_hypergraph/README.md](entailment_hypergraph/README.md) - Hypergraph structure
