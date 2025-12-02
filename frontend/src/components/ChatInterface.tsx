@@ -212,7 +212,7 @@ function ChatInterface({ approachFolder, approachName }: Props) {
             <p>Start a conversation to explore your hypothesis.</p>
             <p className="suggestions">Try:</p>
             <ul>
-              <li>"Break down this hypothesis into testable claims"</li>
+              <li>"Generate the first level of the entailment tree"</li>
               <li>"What simulations should we run?"</li>
               <li>"Search for prior work on this topic"</li>
             </ul>
