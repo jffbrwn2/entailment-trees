@@ -1175,7 +1175,8 @@ class ClaudeCodeClient:
             await self.sdk_client.query(prompt)
 
             response_text = []
-            current_tool_name = None
+            # Track tool names by ID for proper matching when multiple tools run in parallel
+            tool_id_to_name: Dict[str, str] = {}
 
             async for message in self.sdk_client.receive_response():
                 if isinstance(message, AssistantMessage):
@@ -1184,7 +1185,9 @@ class ClaudeCodeClient:
                             response_text.append(block.text)
                             yield TextEvent(block.text)
                         elif isinstance(block, ToolUseBlock):
-                            current_tool_name = block.name
+                            tool_id = getattr(block, 'id', None)
+                            if tool_id:
+                                tool_id_to_name[tool_id] = block.name
                             yield ToolUseEvent(
                                 tool_name=block.name,
                                 tool_input=block.input if hasattr(block, 'input') else {}
@@ -1197,8 +1200,11 @@ class ClaudeCodeClient:
                                     result_text = block.content
                                 elif isinstance(block.content, list):
                                     result_text = str(block.content)
+                            # Look up tool name by tool_use_id
+                            tool_use_id = getattr(block, 'tool_use_id', None)
+                            tool_name = tool_id_to_name.get(tool_use_id, "unknown") if tool_use_id else "unknown"
                             yield ToolResultEvent(
-                                tool_name=current_tool_name or "unknown",
+                                tool_name=tool_name,
                                 result=result_text,
                                 is_error=getattr(block, 'is_error', False)
                             )
