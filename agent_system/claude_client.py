@@ -1032,12 +1032,8 @@ class ClaudeCodeClient:
                 }
             )
 
-            # Close existing client if changing system prompt
-            if self.sdk_client is not None:
-                try:
-                    await self.sdk_client.__aexit__(None, None, None)
-                except:
-                    pass
+            # Don't try to close existing client - anyio cancel scopes must be exited
+            # in the same task they were entered. Just abandon and create fresh.
 
             self.sdk_client = ClaudeSDKClient(options=options)
             await self.sdk_client.__aenter__()
@@ -1120,13 +1116,10 @@ class ClaudeCodeClient:
         if self.logger:
             self.logger.log_turn_start(prompt)
 
-        # Initialize SDK client if not already done
-        should_recreate = (
-            self.sdk_client is None or
-            (system_prompt is not None and system_prompt != self.current_system_prompt)
-        )
-
-        if should_recreate:
+        # Always create a fresh SDK client for streaming requests.
+        # The SDK client cannot be reused across different HTTP requests (different async tasks)
+        # because anyio cancel scopes must be entered/exited in the same task.
+        if True:  # Always recreate for streaming
             # Set approach directory for Edison tools
             if EDISON_AVAILABLE:
                 global _approach_dir
@@ -1177,12 +1170,8 @@ class ClaudeCodeClient:
                 }
             )
 
-            # Close existing client if changing system prompt
-            if self.sdk_client is not None:
-                try:
-                    await self.sdk_client.__aexit__(None, None, None)
-                except:
-                    pass
+            # Don't try to close existing client - anyio cancel scopes must be exited
+            # in the same task they were entered. Just abandon and create fresh.
 
             self.sdk_client = ClaudeSDKClient(options=options)
             await self.sdk_client.__aenter__()
@@ -1315,16 +1304,19 @@ class ClaudeCodeClient:
         # Force SDK client recreation if working directory changed
         # The cwd is set when the SDK client is created, so we must recreate
         if old_working_dir != new_mode.working_dir and self.sdk_client is not None:
-            self._run_async(self.sdk_client.__aexit__(None, None, None))
+            # Don't try to close the old client - anyio cancel scopes must be exited
+            # in the same task they were entered. In an async web context, trying to
+            # close here creates cross-task issues. Just abandon the old client and
+            # let the new one be created fresh on next query.
             self.sdk_client = None
             self.current_system_prompt = None  # Force new system prompt too
 
     def end_conversation(self):
         """End the current conversation session."""
-        if self.sdk_client is not None:
-            self._run_async(self.sdk_client.__aexit__(None, None, None))
-            self.sdk_client = None
-            self.current_system_prompt = None
+        # Don't try to close the SDK client - anyio cancel scopes must be exited
+        # in the same task they were entered. Just abandon the client.
+        self.sdk_client = None
+        self.current_system_prompt = None
 
         # End logging session
         if self.logger:
@@ -1332,11 +1324,8 @@ class ClaudeCodeClient:
 
     def __del__(self):
         """Cleanup when object is destroyed."""
-        if self.sdk_client is not None:
-            try:
-                self.end_conversation()
-            except:
-                pass
+        # Don't try to close SDK client in __del__ - it's unsafe in async contexts
+        pass
 
 
 class ClaudeCodeError(Exception):

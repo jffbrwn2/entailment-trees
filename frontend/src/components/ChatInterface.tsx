@@ -30,10 +30,61 @@ function ChatInterface({ approachFolder, approachName }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Focus input when approach changes
+  // Clear messages and optionally load history when approach changes
   useEffect(() => {
+    // Clear current messages
+    setMessages([])
     inputRef.current?.focus()
+
+    // If we have an approach, try to load the most recent conversation
+    if (approachFolder) {
+      loadRecentConversation(approachFolder)
+    }
   }, [approachFolder])
+
+  const loadRecentConversation = async (folder: string) => {
+    try {
+      // Get list of conversations for this approach
+      const response = await fetch(`/api/approaches/${folder}/conversations`)
+      if (!response.ok) return
+
+      const conversations = await response.json()
+      if (conversations.length === 0) return
+
+      // Load the most recent conversation
+      const mostRecent = conversations[0]
+      const logResponse = await fetch(`/api/conversations/${mostRecent.filename}`)
+      if (!logResponse.ok) return
+
+      const log = await logResponse.json()
+
+      // Convert turns to messages format
+      const loadedMessages: Message[] = []
+      for (const turn of log.turns) {
+        // Add user message
+        loadedMessages.push({
+          id: `${turn.turn_number}-user`,
+          role: 'user',
+          content: turn.user_input,
+          toolUses: [],
+        })
+        // Add assistant message with tool uses
+        loadedMessages.push({
+          id: `${turn.turn_number}-assistant`,
+          role: 'assistant',
+          content: turn.claude_response,
+          toolUses: turn.tools_used.map((t: { tool_name: string }) => ({
+            name: t.tool_name,
+            status: 'done' as const,
+          })),
+        })
+      }
+
+      setMessages(loadedMessages)
+    } catch (error) {
+      console.error('Failed to load conversation history:', error)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
