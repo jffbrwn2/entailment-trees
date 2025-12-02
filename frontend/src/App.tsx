@@ -18,7 +18,7 @@ export interface Approach {
 interface Claim {
   id: string
   text: string
-  score: number
+  score: number | null
   propagated_negative_log?: number
   reasoning?: string
   evidence?: Evidence[]

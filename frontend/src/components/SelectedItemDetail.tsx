@@ -3,7 +3,7 @@ import './SelectedItemDetail.css'
 interface Claim {
   id: string
   text: string
-  score: number
+  score: number | null
   propagated_negative_log?: number
   reasoning?: string
   evidence?: Evidence[]
@@ -43,10 +43,22 @@ interface Props {
   onClose: () => void
 }
 
-function getScoreClass(score: number): string {
-  if (score >= 7.5) return 'score-high'
-  if (score >= 5) return 'score-medium'
-  return 'score-low'
+function getScoreColor(score: number | null): string {
+  if (score === null) return 'rgb(128, 128, 128)'
+  const clampedScore = Math.max(0, Math.min(10, score))
+  if (clampedScore <= 5) {
+    const t = clampedScore / 5
+    const r = 248
+    const g = Math.round(81 + (217 - 81) * t)
+    const b = Math.round(73 + (34 - 73) * t)
+    return `rgb(${r}, ${g}, ${b})`
+  } else {
+    const t = (clampedScore - 5) / 5
+    const r = Math.round(217 - (217 - 63) * t)
+    const g = Math.round(217 - (217 - 185) * t)
+    const b = Math.round(34 + (80 - 34) * t)
+    return `rgb(${r}, ${g}, ${b})`
+  }
 }
 
 function SelectedItemDetail({ selectedItem, claims, implications, onClose }: Props) {
@@ -72,8 +84,8 @@ function SelectedItemDetail({ selectedItem, claims, implications, onClose }: Pro
         <div className="detail-text">{claim.text}</div>
 
         <div className="detail-scores">
-          <span className={`detail-score ${getScoreClass(claim.score)}`}>
-            Score: {claim.score}/10
+          <span className="detail-score" style={{ background: `${getScoreColor(claim.score)}33`, color: getScoreColor(claim.score) }}>
+            Score: {claim.score !== null ? `${claim.score}/10` : 'Not evaluated'}
           </span>
           {claim.propagated_negative_log !== undefined && (
             <span className="detail-propagated">

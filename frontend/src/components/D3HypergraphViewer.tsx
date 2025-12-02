@@ -5,7 +5,7 @@ import './D3HypergraphViewer.css'
 interface Claim {
   id: string
   text: string
-  score: number
+  score: number | null
   propagated_negative_log?: number
   reasoning?: string
   evidence?: Evidence[]
@@ -129,14 +129,18 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     return descendants
   }, [])
 
-  const getEffectiveScore = useCallback((claim: Claim) => {
+  const getEffectiveScore = useCallback((claim: Claim): number | null => {
     if (scoreMode === 'propagated' && claim.propagated_negative_log !== undefined) {
       return Math.pow(2, -claim.propagated_negative_log) * 10
     }
     return claim.score
   }, [scoreMode])
 
-  const getScoreColor = useCallback((score: number) => {
+  const getScoreColor = useCallback((score: number | null): string => {
+    // Null/unevaluated scores are grey
+    if (score === null) {
+      return 'rgb(128, 128, 128)'
+    }
     const clampedScore = Math.max(0, Math.min(10, score))
     if (clampedScore <= 5) {
       const t = clampedScore / 5
@@ -715,7 +719,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
       text.attr('transform', `translate(0, ${-totalHeight / 2 + 5})`)
 
       node.append('title')
-        .text(`${d.id}\n${d.text}\nScore: ${d.score}/10`)
+        .text(`${d.id}\n${d.text}\nScore: ${d.score !== null ? `${d.score}/10` : 'Not evaluated'}`)
     })
 
     // Add junction node visuals
@@ -948,6 +952,21 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
   return (
     <div ref={containerRef} className="d3-viewer-container">
       <svg ref={svgRef} className="d3-viewer-svg" />
+      <div className="graph-legend">
+        <div className="legend-title">Score</div>
+        <div className="legend-gradient">
+          <div className="legend-bar" />
+          <div className="legend-labels">
+            <span>0 (false)</span>
+            <span>5</span>
+            <span>10 (true)</span>
+          </div>
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ background: 'rgb(128, 128, 128)' }} />
+          <span>Not evaluated</span>
+        </div>
+      </div>
     </div>
   )
 }

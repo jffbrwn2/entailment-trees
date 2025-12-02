@@ -54,3 +54,58 @@
 .expand-indicator:hover circle {
   filter: brightness(1.2);
 }
+
+/* Legend */
+.graph-legend {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.legend-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.legend-gradient {
+  margin-bottom: 6px;
+}
+
+.legend-bar {
+  height: 8px;
+  width: 100px;
+  border-radius: 2px;
+  background: linear-gradient(to right,
+    rgb(248, 81, 73) 0%,
+    rgb(248, 217, 34) 50%,
+    rgb(63, 185, 80) 100%
+  );
+}
+
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 9px;
+  margin-top: 2px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}

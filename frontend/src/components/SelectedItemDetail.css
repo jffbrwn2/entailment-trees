@@ -71,20 +71,6 @@
   font-weight: 600;
 }
 
-.score-high {
-  background: rgba(63, 185, 80, 0.2);
-  color: #3fb950;
-}
-
-.score-medium {
-  background: rgba(210, 153, 34, 0.2);
-  color: #d29922;
-}
-
-.score-low {
-  background: rgba(248, 81, 73, 0.2);
-  color: #f85149;
-}
 
 .detail-propagated {
   display: inline-block;
