@@ -94,10 +94,41 @@ class ApproachInfo(BaseModel):
     num_implications: int
 
 
+class GenerateNameRequest(BaseModel):
+    hypothesis: str
+
+
 # Health check
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "orchestrator_ready": orchestrator is not None}
+
+
+# Generate approach name using Haiku
+@app.post("/api/generate-name")
+async def generate_name(request: GenerateNameRequest) -> dict:
+    """Generate a short name for an approach using Claude Haiku."""
+    import anthropic
+    import re
+
+    try:
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-3-5-haiku-latest",
+            max_tokens=50,
+            messages=[{
+                "role": "user",
+                "content": f"Generate a short (2-4 word) name for this research idea. Return ONLY the name, nothing else. Use lowercase with hyphens between words.\n\nIdea: {request.hypothesis}"
+            }]
+        )
+        name = response.content[0].text.strip()
+        # Sanitize: lowercase, replace spaces/special chars with hyphens
+        name = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')[:50]
+        return {"name": name}
+    except Exception as e:
+        # Fallback to simple slug
+        name = re.sub(r'[^a-z0-9]+', '-', request.hypothesis.lower())[:30].strip('-')
+        return {"name": name, "error": str(e)}
 
 
 # Approaches endpoints

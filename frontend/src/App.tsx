@@ -4,6 +4,7 @@ import ApproachSelector from './components/ApproachSelector'
 import ChatInterface from './components/ChatInterface'
 import D3HypergraphViewer from './components/D3HypergraphViewer'
 import SelectedItemDetail from './components/SelectedItemDetail'
+import WelcomeModal from './components/WelcomeModal'
 import './App.css'
 
 export interface Approach {
@@ -206,6 +207,13 @@ function App() {
 
   return (
     <div className="app">
+      {!loading && !currentApproach && (
+        <WelcomeModal
+          approaches={approaches}
+          onSelect={handleSelectApproach}
+          onCreate={handleCreateApproach}
+        />
+      )}
       <header className="app-header">
         <div className="header-left">
           <h1>Entailment Trees</h1>
