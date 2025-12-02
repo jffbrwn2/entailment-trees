@@ -4,7 +4,7 @@ interface Claim {
   id: string
   text: string
   score: number | null
-  propagated_negative_log?: number
+  propagated_negative_log?: number | null
   reasoning?: string
   evidence?: Evidence[]
   uncertainties?: string[]
@@ -40,6 +40,7 @@ interface Props {
   selectedItem: SelectedItem | null
   claims: Claim[]
   implications: Implication[]
+  scoreMode: 'score' | 'propagated'
   onClose: () => void
 }
 
@@ -61,7 +62,19 @@ function getScoreColor(score: number | null): string {
   }
 }
 
-function SelectedItemDetail({ selectedItem, claims, implications, onClose }: Props) {
+function getEffectiveScore(claim: Claim, scoreMode: 'score' | 'propagated'): number | null {
+  if (scoreMode === 'propagated') {
+    if (claim.propagated_negative_log === null) {
+      return 0
+    }
+    if (claim.propagated_negative_log !== undefined) {
+      return Math.pow(2, -claim.propagated_negative_log) * 10
+    }
+  }
+  return claim.score
+}
+
+function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, onClose }: Props) {
   if (!selectedItem) {
     return (
       <div className="detail-panel detail-empty">
@@ -84,12 +97,19 @@ function SelectedItemDetail({ selectedItem, claims, implications, onClose }: Pro
         <div className="detail-text">{claim.text}</div>
 
         <div className="detail-scores">
-          <span className="detail-score" style={{ background: `${getScoreColor(claim.score)}33`, color: getScoreColor(claim.score) }}>
-            Score: {claim.score !== null ? `${claim.score}/10` : 'Not evaluated'}
-          </span>
+          {(() => {
+            const effectiveScore = getEffectiveScore(claim, scoreMode)
+            const displayScore = effectiveScore !== null ? effectiveScore.toFixed(1) : null
+            const label = scoreMode === 'propagated' ? 'Propagated Score' : 'Direct Score'
+            return (
+              <span className="detail-score" style={{ background: `${getScoreColor(effectiveScore)}33`, color: getScoreColor(effectiveScore) }}>
+                {label}: {displayScore !== null ? `${displayScore}/10` : 'Not evaluated'}
+              </span>
+            )
+          })()}
           {claim.propagated_negative_log !== undefined && (
             <span className="detail-propagated">
-              Propagated -log₂: {claim.propagated_negative_log.toFixed(3)}
+              -log₂: {claim.propagated_negative_log === null ? '∞' : claim.propagated_negative_log.toFixed(3)}
             </span>
           )}
         </div>

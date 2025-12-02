@@ -175,7 +175,7 @@ async def load_approach(folder: str) -> dict:
 
 @app.get("/api/approaches/{folder}/hypergraph")
 async def get_hypergraph(folder: str) -> dict:
-    """Get the hypergraph JSON for an approach."""
+    """Get the hypergraph JSON for an approach with computed propagated scores."""
     if not orchestrator:
         raise HTTPException(status_code=503, detail="Orchestrator not initialized")
 
@@ -184,7 +184,24 @@ async def get_hypergraph(folder: str) -> dict:
         raise HTTPException(status_code=404, detail=f"Hypergraph not found for '{folder}'")
 
     with open(hypergraph_path) as f:
-        return json.load(f)
+        hypergraph = json.load(f)
+
+    # Always compute propagated negative logs before serving
+    from agent_system.hypergraph_manager import HypergraphManager
+    import math
+    mgr = HypergraphManager(orchestrator.config.approaches_dir / folder)
+    propagated_logs = mgr.calculate_propagated_negative_logs(hypergraph)
+    for claim in hypergraph.get('claims', []):
+        claim_id = claim['id']
+        if claim_id in propagated_logs:
+            value = propagated_logs[claim_id]
+            # Convert infinity to None (JSON doesn't support Infinity)
+            if math.isinf(value):
+                claim['propagated_negative_log'] = None
+            else:
+                claim['propagated_negative_log'] = value
+
+    return hypergraph
 
 
 @app.get("/api/approaches/{folder}/status")

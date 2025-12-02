@@ -256,6 +256,7 @@ function App() {
                     selectedItem={selectedItem}
                     claims={hypergraph.claims}
                     implications={hypergraph.implications}
+                    scoreMode={scoreMode}
                     onClose={handleCloseDetail}
                   />
                 )}

@@ -108,6 +108,13 @@ class HypergraphManager:
         # Update last_updated timestamp
         hypergraph['metadata']['last_updated'] = datetime.now().strftime("%Y-%m-%d")
 
+        # Always compute and update propagated negative logs before saving
+        propagated_logs = self.calculate_propagated_negative_logs(hypergraph)
+        for claim in hypergraph.get('claims', []):
+            claim_id = claim['id']
+            if claim_id in propagated_logs:
+                claim['propagated_negative_log'] = propagated_logs[claim_id]
+
         # Save to history before overwriting
         if self.hypergraph_path.exists():
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -516,7 +523,7 @@ python -m http.server 8765
 
         return historical_hypergraph
 
-    def calculate_propagated_negative_logs(self) -> Dict[str, float]:
+    def calculate_propagated_negative_logs(self, hypergraph: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
         """
         Calculate propagated negative log scores for all claims.
 
@@ -524,12 +531,16 @@ python -m http.server 8765
         For AND nodes: propagated_negative_log = sum(children_propagated_negative_log)
         For OR nodes: propagated_negative_log = max(children_propagated_negative_log)
 
+        Args:
+            hypergraph: Optional hypergraph dict. If None, loads from disk.
+
         Returns:
             Dict mapping claim_id -> propagated_negative_log value
         """
         import math
 
-        hypergraph = self.load_hypergraph()
+        if hypergraph is None:
+            hypergraph = self.load_hypergraph()
         claims = hypergraph.get('claims', [])
         implications = hypergraph.get('implications', [])
 
@@ -567,12 +578,13 @@ python -m http.server 8765
                 propagated_logs[claim_id] = float('inf')
                 return float('inf')
 
-            score = claim.get('score', 0.0)
+            score = claim.get('score')
 
             # Check if this is a leaf node (not a conclusion of any implication)
             if claim_id not in conclusion_to_implication:
                 # Leaf node: -log2(score/10)
-                if score <= 0:
+                # Handle null/None scores as unevaluated (infinite uncertainty)
+                if score is None or score <= 0:
                     neg_log = float('inf')
                 else:
                     neg_log = -math.log2(score / 10.0)

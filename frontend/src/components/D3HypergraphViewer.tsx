@@ -6,7 +6,7 @@ interface Claim {
   id: string
   text: string
   score: number | null
-  propagated_negative_log?: number
+  propagated_negative_log?: number | null
   reasoning?: string
   evidence?: Evidence[]
   uncertainties?: string[]
@@ -130,8 +130,15 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
   }, [])
 
   const getEffectiveScore = useCallback((claim: Claim): number | null => {
-    if (scoreMode === 'propagated' && claim.propagated_negative_log !== undefined) {
-      return Math.pow(2, -claim.propagated_negative_log) * 10
+    if (scoreMode === 'propagated') {
+      // null means infinity (score was 0), so effective score is 0
+      if (claim.propagated_negative_log === null) {
+        return 0
+      }
+      // undefined means not computed, fall back to raw score
+      if (claim.propagated_negative_log !== undefined) {
+        return Math.pow(2, -claim.propagated_negative_log) * 10
+      }
     }
     return claim.score
   }, [scoreMode])
@@ -918,9 +925,21 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
         }
       })
 
-    // Update selection highlighting
+    // Update node colors based on score mode and selection highlighting
     allNodeElements.filter(d => d.type === 'claim')
       .select('circle')
+      .attr('fill', d => {
+        const claim = hypergraph.claims.find(c => c.id === d.id)
+        if (!claim) return 'rgb(128, 128, 128)'
+        const effectiveScore = getEffectiveScore(claim)
+        return getScoreColor(effectiveScore)
+      })
+      .attr('stroke', d => {
+        const claim = hypergraph.claims.find(c => c.id === d.id)
+        if (!claim) return 'rgb(128, 128, 128)'
+        const effectiveScore = getEffectiveScore(claim)
+        return getScoreColor(effectiveScore)
+      })
       .attr('stroke-width', d => {
         if (!selectedItem) return 2
         if (selectedItem.type === 'claim' && selectedItem.id === d.id) return 4
