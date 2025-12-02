@@ -6,6 +6,7 @@ for each implication in the hypergraph.
 """
 
 import json
+import re
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from anthropic import Anthropic
@@ -96,10 +97,12 @@ Analyze this carefully:
 3. Do we need intermediate claims to bridge the gap?
 {minimality_instruction}
 
-Respond in this format:
-VALID: [YES/NO]
-EXPLANATION: [1-2 sentence explanation]
-SUGGESTIONS: [If invalid, what could fix it?]"""
+Respond using these XML tags:
+<analysis>Your detailed analysis here</analysis>
+<valid>YES or NO</valid>
+<redundant_premises>comma-separated premise IDs, or None</redundant_premises>
+<degenerate_premises>comma-separated premise IDs, or None</degenerate_premises>
+<suggestions>If invalid, what could fix it? Otherwise None</suggestions>"""
 
         # Query Claude
         try:
@@ -111,8 +114,15 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
 
             response_text = response.content[0].text
 
-            # Parse response
-            is_valid = "VALID: YES" in response_text
+            # Parse XML tags from response
+            def extract_tag(text: str, tag: str) -> str:
+                """Extract content between XML tags."""
+                pattern = f'<{tag}>(.*?)</{tag}>'
+                match = re.search(pattern, text, re.DOTALL | re.IGNORECASE)
+                return match.group(1).strip() if match else ""
+
+            valid_text = extract_tag(response_text, 'valid')
+            is_valid = valid_text.upper() == "YES"
 
             # Parse redundant and degenerate premises for AND relationships
             redundant = []
@@ -120,26 +130,14 @@ SUGGESTIONS: [If invalid, what could fix it?]"""
 
             if implication_type == "AND":
                 # Parse redundant premises
-                if "REDUNDANT_PREMISES:" in response_text:
-                    redundant_line = [
-                        line for line in response_text.split('\n')
-                        if line.startswith('REDUNDANT_PREMISES:')
-                    ]
-                    if redundant_line:
-                        redundant_text = redundant_line[0].split(':', 1)[1].strip()
-                        if redundant_text and redundant_text != "None":
-                            redundant = [r.strip() for r in redundant_text.split(',')]
+                redundant_text = extract_tag(response_text, 'redundant_premises')
+                if redundant_text and redundant_text.lower() != "none":
+                    redundant = [r.strip() for r in redundant_text.split(',') if r.strip()]
 
                 # Parse degenerate premises
-                if "DEGENERATE_PREMISES:" in response_text:
-                    degenerate_line = [
-                        line for line in response_text.split('\n')
-                        if line.startswith('DEGENERATE_PREMISES:')
-                    ]
-                    if degenerate_line:
-                        degenerate_text = degenerate_line[0].split(':', 1)[1].strip()
-                        if degenerate_text and degenerate_text != "None":
-                            degenerate = [d.strip() for d in degenerate_text.split(',')]
+                degenerate_text = extract_tag(response_text, 'degenerate_premises')
+                if degenerate_text and degenerate_text.lower() != "none":
+                    degenerate = [d.strip() for d in degenerate_text.split(',') if d.strip()]
 
             # Combine redundant and degenerate into single list for error reporting
             all_problematic = redundant + degenerate
