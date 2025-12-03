@@ -58,15 +58,17 @@ function ChatInterface({ approachFolder, approachName }: Props) {
     if (!approachFolder || isStreaming) return
 
     try {
+      // Call backend to properly clear session state
       const response = await fetch(`/api/approaches/${approachFolder}/new-session`, {
         method: 'POST',
       })
       if (response.ok) {
+        // Clear UI state
         setMessages([])
         setSelectedConversation('')
         inputRef.current?.focus()
-        // Refresh conversations list
-        fetchConversations(approachFolder)
+      } else {
+        console.error('Failed to start new chat:', response.status)
       }
     } catch (error) {
       console.error('Failed to start new chat:', error)
@@ -131,9 +133,32 @@ function ChatInterface({ approachFolder, approachName }: Props) {
     }
   }
 
-  const handleConversationChange = (filename: string) => {
+  const handleConversationChange = async (filename: string) => {
     setSelectedConversation(filename)
-    loadConversation(filename)
+
+    if (filename && approachFolder) {
+      // Switching to an old conversation - resume that conversation's session
+      try {
+        await fetch(`/api/approaches/${approachFolder}/resume-session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversation_filename: filename }),
+        })
+      } catch (error) {
+        console.error('Failed to resume session:', error)
+      }
+      loadConversation(filename)
+    } else if (approachFolder) {
+      // Selecting "New conversation" - start fresh
+      try {
+        await fetch(`/api/approaches/${approachFolder}/new-session`, {
+          method: 'POST',
+        })
+      } catch (error) {
+        console.error('Failed to start new session:', error)
+      }
+      setMessages([])
+    }
   }
 
   const formatConversationLabel = (conv: Conversation) => {

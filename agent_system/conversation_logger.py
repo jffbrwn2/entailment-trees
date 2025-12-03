@@ -53,6 +53,8 @@ class ConversationLog:
     turns: List[Turn] = field(default_factory=list)
     system_prompt: Optional[str] = None
     working_directory: Optional[str] = None
+    # Claude SDK session ID - for resuming Claude's conversation memory
+    claude_sdk_session_id: Optional[str] = None
 
 
 class ConversationLogger:
@@ -173,6 +175,21 @@ class ConversationLogger:
         self.save()
         print(f"[LOGGER] Session ended: {self.session_id}")
         print(f"[LOGGER] Total turns: {len(self.log.turns)}")
+
+    def set_sdk_session_id(self, sdk_session_id: str):
+        """
+        Store the Claude SDK session ID in the log.
+
+        This allows resuming Claude's conversation memory when switching
+        back to this conversation.
+
+        Args:
+            sdk_session_id: The session ID returned by Claude SDK
+        """
+        if sdk_session_id and sdk_session_id != self.log.claude_sdk_session_id:
+            self.log.claude_sdk_session_id = sdk_session_id
+            self.save()
+            print(f"[LOGGER] SDK session ID saved: {sdk_session_id[:40]}...")
 
     def save(self):
         """Save current log state to JSON file."""

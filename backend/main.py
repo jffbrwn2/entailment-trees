@@ -376,23 +376,60 @@ async def new_session(folder: str) -> dict:
     if not approach_dir.exists():
         raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
 
-    # Clear the session_id to start fresh conversation
+    # Clear all session state to start fresh conversation
     if orchestrator.claude_client:
-        orchestrator.claude_client.session_id = None
-        # End current logging session and start new one
-        if orchestrator.claude_client.logger:
-            orchestrator.claude_client.logger.end_session()
-            # Get approach name for new session
-            hypergraph_path = approach_dir / "hypergraph.json"
-            approach_name = folder
-            if hypergraph_path.exists():
-                import json
-                with open(hypergraph_path) as f:
-                    data = json.load(f)
-                    approach_name = data.get("metadata", {}).get("name", folder)
-            orchestrator.claude_client.logger.start_session(approach_name)
+        # This clears: sdk_client, session_id, system_prompt, and ends logging
+        orchestrator.claude_client.start_new_conversation()
+
+        # Clear session.json so load_approach won't resume the old session
+        # This is necessary because load_approach reads from this file
+        session_file = approach_dir / "session.json"
+        if session_file.exists():
+            session_file.unlink()
+            print(f"[SESSION] Cleared session file for fresh start")
+
+        print(f"[SESSION] Started fresh conversation for {folder}")
 
     return {"success": True, "message": "New session started"}
+
+
+class ResumeSessionRequest(BaseModel):
+    """Request to resume a specific conversation."""
+    conversation_filename: str
+
+
+@app.post("/api/approaches/{folder}/resume-session")
+async def resume_session(folder: str, request: ResumeSessionRequest) -> dict:
+    """Resume a specific conversation's session (when switching to old conversation)."""
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    approach_dir = orchestrator.config.approaches_dir / folder
+    if not approach_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
+
+    # Load the conversation log to get its SDK session ID
+    log_data = load_conversation_log(request.conversation_filename)
+    if not log_data:
+        print(f"[SESSION] Could not load conversation: {request.conversation_filename}")
+        return {"success": False, "message": "Could not load conversation"}
+
+    sdk_session_id = log_data.get("claude_sdk_session_id")
+
+    if orchestrator.claude_client and sdk_session_id:
+        orchestrator.claude_client.session_id = sdk_session_id
+        # Force SDK client recreation to use the resumed session
+        orchestrator.claude_client.sdk_client = None
+        orchestrator.claude_client.current_system_prompt = None
+        print(f"[SESSION] Resumed conversation {request.conversation_filename}")
+        print(f"[SESSION] SDK session: {sdk_session_id[:40]}...")
+        return {"success": True, "message": "Session resumed", "session_id": sdk_session_id}
+    else:
+        print(f"[SESSION] No SDK session ID in conversation: {request.conversation_filename}")
+        # Clear state for fresh start (old conversation didn't have SDK session)
+        if orchestrator.claude_client:
+            orchestrator.claude_client.start_new_conversation()
+        return {"success": False, "message": "No SDK session ID found in conversation"}
 
 
 # Chat endpoint with SSE streaming
@@ -469,11 +506,9 @@ async def chat_stream(request: ChatRequest):
                         if hypergraph_after != hypergraph_before:
                             await notify_hypergraph_update(folder)
 
-                    # Save session_id for future resumption
-                    if orchestrator.current_session and orchestrator.claude_client.session_id:
-                        from agent_system.agent_orchestrator import _save_session_id
-                        _save_session_id(
-                            orchestrator.current_session.approach_dir,
+                    # Save session_id to conversation log for per-conversation resumption
+                    if orchestrator.claude_client.session_id and orchestrator.claude_client.logger:
+                        orchestrator.claude_client.logger.set_sdk_session_id(
                             orchestrator.claude_client.session_id
                         )
 

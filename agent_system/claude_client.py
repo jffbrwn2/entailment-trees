@@ -1322,6 +1322,27 @@ class ClaudeCodeClient:
         if self.logger:
             self.logger.end_session()
 
+    def start_new_conversation(self):
+        """
+        Start a completely fresh conversation, clearing all session state.
+
+        This clears:
+        - The SDK client (forces recreation)
+        - The session_id (prevents resuming old session)
+        - The system prompt (forces re-initialization)
+        - The logging session
+
+        After calling this, the next query will start with a blank slate.
+        """
+        # Clear SDK client state
+        self.sdk_client = None
+        self.session_id = None
+        self.current_system_prompt = None
+
+        # End any current logging session
+        if self.logger:
+            self.logger.end_session()
+
     def __del__(self):
         """Cleanup when object is destroyed."""
         # Don't try to close SDK client in __del__ - it's unsafe in async contexts
