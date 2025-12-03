@@ -196,6 +196,30 @@ function App() {
     }
   }
 
+  const handleDeleteClaim = useCallback(async (claimId: string) => {
+    if (!currentApproach) return
+
+    try {
+      const response = await fetch(`/api/approaches/${currentApproach.folder}/claims/${claimId}`, {
+        method: 'DELETE',
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        alert(`Failed to delete claim: ${data.detail}`)
+        return
+      }
+      // Clear selection if the deleted claim was selected
+      if (selectedItem?.type === 'claim' && selectedItem.id === claimId) {
+        setSelectedItem(null)
+      }
+      // Refresh hypergraph (WebSocket should handle this, but fetch just in case)
+      fetchHypergraph(currentApproach.folder)
+    } catch (error) {
+      console.error('Failed to delete claim:', error)
+      alert('Failed to delete claim')
+    }
+  }, [currentApproach, selectedItem])
+
   if (loading) {
     return (
       <div className="loading">
@@ -278,6 +302,7 @@ function App() {
               onSelect={handleSelect}
               scoreMode={scoreMode}
               resetKey={resetKey}
+              onDelete={handleDeleteClaim}
             />
           </div>
           <div className="panel right-panel">

@@ -290,6 +290,32 @@ async def cleanup_hypergraph(folder: str) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.delete("/api/approaches/{folder}/claims/{claim_id}")
+async def delete_claim(folder: str, claim_id: str) -> dict:
+    """Delete a claim and its related implications."""
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    approach_dir = orchestrator.config.approaches_dir / folder
+    if not approach_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
+
+    mgr = HypergraphManager(approach_dir)
+    try:
+        result = mgr.delete_claim(claim_id)
+        # Notify WebSocket clients of the update
+        await notify_hypergraph_update(folder)
+        return {
+            "success": True,
+            "deleted_claim_id": claim_id,
+            "deleted_implications_count": len(result['deleted_implications'])
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Conversation history endpoints
 @app.get("/api/approaches/{folder}/conversations")
 async def list_conversations(folder: str) -> list[dict]:

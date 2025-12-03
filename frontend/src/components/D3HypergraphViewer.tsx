@@ -53,6 +53,7 @@ interface Props {
   onSelect: (item: SelectedItem | null) => void
   selectedItem: SelectedItem | null
   resetKey?: number
+  onDelete?: (claimId: string) => void
 }
 
 interface NodeData {
@@ -77,7 +78,7 @@ interface LinkData {
   implId: string
 }
 
-function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, resetKey }: Props) {
+function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, resetKey, onDelete }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
@@ -887,9 +888,51 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
         .text(isCollapsed ? '+' : '−')
     })
 
+    // Add delete indicator only to the selected claim node (not hypothesis)
+    allNodeElements.filter(d => d.type === 'claim').each(function(d) {
+      const node = d3.select(this)
+      const radius = 65
+
+      // Remove old indicator
+      node.select('.delete-indicator').remove()
+
+      // Only show delete button on selected non-hypothesis nodes
+      const isSelected = selectedItem?.type === 'claim' && selectedItem.id === d.id
+      if (!onDelete || !isSelected || d.id === 'hypothesis') return
+
+      const deleteG = node.append('g')
+        .attr('class', 'delete-indicator')
+        .attr('cursor', 'pointer')
+        .on('click', function(event) {
+          event.stopPropagation()
+          if (confirm(`Delete claim "${d.id}"?\n\nThis will also remove any implications that reference this claim.`)) {
+            onDelete(d.id)
+          }
+        })
+
+      deleteG.append('circle')
+        .attr('cx', -radius * 0.75)
+        .attr('cy', -radius * 0.75)
+        .attr('r', 12)
+        .attr('fill', '#f85149')
+        .attr('stroke', 'var(--text-primary)')
+        .attr('stroke-width', 2)
+
+      deleteG.append('text')
+        .attr('x', -radius * 0.75)
+        .attr('y', -radius * 0.75)
+        .attr('text-anchor', 'middle')
+        .attr('dy', '0.35em')
+        .attr('fill', 'white')
+        .attr('font-size', '14px')
+        .attr('font-weight', '700')
+        .attr('pointer-events', 'none')
+        .text('×')
+    })
+
     // Add drag behavior
     const drag = d3.drag<SVGGElement, NodeData>()
-      .filter((event) => !event.target.closest('.expand-indicator'))
+      .filter((event) => !event.target.closest('.expand-indicator') && !event.target.closest('.delete-indicator'))
       .on('start', function() {
         d3.select(this).raise()
       })
@@ -913,6 +956,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     allNodeElements.filter(d => d.type === 'claim')
       .on('click', (event, d) => {
         if (event.target.closest('.expand-indicator')) return
+        if (event.target.closest('.delete-indicator')) return
         event.stopPropagation()
         onSelect({ type: 'claim', id: d.id })
       })

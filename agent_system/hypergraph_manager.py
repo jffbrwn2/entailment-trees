@@ -250,6 +250,54 @@ class HypergraphManager:
                 return claim
         return None
 
+    def delete_claim(self, claim_id: str) -> Dict[str, Any]:
+        """
+        Delete a claim and its related implications.
+
+        Args:
+            claim_id: ID of the claim to delete
+
+        Returns:
+            Dict with 'deleted_claim' and 'deleted_implications' lists
+
+        Raises:
+            ValueError: If claim doesn't exist or is the hypothesis
+        """
+        if claim_id == 'hypothesis':
+            raise ValueError("Cannot delete the hypothesis node")
+
+        hypergraph = self.load_hypergraph()
+
+        # Check claim exists
+        claim_exists = any(c['id'] == claim_id for c in hypergraph['claims'])
+        if not claim_exists:
+            raise ValueError(f"Claim '{claim_id}' not found")
+
+        # Remove the claim
+        deleted_claim = None
+        for c in hypergraph['claims']:
+            if c['id'] == claim_id:
+                deleted_claim = c
+                break
+        hypergraph['claims'] = [c for c in hypergraph['claims'] if c['id'] != claim_id]
+
+        # Remove implications where this claim is premise or conclusion
+        deleted_implications = []
+        remaining_implications = []
+        for impl in hypergraph.get('implications', []):
+            if claim_id in impl.get('premises', []) or impl.get('conclusion') == claim_id:
+                deleted_implications.append(impl)
+            else:
+                remaining_implications.append(impl)
+        hypergraph['implications'] = remaining_implications
+
+        self._save_hypergraph(hypergraph)
+
+        return {
+            'deleted_claim': deleted_claim,
+            'deleted_implications': deleted_implications
+        }
+
     def get_all_claims(self) -> List[Dict[str, Any]]:
         """Get all claims."""
         hypergraph = self.load_hypergraph()
