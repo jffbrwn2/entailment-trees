@@ -7,11 +7,14 @@ Wraps the existing agent_system to expose HTTP/SSE/WebSocket endpoints.
 import asyncio
 import json
 import sys
+import threading
 from pathlib import Path
 from typing import Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler, FileModifiedEvent
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -39,14 +42,85 @@ orchestrator: Optional[AgentOrchestrator] = None
 # WebSocket connections for hypergraph updates
 hypergraph_connections: dict[str, list[WebSocket]] = {}
 
+# File watcher for hypergraph changes
+file_observer: Optional[Observer] = None
+# Event loop reference for async calls from file watcher thread
+main_event_loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+class HypergraphFileHandler(FileSystemEventHandler):
+    """Watch for changes to hypergraph.json files and notify WebSocket clients."""
+
+    def __init__(self, approaches_dir: Path):
+        self.approaches_dir = approaches_dir
+        self._last_modified: dict[str, float] = {}  # Debounce rapid changes
+
+    def on_modified(self, event):
+        if event.is_directory:
+            return
+
+        # Only care about hypergraph.json files
+        path = Path(event.src_path)
+        if path.name != "hypergraph.json":
+            return
+
+        # Extract folder name from path
+        try:
+            folder = path.parent.name
+        except Exception:
+            return
+
+        # Debounce: ignore if modified within last 0.5 seconds
+        import time
+        now = time.time()
+        last = self._last_modified.get(folder, 0)
+        if now - last < 0.5:
+            return
+        self._last_modified[folder] = now
+
+        print(f"[FILE WATCHER] Detected change in {folder}/hypergraph.json", flush=True)
+
+        # Schedule the async notification on the main event loop
+        if main_event_loop and not main_event_loop.is_closed():
+            print(f"[FILE WATCHER] Scheduling WebSocket notification for {folder}", flush=True)
+            asyncio.run_coroutine_threadsafe(
+                notify_hypergraph_update(folder),
+                main_event_loop
+            )
+        else:
+            print(f"[FILE WATCHER] Event loop not available for {folder}", flush=True)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize orchestrator on startup."""
-    global orchestrator
+    """Initialize orchestrator and file watcher on startup."""
+    global orchestrator, file_observer, main_event_loop
+
+    # Store reference to main event loop for file watcher callbacks
+    main_event_loop = asyncio.get_running_loop()
+
     orchestrator = AgentOrchestrator(AgentConfig.from_env())
+
+    # Start file watcher for hypergraph changes
+    approaches_dir = orchestrator.config.approaches_dir.resolve()  # Use absolute path
+    print(f"[FILE WATCHER] approaches_dir={approaches_dir}, exists={approaches_dir.exists()}", flush=True)
+    if approaches_dir.exists():
+        file_observer = Observer()
+        handler = HypergraphFileHandler(approaches_dir)
+        file_observer.schedule(handler, str(approaches_dir), recursive=True)
+        file_observer.start()
+        print(f"[FILE WATCHER] Watching {approaches_dir} for hypergraph changes", flush=True)
+    else:
+        print(f"[FILE WATCHER] approaches_dir does NOT exist, skipping watcher", flush=True)
+
     yield
+
     # Cleanup on shutdown
+    if file_observer:
+        file_observer.stop()
+        file_observer.join()
+        print("[FILE WATCHER] Stopped")
+
     if orchestrator and orchestrator.claude_client:
         orchestrator.claude_client.end_conversation()
 
@@ -232,9 +306,11 @@ async def get_hypergraph(folder: str) -> dict:
         claim_id = claim['id']
         if claim_id in propagated_logs:
             value = propagated_logs[claim_id]
-            # Convert infinity to None (JSON doesn't support Infinity)
-            if math.isinf(value):
-                claim['propagated_negative_log'] = None
+            # Store Infinity as string for valid JSON
+            if value == float('inf'):
+                claim['propagated_negative_log'] = "Infinity"
+            elif value == float('-inf'):
+                claim['propagated_negative_log'] = "-Infinity"
             else:
                 claim['propagated_negative_log'] = value
 
@@ -592,11 +668,18 @@ async def hypergraph_websocket(websocket: WebSocket, folder: str):
 
 async def notify_hypergraph_update(folder: str):
     """Notify all WebSocket clients that a hypergraph has been updated."""
+    print(f"[WS NOTIFY] notify_hypergraph_update called for {folder}", flush=True)
+    print(f"[WS NOTIFY] Connected folders: {list(hypergraph_connections.keys())}", flush=True)
+
     if folder not in hypergraph_connections:
+        print(f"[WS NOTIFY] No connections for {folder}, skipping", flush=True)
         return
 
     if not orchestrator:
+        print(f"[WS NOTIFY] No orchestrator, skipping", flush=True)
         return
+
+    print(f"[WS NOTIFY] {len(hypergraph_connections[folder])} clients connected for {folder}", flush=True)
 
     hypergraph_path = orchestrator.config.approaches_dir / folder / "hypergraph.json"
     if not hypergraph_path.exists():

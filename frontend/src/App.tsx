@@ -20,7 +20,7 @@ interface Claim {
   id: string
   text: string
   score: number | null
-  propagated_negative_log?: number
+  propagated_negative_log?: number | string
   reasoning?: string
   evidence?: Evidence[]
   uncertainties?: string[]
@@ -86,9 +86,15 @@ function App() {
       const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/hypergraph/${currentApproach.folder}`)
 
       ws.onmessage = (event) => {
+        // Handle ping messages
+        if (event.data === 'ping') {
+          return
+        }
         try {
           const data = JSON.parse(event.data)
+          console.log('[WS] Received message:', data.type)
           if (data.type === 'update') {
+            console.log('[WS] Fetching updated hypergraph')
             fetchHypergraph(currentApproach.folder)
           }
         } catch (e) {
@@ -117,9 +123,11 @@ function App() {
 
   const fetchHypergraph = async (folder: string) => {
     try {
+      console.log('[fetchHypergraph] Fetching hypergraph for', folder)
       const response = await fetch(`/api/approaches/${folder}/hypergraph`)
       if (response.ok) {
         const data = await response.json()
+        console.log('[fetchHypergraph] Got data, setting state', data.claims?.length, 'claims')
         setHypergraph(data)
       }
     } catch (error) {

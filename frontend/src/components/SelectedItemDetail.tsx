@@ -4,7 +4,7 @@ interface Claim {
   id: string
   text: string
   score: number | null
-  propagated_negative_log?: number | null
+  propagated_negative_log?: number | string | null
   reasoning?: string
   evidence?: Evidence[]
   uncertainties?: string[]
@@ -64,10 +64,15 @@ function getScoreColor(score: number | null): string {
 
 function getEffectiveScore(claim: Claim, scoreMode: 'score' | 'propagated'): number | null {
   if (scoreMode === 'propagated') {
-    if (claim.propagated_negative_log === null) {
+    // null or "Infinity" means infinite uncertainty, so effective score is 0
+    if (claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity") {
       return 0
     }
-    if (claim.propagated_negative_log !== undefined) {
+    // "-Infinity" would mean perfect certainty (shouldn't happen in practice)
+    if (claim.propagated_negative_log === "-Infinity") {
+      return 10
+    }
+    if (claim.propagated_negative_log !== undefined && typeof claim.propagated_negative_log === 'number') {
       return Math.pow(2, -claim.propagated_negative_log) * 10
     }
   }
@@ -109,7 +114,11 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, onC
           })()}
           {claim.propagated_negative_log !== undefined && (
             <span className="detail-propagated">
-              -log₂: {claim.propagated_negative_log === null ? '∞' : claim.propagated_negative_log.toFixed(3)}
+              -log₂: {claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity"
+                ? '∞'
+                : typeof claim.propagated_negative_log === 'number'
+                  ? claim.propagated_negative_log.toFixed(3)
+                  : claim.propagated_negative_log}
             </span>
           )}
         </div>

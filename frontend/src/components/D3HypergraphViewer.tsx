@@ -6,7 +6,7 @@ interface Claim {
   id: string
   text: string
   score: number | null
-  propagated_negative_log?: number | null
+  propagated_negative_log?: number | string | null
   reasoning?: string
   evidence?: Evidence[]
   uncertainties?: string[]
@@ -132,12 +132,16 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
 
   const getEffectiveScore = useCallback((claim: Claim): number | null => {
     if (scoreMode === 'propagated') {
-      // null means infinity (score was 0), so effective score is 0
-      if (claim.propagated_negative_log === null) {
+      // null or "Infinity" means infinite uncertainty, so effective score is 0
+      if (claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity") {
         return 0
       }
+      // "-Infinity" would mean perfect certainty (shouldn't happen in practice)
+      if (claim.propagated_negative_log === "-Infinity") {
+        return 10
+      }
       // undefined means not computed, fall back to raw score
-      if (claim.propagated_negative_log !== undefined) {
+      if (claim.propagated_negative_log !== undefined && typeof claim.propagated_negative_log === 'number') {
         return Math.pow(2, -claim.propagated_negative_log) * 10
       }
     }
@@ -684,6 +688,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
 
       // Text
       const text = node.append('text')
+        .attr('class', 'node-text')
         .attr('text-anchor', 'middle')
         .attr('fill', 'var(--text-primary)')
         .attr('font-size', '10px')
@@ -968,6 +973,65 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
           onSelect({ type: 'implication', id: d.implication.id })
         }
       })
+
+    // Update node text content from latest hypergraph data
+    allNodeElements.filter(d => d.type === 'claim').each(function(d) {
+      const claim = hypergraph.claims.find(c => c.id === d.id)
+      if (!claim) return
+
+      // Update the internal data
+      d.text = claim.text
+      d.score = claim.score ?? undefined
+      d.propagated_negative_log = claim.propagated_negative_log ?? undefined
+
+      const node = d3.select(this)
+
+      // Update title tooltip
+      node.select('title')
+        .text(`${d.id}\n${claim.text}\nScore: ${claim.score !== null ? `${claim.score}/10` : 'Not evaluated'}`)
+
+      // Update text - need to rebuild tspans for word wrapping
+      const textElement = node.select<SVGTextElement>('.node-text')
+      if (textElement.node()) {
+        textElement.selectAll('*').remove()
+
+        const maxWidth = 110
+        const lineHeight = 11
+        const maxLines = 10
+        const words = (claim.text || '').split(/\s+/)
+        let line: string[] = []
+        let lineNumber = 0
+
+        let tspan = textElement.append('tspan')
+          .attr('x', 0)
+          .attr('dy', 0)
+
+        for (let i = 0; i < words.length; i++) {
+          line.push(words[i])
+          tspan.text(line.join(' '))
+
+          const tspanNode = tspan.node()
+          if (tspanNode && tspanNode.getComputedTextLength() > maxWidth) {
+            if (lineNumber >= maxLines - 1) {
+              line.pop()
+              tspan.text(line.join(' ') + '...')
+              break
+            }
+            line.pop()
+            tspan.text(line.join(' '))
+            line = [words[i]]
+            lineNumber++
+            tspan = textElement.append('tspan')
+              .attr('x', 0)
+              .attr('dy', lineHeight)
+              .text(words[i])
+          }
+        }
+
+        const totalHeight = (lineNumber + 1) * lineHeight
+        textElement.attr('transform', `translate(0, ${-totalHeight / 2 + 5})`)
+      }
+    })
 
     // Update node colors based on score mode and selection highlighting
     allNodeElements.filter(d => d.type === 'claim')

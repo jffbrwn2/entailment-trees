@@ -113,7 +113,14 @@ class HypergraphManager:
         for claim in hypergraph.get('claims', []):
             claim_id = claim['id']
             if claim_id in propagated_logs:
-                claim['propagated_negative_log'] = propagated_logs[claim_id]
+                value = propagated_logs[claim_id]
+                # Store Infinity as string for valid JSON
+                if value == float('inf'):
+                    claim['propagated_negative_log'] = "Infinity"
+                elif value == float('-inf'):
+                    claim['propagated_negative_log'] = "-Infinity"
+                else:
+                    claim['propagated_negative_log'] = value
 
         # Save to history before overwriting
         if self.hypergraph_path.exists():
