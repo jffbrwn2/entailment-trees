@@ -82,8 +82,10 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
+  const [maxDepth, setMaxDepth] = useState<number | null>(null) // null = show all
   const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map())
   const conclusionToPremisesRef = useRef<Map<string, string[]>>(new Map())
+  const nodeDepthsRef = useRef<Map<string, number>>(new Map())
 
   // Refs for D3 elements to enable transitions
   const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null)
@@ -91,19 +93,78 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
   const linksDataRef = useRef<LinkData[]>([])
   const isInitializedRef = useRef(false)
 
-  // Clear collapsed nodes when resetKey changes (separate effect to avoid render loop)
+  // Clear collapsed nodes and depth limit when resetKey changes (separate effect to avoid render loop)
   useEffect(() => {
     setCollapsedNodes(new Set())
+    setMaxDepth(null)
   }, [resetKey])
 
-  // Build implication map
+  // Build implication map and calculate node depths
   useEffect(() => {
     if (!hypergraph) return
     conclusionToPremisesRef.current.clear()
+    nodeDepthsRef.current.clear()
+
     hypergraph.implications.forEach(impl => {
       conclusionToPremisesRef.current.set(impl.conclusion, impl.premises)
     })
+
+    // Calculate depth from hypothesis for each node using BFS
+    const depths = new Map<string, number>()
+    depths.set('hypothesis', 0)
+
+    const queue: string[] = ['hypothesis']
+    while (queue.length > 0) {
+      const nodeId = queue.shift()!
+      const currentDepth = depths.get(nodeId)!
+
+      const premises = conclusionToPremisesRef.current.get(nodeId)
+      if (premises) {
+        premises.forEach(premiseId => {
+          if (!depths.has(premiseId)) {
+            depths.set(premiseId, currentDepth + 1)
+            queue.push(premiseId)
+          }
+        })
+      }
+    }
+
+    nodeDepthsRef.current = depths
   }, [hypergraph])
+
+  // Track max depth available in the tree (updated after depths are calculated)
+  const [maxAvailableDepth, setMaxAvailableDepth] = useState(0)
+
+  // Update max depth after depths are calculated
+  useEffect(() => {
+    if (!hypergraph) {
+      setMaxAvailableDepth(0)
+      return
+    }
+    // Small delay to ensure nodeDepthsRef is populated
+    const timer = setTimeout(() => {
+      const depths = Array.from(nodeDepthsRef.current.values())
+      setMaxAvailableDepth(depths.length > 0 ? Math.max(...depths) : 0)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [hypergraph])
+
+  // Update collapsed nodes when maxDepth changes
+  useEffect(() => {
+    if (maxDepth === null) {
+      // Show all - clear collapsed nodes
+      setCollapsedNodes(new Set())
+    } else {
+      // Collapse all nodes beyond maxDepth
+      const newCollapsed = new Set<string>()
+      nodeDepthsRef.current.forEach((depth, nodeId) => {
+        if (depth > maxDepth) {
+          newCollapsed.add(nodeId)
+        }
+      })
+      setCollapsedNodes(newCollapsed)
+    }
+  }, [maxDepth])
 
   const isConclusion = useCallback((nodeId: string) => {
     return conclusionToPremisesRef.current.has(nodeId)
@@ -1093,6 +1154,24 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
           <span className="legend-color" style={{ background: 'rgb(128, 128, 128)' }} />
           <span>Not evaluated</span>
         </div>
+        {maxAvailableDepth > 0 && (
+          <div className="depth-control">
+            <label htmlFor="depth-select">Depth</label>
+            <select
+              id="depth-select"
+              value={maxDepth === null ? 'all' : maxDepth}
+              onChange={(e) => {
+                const val = e.target.value
+                setMaxDepth(val === 'all' ? null : parseInt(val, 10))
+              }}
+            >
+              <option value="all">All</option>
+              {Array.from({ length: maxAvailableDepth + 1 }, (_, i) => (
+                <option key={i} value={i}>{i}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
     </div>
   )
