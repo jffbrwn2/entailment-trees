@@ -117,18 +117,21 @@ class AgentOrchestrator:
             description=description
         )
 
-        # Create logger for this session (reuse if exists)
-        if self.current_logger is None:
-            self.current_logger = ConversationLogger(
-                logs_dir=self.config.logs_dir,
-                approach_name=name,
-                approach_dir=approach_dir,
-                working_dir=approach_dir
-            )
-            self.claude_client.logger = self.current_logger
-            # Update global logger for hooks
-            from . import claude_client as cc
-            cc._current_logger = self.current_logger
+        # End previous logger session if switching approaches
+        if self.current_logger is not None:
+            self.current_logger.end_session()
+
+        # Always create new logger for new approach
+        self.current_logger = ConversationLogger(
+            logs_dir=self.config.logs_dir,
+            approach_name=name,
+            approach_dir=approach_dir,
+            working_dir=approach_dir
+        )
+        self.claude_client.logger = self.current_logger
+        # Update global logger for hooks
+        from . import claude_client as cc
+        cc._current_logger = self.current_logger
 
         # Switch client to approach mode
         approach_mode = ClientMode(
@@ -176,18 +179,21 @@ class AgentOrchestrator:
             approach_dir=approach_dir
         )
 
-        # Create logger for this session (reuse if exists)
-        if self.current_logger is None:
-            self.current_logger = ConversationLogger(
-                logs_dir=self.config.logs_dir,
-                approach_name=name,
-                approach_dir=approach_dir,
-                working_dir=approach_dir
-            )
-            self.claude_client.logger = self.current_logger
-            # Update global logger for hooks
-            from . import claude_client as cc
-            cc._current_logger = self.current_logger
+        # End previous logger session if switching approaches
+        if self.current_logger is not None:
+            self.current_logger.end_session()
+
+        # Always create new logger for new approach
+        self.current_logger = ConversationLogger(
+            logs_dir=self.config.logs_dir,
+            approach_name=name,
+            approach_dir=approach_dir,
+            working_dir=approach_dir
+        )
+        self.claude_client.logger = self.current_logger
+        # Update global logger for hooks
+        from . import claude_client as cc
+        cc._current_logger = self.current_logger
 
         # Switch client to approach mode
         approach_mode = ClientMode(
