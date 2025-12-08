@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 import './ChatInterface.css'
 
 interface ToolUse {
@@ -35,6 +36,8 @@ function ChatInterface({ approachFolder, approachName }: Props) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const [textareaHeight, setTextareaHeight] = useState(44)
+  const resizeRef = useRef<{ startY: number; startHeight: number } | null>(null)
 
   // Handle Escape key to cancel streaming
   useEffect(() => {
@@ -359,6 +362,28 @@ function ChatInterface({ approachFolder, approachName }: Props) {
     }
   }
 
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    resizeRef.current = { startY: e.clientY, startHeight: textareaHeight }
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!resizeRef.current) return
+      // Dragging up (negative delta) should increase height
+      const delta = resizeRef.current.startY - moveEvent.clientY
+      const newHeight = Math.max(44, Math.min(300, resizeRef.current.startHeight + delta))
+      setTextareaHeight(newHeight)
+    }
+
+    const handleMouseUp = () => {
+      resizeRef.current = null
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }
+
   return (
     <div className="chat-interface">
       <div className="chat-header">
@@ -412,7 +437,15 @@ function ChatInterface({ approachFolder, approachName }: Props) {
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.role}`}>
             <div className="message-content">
-              {message.content || (message.role === 'assistant' && isStreaming && '...')}
+              {message.role === 'assistant' ? (
+                message.content ? (
+                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                ) : (
+                  isStreaming && '...'
+                )
+              ) : (
+                message.content
+              )}
             </div>
             {message.toolUses.length > 0 && (
               <div className="tool-indicators">
@@ -431,25 +464,28 @@ function ChatInterface({ approachFolder, approachName }: Props) {
       </div>
 
       <form className="input-area" onSubmit={handleSubmit}>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            approachFolder
-              ? 'Ask about your hypothesis...'
-              : 'Select an approach first'
-          }
-          disabled={!approachFolder || isStreaming}
-          rows={1}
-        />
-        <button
-          type="submit"
-          disabled={!approachFolder || !input.trim() || isStreaming}
-        >
-          {isStreaming ? '...' : 'Send'}
-        </button>
+        <div className="resize-handle" onMouseDown={handleResizeStart} title="Drag to resize" />
+        <div className="input-row">
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              approachFolder
+                ? 'Ask about your hypothesis...'
+                : 'Select an approach first'
+            }
+            disabled={!approachFolder || isStreaming}
+            style={{ height: textareaHeight }}
+          />
+          <button
+            type="submit"
+            disabled={!approachFolder || !input.trim() || isStreaming}
+          >
+            {isStreaming ? '...' : 'Send'}
+          </button>
+        </div>
       </form>
     </div>
   )

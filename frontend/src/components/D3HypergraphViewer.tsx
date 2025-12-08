@@ -78,6 +78,16 @@ interface LinkData {
   implId: string
 }
 
+// Generate a signature that represents the graph structure (not content/scores)
+function getStructuralSignature(hypergraph: Hypergraph | null): string {
+  if (!hypergraph) return ''
+  const claimIds = hypergraph.claims.map(c => c.id).sort().join(',')
+  const implSigs = hypergraph.implications.map(i =>
+    `${i.id}:${i.premises.sort().join('+')}=>${i.conclusion}`
+  ).sort().join('|')
+  return `${claimIds}||${implSigs}`
+}
+
 function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, resetKey, onDelete }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -86,6 +96,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
   const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map())
   const conclusionToPremisesRef = useRef<Map<string, string[]>>(new Map())
   const nodeDepthsRef = useRef<Map<string, number>>(new Map())
+  const prevStructureRef = useRef<string>('')
 
   // Refs for D3 elements to enable transitions
   const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null)
@@ -97,6 +108,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
   useEffect(() => {
     setCollapsedNodes(new Set())
     setMaxDepth(null)
+    prevStructureRef.current = '' // Force full re-render on reset
   }, [resetKey])
 
   // Build implication map and calculate node depths
@@ -451,12 +463,24 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     })
   }, [])
 
-  // Initialize SVG structure (on hypergraph change or reset)
+  // Initialize SVG structure (only when structure changes or reset)
   useEffect(() => {
     if (!hypergraph || !svgRef.current || !containerRef.current) {
       isInitializedRef.current = false
+      prevStructureRef.current = ''
       return
     }
+
+    // Check if the structure actually changed
+    const currentStructure = getStructuralSignature(hypergraph)
+    const structureChanged = currentStructure !== prevStructureRef.current
+
+    // Skip full re-initialization if structure hasn't changed and already initialized
+    if (!structureChanged && isInitializedRef.current) {
+      return
+    }
+
+    prevStructureRef.current = currentStructure
 
     const container = containerRef.current
     const width = container.clientWidth
