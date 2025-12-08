@@ -34,6 +34,19 @@ function ChatInterface({ approachFolder, approachName }: Props) {
   const [selectedConversation, setSelectedConversation] = useState<string>('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Handle Escape key to cancel streaming
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isStreaming && abortControllerRef.current) {
+        abortControllerRef.current.abort()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isStreaming])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -183,6 +196,9 @@ function ChatInterface({ approachFolder, approachName }: Props) {
     setInput('')
     setIsStreaming(true)
 
+    // Create abort controller for this request
+    abortControllerRef.current = new AbortController()
+
     // Create assistant message placeholder
     const assistantMessageId = (Date.now() + 1).toString()
     setMessages((prev) => [
@@ -198,6 +214,7 @@ function ChatInterface({ approachFolder, approachName }: Props) {
           message: userMessage.content,
           approach_name: approachFolder,
         }),
+        signal: abortControllerRef.current.signal,
       })
 
       if (!response.ok) {
@@ -235,16 +252,28 @@ function ChatInterface({ approachFolder, approachName }: Props) {
         }
       }
     } catch (error) {
-      console.error('Chat error:', error)
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantMessageId
-            ? { ...m, content: m.content + '\n\n*Error: Failed to get response*' }
-            : m
+      // Check if this was a user cancellation
+      if (error instanceof Error && error.name === 'AbortError') {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, content: m.content + '\n\n*[Cancelled by user]*' }
+              : m
+          )
         )
-      )
+      } else {
+        console.error('Chat error:', error)
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMessageId
+              ? { ...m, content: m.content + '\n\n*Error: Failed to get response*' }
+              : m
+          )
+        )
+      }
     } finally {
       setIsStreaming(false)
+      abortControllerRef.current = null
       // Mark any running tools as done when stream ends
       setMessages((prev) =>
         prev.map((m) =>
