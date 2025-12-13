@@ -333,7 +333,7 @@ export function useD3Graph({
       .attr('marker-end', d => d.type === 'junction-to-conclusion' ? 'url(#arrowhead)' : null)
       .attr('cursor', 'pointer')
       .attr('opacity', 0)
-      .on('click', (event, d) => {
+      .on('dblclick', (event, d) => {
         event.stopPropagation()
         onSelect({ type: 'implication', id: d.implId })
       })
@@ -635,13 +635,42 @@ export function useD3Graph({
         .text('×')
     })
 
-    // Add drag behavior
+    // Add drag behavior with 500ms hold delay
+    let dragTimeout: ReturnType<typeof setTimeout> | null = null
+    let isDragging = false
+    let dragStartPos: { x: number; y: number } | null = null
+
     const drag = d3.drag<SVGGElement, NodeData>()
       .filter((event) => !event.target.closest('.expand-indicator') && !event.target.closest('.delete-indicator'))
-      .on('start', function() {
-        d3.select(this).raise()
+      .on('start', function(event) {
+        isDragging = false
+        dragStartPos = { x: event.x, y: event.y }
+        const node = d3.select(this)
+
+        // Start drag after 200ms hold
+        dragTimeout = setTimeout(() => {
+          isDragging = true
+          node.raise()
+          node.style('cursor', 'grabbing')
+        }, 50)
       })
       .on('drag', function(event, d) {
+        // Cancel drag initiation if mouse moves before timeout
+        if (!isDragging && dragStartPos) {
+          const dx = event.x - dragStartPos.x
+          const dy = event.y - dragStartPos.y
+          if (Math.sqrt(dx * dx + dy * dy) > 5) {
+            // Mouse moved too much, cancel the hold timer
+            if (dragTimeout) {
+              clearTimeout(dragTimeout)
+              dragTimeout = null
+            }
+            return
+          }
+        }
+
+        if (!isDragging) return
+
         d.x = event.x
         d.y = event.y
         d3.select(this)
@@ -651,14 +680,25 @@ export function useD3Graph({
           .attr('d', createCurvePath)
       })
       .on('end', function(_event, d) {
-        nodePositionsRef.current.set(d.id, { x: d.x, y: d.y })
+        if (dragTimeout) {
+          clearTimeout(dragTimeout)
+          dragTimeout = null
+        }
+        d3.select(this).style('cursor', 'pointer')
+
+        if (isDragging) {
+          nodePositionsRef.current.set(d.id, { x: d.x, y: d.y })
+        }
+        isDragging = false
+        dragStartPos = null
       })
 
     allNodeElements.call(drag)
 
-    // Add click handlers
+    // Double-click to select (single click does nothing for claims)
     allNodeElements.filter(d => d.type === 'claim')
-      .on('click', (event, d) => {
+      .on('click', null)  // Remove single click
+      .on('dblclick', (event, d) => {
         if (event.target.closest('.expand-indicator')) return
         if (event.target.closest('.delete-indicator')) return
         event.stopPropagation()
@@ -666,7 +706,8 @@ export function useD3Graph({
       })
 
     allNodeElements.filter(d => d.type === 'junction')
-      .on('click', (event, d) => {
+      .on('click', null)  // Remove single click
+      .on('dblclick', (event, d) => {
         event.stopPropagation()
         if (d.implication) {
           onSelect({ type: 'implication', id: d.implication.id })
