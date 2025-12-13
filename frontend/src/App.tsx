@@ -85,6 +85,9 @@ function App() {
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/hypergraph/${currentApproach.folder}`)
 
+      // Debounce rapid updates (backend may send multiple messages)
+      let updateTimeout: ReturnType<typeof setTimeout> | null = null
+
       ws.onmessage = (event) => {
         // Handle ping messages
         if (event.data === 'ping') {
@@ -94,15 +97,25 @@ function App() {
           const data = JSON.parse(event.data)
           console.log('[WS] Received message:', data.type)
           if (data.type === 'update') {
-            console.log('[WS] Fetching updated hypergraph')
-            fetchHypergraph(currentApproach.folder)
+            // Debounce: wait 100ms before fetching, reset if another update arrives
+            if (updateTimeout) {
+              clearTimeout(updateTimeout)
+            }
+            updateTimeout = setTimeout(() => {
+              console.log('[WS] Fetching updated hypergraph (debounced)')
+              fetchHypergraph(currentApproach.folder)
+              updateTimeout = null
+            }, 100)
           }
         } catch (e) {
           console.error('WebSocket message error:', e)
         }
       }
 
-      return () => ws.close()
+      return () => {
+        if (updateTimeout) clearTimeout(updateTimeout)
+        ws.close()
+      }
     } else {
       setHypergraph(null)
       setSelectedItem(null)
@@ -220,8 +233,7 @@ function App() {
       if (selectedItem?.type === 'claim' && selectedItem.id === claimId) {
         setSelectedItem(null)
       }
-      // Refresh hypergraph (WebSocket should handle this, but fetch just in case)
-      fetchHypergraph(currentApproach.folder)
+      // WebSocket will trigger the refresh - no need to fetch manually
     } catch (error) {
       console.error('Failed to delete claim:', error)
       alert('Failed to delete claim')
