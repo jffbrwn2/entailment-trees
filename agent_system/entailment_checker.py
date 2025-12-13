@@ -97,9 +97,13 @@ Analyze this carefully:
 3. Do we need intermediate claims to bridge the gap?
 {minimality_instruction}
 
+**CRITICAL:** The <valid> tag should be YES if and only if the premises logically entail the conclusion.
+Redundant or degenerate premises do NOT make the entailment invalid - still answer YES if the logic holds.
+Flag redundant/degenerate premises separately so they can be addressed, but they don't affect validity.
+
 Respond using these XML tags:
 <analysis>Your detailed analysis here</analysis>
-<valid>YES or NO</valid>
+<valid>YES or NO (based ONLY on whether premises entail conclusion)</valid>
 <redundant_premises>comma-separated premise IDs, or None</redundant_premises>
 <degenerate_premises>comma-separated premise IDs, or None</degenerate_premises>
 <suggestions>If invalid, what could fix it? Otherwise None</suggestions>"""
@@ -241,13 +245,8 @@ Respond using these XML tags:
                 impl_type
             )
 
-            # Determine status
-            if not is_valid:
-                status = "failed"
-            elif redundant_premises:
-                status = "failed"  # Issues with premise set
-            else:
-                status = "passed"
+            # Determine status (based only on logical validity, not redundancy)
+            status = "passed" if is_valid else "failed"
 
             # Store result
             check_results[impl_id] = {
@@ -263,9 +262,9 @@ Respond using these XML tags:
                     f"  {explanation}"
                 )
             else:
-                # Check for problematic premises (redundant or degenerate)
+                # Check for problematic premises (redundant or degenerate) - these are warnings, not errors
                 if redundant_premises:
-                    errors.append(
+                    warnings.append(
                         f"Implication {impl_id} ({impl_type}): Premise set has issues\n"
                         f"  Problematic premises: {redundant_premises}\n"
                         f"  (May be redundant or degenerate - check explanation)\n"
