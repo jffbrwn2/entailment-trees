@@ -583,8 +583,12 @@ python -m http.server 8765
         Calculate propagated negative log scores for all claims.
 
         For leaf nodes: propagated_negative_log = -log2(score/10)
-        For AND nodes: propagated_negative_log = sum(children_propagated_negative_log)
-        For OR nodes: propagated_negative_log = min(children_propagated_negative_log)
+        For AND nodes: propagated_negative_log = sum(children_propagated_negative_log) + entailment_penalty
+        For OR nodes: propagated_negative_log = min(children_propagated_negative_log) + entailment_penalty
+
+        The entailment_penalty is:
+        - +Infinity if entailment_status == 'failed' (truth cannot propagate through invalid logic)
+        - 0 if entailment_status == 'passed' or not yet checked
 
         Args:
             hypergraph: Optional hypergraph dict. If None, loads from disk.
@@ -605,10 +609,12 @@ python -m http.server 8765
             conclusion_id = impl.get('conclusion')
             premise_ids = impl.get('premises', [])
             impl_type = impl.get('type', 'AND')
+            entailment_status = impl.get('entailment_status')  # 'passed', 'failed', or None
 
             conclusion_to_implication[conclusion_id] = {
                 'premises': premise_ids,
-                'type': impl_type
+                'type': impl_type,
+                'entailment_status': entailment_status
             }
 
         # Calculate propagated negative logs using topological sort (bottom-up)
@@ -650,6 +656,7 @@ python -m http.server 8765
             impl_info = conclusion_to_implication[claim_id]
             premise_ids = impl_info['premises']
             impl_type = impl_info['type']
+            entailment_status = impl_info['entailment_status']
 
             # Recursively calculate children
             children_logs = []
@@ -667,6 +674,10 @@ python -m http.server 8765
             else:
                 # Unknown type, treat as AND
                 propagated_log = sum(children_logs)
+
+            # Apply entailment penalty: if implication is invalid, truth cannot propagate
+            if entailment_status == 'failed':
+                propagated_log = float('inf')
 
             propagated_logs[claim_id] = propagated_log
             return propagated_log

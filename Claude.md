@@ -46,12 +46,15 @@ Every approach must have an entailment tree to make feasibility assessment rigor
 ```
 
 *Score Propagation:*
-- **AND relationship**: Combined score = sum_i(-log(score_i/10))
+- **AND relationship**: Combined score = sum_i(-log(score_i/10)) + entailment_penalty
   - All premises must be true for parent to be true
   - Lower combined score = better (less uncertainty)
-- **OR relationship**: Combined score = min_i(-log(score_i/10))
+- **OR relationship**: Combined score = min_i(-log(score_i/10)) + entailment_penalty
   - Any premise being true makes parent true (best premise wins)
   - Generally prefer separate trees for different approaches rather than OR nodes
+- **Entailment validity**: The logical connection itself must be valid for truth to propagate
+  - `entailment_status: 'passed'` or not yet checked → entailment_penalty = 0
+  - `entailment_status: 'failed'` → entailment_penalty = +Infinity (truth cannot propagate through invalid logic)
 
 *Documentation for Each Node:*
 - Score value (0-10)
