@@ -4,6 +4,10 @@
 
 set -e
 
+# Configuration
+BACKEND_PORT=${BACKEND_PORT:-8000}
+FRONTEND_PORT=${FRONTEND_PORT:-5173}
+
 echo "🚀 Starting Entailment Trees Web Application"
 echo "=============================================="
 
@@ -17,18 +21,26 @@ fi
 cleanup() {
     echo ""
     echo "🛑 Shutting down..."
-    kill $BACKEND_PID 2>/dev/null || true
-    kill $FRONTEND_PID 2>/dev/null || true
+
+    # Kill process groups (catches child processes too)
+    kill -- -$BACKEND_PID 2>/dev/null || kill $BACKEND_PID 2>/dev/null || true
+    kill -- -$FRONTEND_PID 2>/dev/null || kill $FRONTEND_PID 2>/dev/null || true
+
+    # Also kill anything still on our ports (belt and suspenders)
+    lsof -ti:$BACKEND_PORT | xargs kill -9 2>/dev/null || true
+    lsof -ti:$FRONTEND_PORT | xargs kill -9 2>/dev/null || true
+
+    echo "✓ Stopped"
     exit 0
 }
 
-trap cleanup SIGINT SIGTERM
+trap cleanup SIGINT SIGTERM EXIT
 
 # Start backend
 echo ""
-echo "📦 Starting FastAPI backend on http://localhost:8000..."
+echo "📦 Starting FastAPI backend on http://localhost:$BACKEND_PORT..."
 cd "$(dirname "$0")"
-uv run python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 &
+uv run python -m uvicorn backend.main:app --host 0.0.0.0 --port $BACKEND_PORT &
 BACKEND_PID=$!
 
 # Wait for backend to start
@@ -63,23 +75,23 @@ echo ""
 echo "=============================================="
 echo "✅ Web application running!"
 echo ""
-echo "   Frontend: http://localhost:5173"
-echo "   Backend:  http://localhost:8000"
-echo "   API Docs: http://localhost:8000/docs"
+echo "   Frontend: http://localhost:$FRONTEND_PORT"
+echo "   Backend:  http://localhost:$BACKEND_PORT"
+echo "   API Docs: http://localhost:$BACKEND_PORT/docs"
 echo ""
 echo "Press Ctrl+C to stop"
 echo "=============================================="
 
 # Open browser
 if command -v open &> /dev/null; then
-    open http://localhost:5173
+    open http://localhost:$FRONTEND_PORT
 elif command -v xdg-open &> /dev/null; then
-    xdg-open http://localhost:5173
+    xdg-open http://localhost:$FRONTEND_PORT
 elif command -v start &> /dev/null; then
-    start http://localhost:5173
+    start http://localhost:$FRONTEND_PORT
 else
     echo ""
-    echo "Open your browser to: http://localhost:5173"
+    echo "Open your browser to: http://localhost:$FRONTEND_PORT"
 fi
 
 # Wait for processes

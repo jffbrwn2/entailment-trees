@@ -1,426 +1,61 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import * as d3 from 'd3'
-import './D3HypergraphViewer.css'
+import type { Hypergraph, Claim, NodeData, LinkData, SelectedItem } from './types'
+import { getStructuralSignature, getScoreColor, getEffectiveScore, createCurvePath } from './utils'
 
-interface Claim {
-  id: string
-  text: string
-  score: number | null
-  propagated_negative_log?: number | string | null
-  reasoning?: string
-  evidence?: Evidence[]
-  uncertainties?: string[]
-  tags?: string[]
-}
-
-interface Evidence {
-  type: 'simulation' | 'literature' | 'calculation'
-  source?: string
-  lines?: string
-  code?: string
-  reference_text?: string
-  equations?: string
-  program?: string
-}
-
-interface Implication {
-  id: string
-  premises: string[]
-  conclusion: string
-  type?: 'AND' | 'OR'
-  reasoning: string
-  entailment_status?: 'passed' | 'failed'
-  entailment_explanation?: string
-}
-
-interface Hypergraph {
-  metadata?: {
-    name: string
-    description?: string
-  }
-  claims: Claim[]
-  implications: Implication[]
-}
-
-interface SelectedItem {
-  type: 'claim' | 'implication'
-  id: string
-}
-
-interface Props {
+interface UseD3GraphParams {
   hypergraph: Hypergraph | null
+  svgRef: React.RefObject<SVGSVGElement>
+  containerRef: React.RefObject<HTMLDivElement>
   scoreMode: 'score' | 'propagated'
-  onSelect: (item: SelectedItem | null) => void
   selectedItem: SelectedItem | null
-  resetKey?: number
+  collapsedNodes: Set<string>
+  setCollapsedNodes: React.Dispatch<React.SetStateAction<Set<string>>>
+  orphanClaims: Set<string>
+  conclusionToPremises: Map<string, string[]>
+  isConclusion: (nodeId: string) => boolean
+  arePremisesCollapsed: (conclusionId: string) => boolean
+  getAllDescendants: (nodeId: string, visited?: Set<string>) => string[]
+  calculateTreeLayout: (visibleClaims: NodeData[], width: number, height: number) => {
+    positions: Map<string, { x: number; y: number }>
+    levels: Map<string, number>
+  }
+  nodePositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>
+  onSelect: (item: SelectedItem | null) => void
   onDelete?: (claimId: string) => void
+  resetKey?: number
 }
 
-interface NodeData {
-  id: string
-  type: 'claim' | 'junction'
-  x: number
-  y: number
-  text?: string
-  score?: number
-  propagated_negative_log?: number
-  implication?: Implication
-  _animX?: number
-  _animY?: number
-}
-
-interface LinkData {
-  source: NodeData
-  target: NodeData
-  type: 'premise-to-junction' | 'junction-to-conclusion'
-  premises: string[]
-  conclusion: string
-  implId: string
-}
-
-// Generate a signature that represents the graph structure (not content/scores)
-function getStructuralSignature(hypergraph: Hypergraph | null): string {
-  if (!hypergraph) return ''
-  const claimIds = hypergraph.claims.map(c => c.id).sort().join(',')
-  const implSigs = hypergraph.implications.map(i =>
-    `${i.id}:${i.premises.sort().join('+')}=>${i.conclusion}`
-  ).sort().join('|')
-  return `${claimIds}||${implSigs}`
-}
-
-function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, resetKey, onDelete }: Props) {
-  const svgRef = useRef<SVGSVGElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
-  const [maxDepth, setMaxDepth] = useState<number | null>(null) // null = show all
-  const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map())
-  const conclusionToPremisesRef = useRef<Map<string, string[]>>(new Map())
-  const nodeDepthsRef = useRef<Map<string, number>>(new Map())
-  const prevStructureRef = useRef<string>('')
-
-  // Refs for D3 elements to enable transitions
+export function useD3Graph({
+  hypergraph,
+  svgRef,
+  containerRef,
+  scoreMode,
+  selectedItem,
+  collapsedNodes,
+  setCollapsedNodes,
+  orphanClaims,
+  conclusionToPremises,
+  isConclusion,
+  arePremisesCollapsed,
+  getAllDescendants,
+  calculateTreeLayout,
+  nodePositionsRef,
+  onSelect,
+  onDelete,
+  resetKey,
+}: UseD3GraphParams) {
+  // Refs for D3 elements
   const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null)
   const nodesDataRef = useRef<NodeData[]>([])
   const linksDataRef = useRef<LinkData[]>([])
   const isInitializedRef = useRef(false)
+  const prevStructureRef = useRef<string>('')
 
-  // Clear collapsed nodes and depth limit when resetKey changes (separate effect to avoid render loop)
+  // Clear state on reset
   useEffect(() => {
-    setCollapsedNodes(new Set())
-    setMaxDepth(null)
-    prevStructureRef.current = '' // Force full re-render on reset
+    prevStructureRef.current = ''
   }, [resetKey])
-
-  // Build implication map and calculate node depths
-  useEffect(() => {
-    if (!hypergraph) return
-    conclusionToPremisesRef.current.clear()
-    nodeDepthsRef.current.clear()
-
-    hypergraph.implications.forEach(impl => {
-      conclusionToPremisesRef.current.set(impl.conclusion, impl.premises)
-    })
-
-    // Calculate depth from hypothesis for each node using BFS
-    const depths = new Map<string, number>()
-    depths.set('hypothesis', 0)
-
-    const queue: string[] = ['hypothesis']
-    while (queue.length > 0) {
-      const nodeId = queue.shift()!
-      const currentDepth = depths.get(nodeId)!
-
-      const premises = conclusionToPremisesRef.current.get(nodeId)
-      if (premises) {
-        premises.forEach(premiseId => {
-          if (!depths.has(premiseId)) {
-            depths.set(premiseId, currentDepth + 1)
-            queue.push(premiseId)
-          }
-        })
-      }
-    }
-
-    nodeDepthsRef.current = depths
-  }, [hypergraph])
-
-  // Track max depth available in the tree (updated after depths are calculated)
-  const [maxAvailableDepth, setMaxAvailableDepth] = useState(0)
-
-  // Update max depth after depths are calculated
-  useEffect(() => {
-    if (!hypergraph) {
-      setMaxAvailableDepth(0)
-      return
-    }
-    // Small delay to ensure nodeDepthsRef is populated
-    const timer = setTimeout(() => {
-      const depths = Array.from(nodeDepthsRef.current.values())
-      setMaxAvailableDepth(depths.length > 0 ? Math.max(...depths) : 0)
-    }, 0)
-    return () => clearTimeout(timer)
-  }, [hypergraph])
-
-  // Update collapsed nodes when maxDepth changes
-  useEffect(() => {
-    if (maxDepth === null) {
-      // Show all - clear collapsed nodes
-      setCollapsedNodes(new Set())
-    } else {
-      // Collapse all nodes beyond maxDepth
-      const newCollapsed = new Set<string>()
-      nodeDepthsRef.current.forEach((depth, nodeId) => {
-        if (depth > maxDepth) {
-          newCollapsed.add(nodeId)
-        }
-      })
-      setCollapsedNodes(newCollapsed)
-    }
-  }, [maxDepth])
-
-  const isConclusion = useCallback((nodeId: string) => {
-    return conclusionToPremisesRef.current.has(nodeId)
-  }, [])
-
-  const arePremisesCollapsed = useCallback((conclusionId: string) => {
-    const premises = conclusionToPremisesRef.current.get(conclusionId)
-    if (!premises || premises.length === 0) return false
-    return premises.some(p => collapsedNodes.has(p))
-  }, [collapsedNodes])
-
-  // Get all descendants (premises, their premises, etc.) recursively
-  const getAllDescendants = useCallback((nodeId: string, visited = new Set<string>()): string[] => {
-    if (visited.has(nodeId)) return []
-    visited.add(nodeId)
-
-    const premises = conclusionToPremisesRef.current.get(nodeId)
-    if (!premises || premises.length === 0) return []
-
-    const descendants: string[] = [...premises]
-    premises.forEach(p => {
-      descendants.push(...getAllDescendants(p, visited))
-    })
-    return descendants
-  }, [])
-
-  const getEffectiveScore = useCallback((claim: Claim): number | null => {
-    if (scoreMode === 'propagated') {
-      // null or "Infinity" means infinite uncertainty, so effective score is 0
-      if (claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity") {
-        return 0
-      }
-      // "-Infinity" would mean perfect certainty (shouldn't happen in practice)
-      if (claim.propagated_negative_log === "-Infinity") {
-        return 10
-      }
-      // undefined means not computed, fall back to raw score
-      if (claim.propagated_negative_log !== undefined && typeof claim.propagated_negative_log === 'number') {
-        return Math.pow(2, -claim.propagated_negative_log) * 10
-      }
-    }
-    return claim.score
-  }, [scoreMode])
-
-  const getScoreColor = useCallback((score: number | null): string => {
-    // Null/unevaluated scores are grey
-    if (score === null) {
-      return 'rgb(128, 128, 128)'
-    }
-    const clampedScore = Math.max(0, Math.min(10, score))
-    if (clampedScore <= 5) {
-      const t = clampedScore / 5
-      const r = 248
-      const g = Math.round(81 + (217 - 81) * t)
-      const b = Math.round(73 + (34 - 73) * t)
-      return `rgb(${r}, ${g}, ${b})`
-    } else {
-      const t = (clampedScore - 5) / 5
-      const r = Math.round(217 - (217 - 63) * t)
-      const g = Math.round(217 - (217 - 185) * t)
-      const b = Math.round(34 + (80 - 34) * t)
-      return `rgb(${r}, ${g}, ${b})`
-    }
-  }, [])
-
-  // Create curve path for edges
-  const createCurvePath = useCallback((d: LinkData) => {
-    const sourceX = d.source._animX !== undefined ? d.source._animX : d.source.x
-    const sourceY = d.source._animY !== undefined ? d.source._animY : d.source.y
-    const targetX = d.target._animX !== undefined ? d.target._animX : d.target.x
-    const targetY = d.target._animY !== undefined ? d.target._animY : d.target.y
-    const dx = targetX - sourceX
-    const dy = targetY - sourceY
-
-    if (d.type === 'premise-to-junction') {
-      const cp1X = sourceX + dx * 0.3
-      const cp1Y = sourceY + dy * 0.3
-      const cp2X = targetX - dx * 0.2
-      const cp2Y = targetY - dy * 0.2
-      return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`
-    } else {
-      const cp1X = sourceX + dx * 0.3
-      const cp1Y = sourceY + dy * 0.3 - 15
-      const cp2X = sourceX + dx * 0.7
-      const cp2Y = sourceY + dy * 0.7 - 15
-      return `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`
-    }
-  }, [])
-
-  const calculateTreeLayout = useCallback((
-    visibleClaims: NodeData[],
-    width: number,
-    height: number
-  ) => {
-    if (!hypergraph) return { positions: new Map<string, { x: number; y: number }>(), levels: new Map<string, number>() }
-
-    const levels = new Map<string, number>()
-    const conclusionToPremises = conclusionToPremisesRef.current
-
-    // Find root conclusions
-    const allPremises = new Set<string>()
-    hypergraph.implications.forEach(impl => {
-      impl.premises.forEach(p => allPremises.add(p))
-    })
-
-    const rootConclusions = visibleClaims
-      .filter(c => conclusionToPremises.has(c.id))
-      .filter(c => !allPremises.has(c.id))
-      .map(c => c.id)
-
-    if (rootConclusions.length === 0) {
-      visibleClaims
-        .filter(c => conclusionToPremises.has(c.id))
-        .forEach(c => rootConclusions.push(c.id))
-    }
-
-    // Calculate levels
-    rootConclusions.forEach(rootId => levels.set(rootId, 0))
-
-    let changed = true
-    let iterations = 0
-    while (changed && iterations < 20) {
-      changed = false
-      iterations++
-
-      hypergraph.implications.forEach(impl => {
-        if (collapsedNodes.has(impl.conclusion) ||
-            impl.premises.some(p => collapsedNodes.has(p))) {
-          return
-        }
-
-        const conclusionLevel = levels.get(impl.conclusion)
-        if (conclusionLevel !== undefined) {
-          const junctionId = `junction_${impl.id}`
-          const junctionLevel = conclusionLevel + 1
-          const premiseLevel = conclusionLevel + 2
-
-          if (!levels.has(junctionId)) {
-            levels.set(junctionId, junctionLevel)
-            changed = true
-          }
-
-          impl.premises.forEach(premiseId => {
-            if (!levels.has(premiseId) || levels.get(premiseId)! < premiseLevel) {
-              levels.set(premiseId, premiseLevel)
-              changed = true
-            }
-          })
-        }
-      })
-    }
-
-    // Calculate subtree widths
-    const subtreeWidths = new Map<string, number>()
-
-    function calculateSubtreeWidth(nodeId: string, visited = new Set<string>()): number {
-      if (subtreeWidths.has(nodeId)) return subtreeWidths.get(nodeId)!
-      if (visited.has(nodeId)) return 150
-      visited.add(nodeId)
-
-      const premises = conclusionToPremises.get(nodeId)
-      const visiblePremises = premises ? premises.filter(p => !collapsedNodes.has(p)) : []
-
-      if (visiblePremises.length === 0) {
-        subtreeWidths.set(nodeId, 150)
-        return 150
-      }
-
-      let totalWidth = 0
-      visiblePremises.forEach(premiseId => {
-        totalWidth += calculateSubtreeWidth(premiseId, visited)
-      })
-      totalWidth += (visiblePremises.length - 1) * 100
-
-      const w = Math.max(150, totalWidth)
-      subtreeWidths.set(nodeId, w)
-      return w
-    }
-
-    visibleClaims.forEach(c => calculateSubtreeWidth(c.id))
-
-    // Position nodes
-    const positions = new Map<string, { x: number; y: number }>()
-    const maxLevel = Math.max(...Array.from(levels.values()), 0)
-    const levelSpacing = (height - 200) / (maxLevel + 1)
-
-    function positionSubtree(nodeId: string, centerX: number, level: number) {
-      const y = 100 + level * levelSpacing
-
-      if (nodePositionsRef.current.has(nodeId)) {
-        positions.set(nodeId, nodePositionsRef.current.get(nodeId)!)
-      } else {
-        positions.set(nodeId, { x: centerX, y })
-      }
-
-      const premises = conclusionToPremises.get(nodeId)
-      const visiblePremises = premises ? premises.filter(p => !collapsedNodes.has(p)) : []
-
-      if (visiblePremises.length === 0) return
-
-      // Position junction
-      const impl = hypergraph!.implications.find(i => i.conclusion === nodeId)
-      if (impl) {
-        const junctionId = `junction_${impl.id}`
-        const junctionLevel = level + 1
-        const junctionY = 100 + junctionLevel * levelSpacing
-
-        if (nodePositionsRef.current.has(junctionId)) {
-          positions.set(junctionId, nodePositionsRef.current.get(junctionId)!)
-        } else {
-          positions.set(junctionId, { x: centerX, y: junctionY })
-        }
-      }
-
-      // Position children
-      const premiseLevel = level + 2
-      const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 150)
-      const premiseSpacing = 50
-      const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * premiseSpacing
-
-      let currentX = centerX - totalWidth / 2
-      visiblePremises.forEach((premiseId, i) => {
-        const childCenterX = currentX + childWidths[i] / 2
-        positionSubtree(premiseId, childCenterX, premiseLevel)
-        currentX += childWidths[i] + premiseSpacing
-      })
-    }
-
-    // Position roots
-    let totalRootWidth = 0
-    rootConclusions.forEach(rootId => {
-      totalRootWidth += subtreeWidths.get(rootId) || 150
-    })
-    totalRootWidth += (rootConclusions.length - 1) * 200
-
-    let rootX = width / 2 - totalRootWidth / 2
-    rootConclusions.forEach(rootId => {
-      const rootWidth = subtreeWidths.get(rootId) || 150
-      positionSubtree(rootId, rootX + rootWidth / 2, 0)
-      rootX += rootWidth + 200
-    })
-
-    return { positions, levels }
-  }, [hypergraph, collapsedNodes])
 
   // Animation helper for edges
   const animateEdgesForNode = useCallback((node: NodeData) => {
@@ -429,35 +64,12 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     gRef.current.selectAll<SVGPathElement, LinkData>('.hyperedge').each(function(d) {
       let updated = false
 
-      if (d.source.id === node.id) {
-        updated = true
-      } else if (d.target.id === node.id) {
+      if (d.source.id === node.id || d.target.id === node.id) {
         updated = true
       }
 
       if (updated) {
-        const sourceX = d.source._animX !== undefined ? d.source._animX : d.source.x
-        const sourceY = d.source._animY !== undefined ? d.source._animY : d.source.y
-        const targetX = d.target._animX !== undefined ? d.target._animX : d.target.x
-        const targetY = d.target._animY !== undefined ? d.target._animY : d.target.y
-        const dx = targetX - sourceX
-        const dy = targetY - sourceY
-
-        let pathD: string
-        if (d.type === 'premise-to-junction') {
-          const cp1X = sourceX + dx * 0.3
-          const cp1Y = sourceY + dy * 0.3
-          const cp2X = targetX - dx * 0.2
-          const cp2Y = targetY - dy * 0.2
-          pathD = `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`
-        } else {
-          const cp1X = sourceX + dx * 0.3
-          const cp1Y = sourceY + dy * 0.3 - 15
-          const cp2X = sourceX + dx * 0.7
-          const cp2Y = sourceY + dy * 0.7 - 15
-          pathD = `M ${sourceX},${sourceY} C ${cp1X},${cp1Y} ${cp2X},${cp2Y} ${targetX},${targetY}`
-        }
-
+        const pathD = createCurvePath(d)
         d3.select(this).attr('d', pathD)
       }
     })
@@ -486,7 +98,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     const width = container.clientWidth
     const height = container.clientHeight || 600
 
-    // Clear previous state on full re-render (including reset)
+    // Clear previous state on full re-render
     d3.select(svgRef.current).selectAll('*').remove()
     nodePositionsRef.current.clear()
     isInitializedRef.current = false
@@ -510,7 +122,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
         onSelect(null)
       })
 
-    // Defs
+    // Defs for markers
     const defs = svg.append('defs')
 
     defs.append('marker')
@@ -592,14 +204,13 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     })
     linksDataRef.current = links
 
-    // Create link group
+    // Create groups for different elements
+    g.append('g').attr('class', 'orphan-region')
     g.append('g').attr('class', 'links-group')
-
-    // Create node group
     g.append('g').attr('class', 'nodes-group')
 
     isInitializedRef.current = true
-  }, [hypergraph, onSelect, resetKey]) // Re-init on hypergraph change or reset
+  }, [hypergraph, onSelect, resetKey, collapsedNodes, calculateTreeLayout, nodePositionsRef, svgRef, containerRef])
 
   // Update visualization (with transitions for collapse/expand)
   useEffect(() => {
@@ -618,18 +229,6 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     const claims = allNodes.filter(n => n.type === 'claim')
     const visibleClaims = claims.filter(c => !collapsedNodes.has(c.id))
     const { positions } = calculateTreeLayout(visibleClaims, width, height)
-
-    // Track collapsed state for each node
-    allNodes.forEach(node => {
-      const isNowCollapsed = node.type === 'claim' ? collapsedNodes.has(node.id) : (() => {
-        const impl = node.implication
-        if (!impl) return false
-        return collapsedNodes.has(impl.conclusion) || impl.premises.some(p => collapsedNodes.has(p))
-      })()
-
-      const shouldBeVisible = positions.has(node.id) && !isNowCollapsed
-      ;(node as any)._wasCollapsed = !shouldBeVisible
-    })
 
     // Helper to get parent position for animation
     const getParentPosition = (nodeId: string): { x: number; y: number } => {
@@ -656,7 +255,6 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
       return { x: width / 2, y: height / 2 }
     }
 
-    // Update positions with animation
     const transitionDuration = 400
 
     // Update all nodes with new target positions
@@ -668,10 +266,36 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
       }
     })
 
+    // Update orphan region
+    const orphanRegion = g.select<SVGGElement>('.orphan-region')
+    const visibleOrphanClaims = claims.filter(c => orphanClaims.has(c.id) && !collapsedNodes.has(c.id))
+    const hasOrphans = visibleOrphanClaims.length > 0
+
+    orphanRegion.selectAll('*').remove()
+
+    if (hasOrphans) {
+      orphanRegion.append('line')
+        .attr('x1', 50)
+        .attr('y1', 170)
+        .attr('x2', width - 50)
+        .attr('y2', 170)
+        .attr('stroke', 'var(--border)')
+        .attr('stroke-width', 1)
+        .attr('stroke-dasharray', '5,5')
+
+      orphanRegion.append('text')
+        .attr('x', width / 2)
+        .attr('y', 185)
+        .attr('text-anchor', 'middle')
+        .attr('fill', 'var(--text-secondary)')
+        .attr('font-size', '11px')
+        .attr('font-style', 'italic')
+        .text('Disconnected claims (drag to connect)')
+    }
+
     // Update edges
     const linksGroup = g.select<SVGGElement>('.links-group')
 
-    // Determine visible links
     const visibleLinks = links.filter(link => {
       const impl = hypergraph.implications.find(i => i.id === link.implId)
       if (!impl) return false
@@ -683,14 +307,12 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     const edgeSelection = linksGroup.selectAll<SVGPathElement, LinkData>('.hyperedge')
       .data(visibleLinks, d => `${d.source.id}-${d.target.id}`)
 
-    // Exit edges - animate to zero length then remove
     edgeSelection.exit()
       .transition()
       .duration(transitionDuration)
       .attr('opacity', 0)
       .remove()
 
-    // Enter edges - start at final position (no animation on initial load)
     const enteringEdges = edgeSelection.enter()
       .append('path')
       .attr('class', d => `hyperedge ${d.type}`)
@@ -716,7 +338,6 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
         onSelect({ type: 'implication', id: d.implId })
       })
 
-    // Animate entering edges - just fade in
     enteringEdges
       .transition()
       .duration(transitionDuration)
@@ -731,7 +352,6 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
         return 0.7
       })
 
-    // Update existing edges
     edgeSelection
       .transition()
       .duration(transitionDuration)
@@ -753,7 +373,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     const nodeSelection = nodesGroup.selectAll<SVGGElement, NodeData>('.graph-node')
       .data(allNodes, d => d.id)
 
-    // Enter new nodes (should not happen after init, but handle anyway)
+    // Enter new nodes
     const enteringNodes = nodeSelection.enter()
       .append('g')
       .attr('class', d => `graph-node ${d.type === 'claim' ? 'claim-node' : 'junction-node'}`)
@@ -762,16 +382,17 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     // Add claim node visuals
     enteringNodes.filter(d => d.type === 'claim').each(function(d) {
       const node = d3.select(this)
+      const effectiveScore = getEffectiveScore(d as unknown as Claim, scoreMode)
 
       node.append('circle')
         .attr('r', 65)
-        .attr('fill', getScoreColor(getEffectiveScore(d as unknown as Claim)))
+        .attr('fill', getScoreColor(effectiveScore))
         .attr('fill-opacity', 0.6)
-        .attr('stroke', getScoreColor(getEffectiveScore(d as unknown as Claim)))
+        .attr('stroke', getScoreColor(effectiveScore))
         .attr('stroke-width', 2)
         .attr('cursor', 'pointer')
 
-      // Text
+      // Text with word wrapping
       const text = node.append('text')
         .attr('class', 'node-text')
         .attr('text-anchor', 'middle')
@@ -853,7 +474,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
     // Merge and update all nodes
     const allNodeElements = nodeSelection.merge(enteringNodes)
 
-    // Determine visibility and animate
+    // Animate node visibility and position
     allNodeElements.each(function(d) {
       const node = d3.select(this)
       const isVisible = (() => {
@@ -867,7 +488,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
       const isCurrentlyHidden = currentTransform?.includes('scale(0)')
 
       if (isVisible && isCurrentlyHidden) {
-        // Expand animation - grow from parent position
+        // Expand animation
         const parentPos = getParentPosition(d.id)
 
         node
@@ -890,7 +511,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
             delete d._animY
           })
       } else if (!isVisible && !isCurrentlyHidden) {
-        // Collapse animation - shrink to parent position
+        // Collapse animation
         const parentPos = getParentPosition(d.id)
 
         node
@@ -914,7 +535,7 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
             delete d._animY
           })
       } else if (isVisible) {
-        // Just update position with transition
+        // Just update position
         node
           .transition()
           .duration(transitionDuration)
@@ -928,7 +549,6 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
       const node = d3.select(this)
       const radius = 65
 
-      // Remove old indicator
       node.select('.expand-indicator').remove()
 
       const indicatorG = node.append('g')
@@ -938,18 +558,15 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
           event.stopPropagation()
           setCollapsedNodes(prev => {
             const newSet = new Set(prev)
-            const premises = conclusionToPremisesRef.current.get(d.id)
+            const premises = conclusionToPremises.get(d.id)
             if (!premises) return prev
 
-            // Get all descendants recursively
             const allDescendants = getAllDescendants(d.id)
-
             const currentlyCollapsed = premises.some(p => prev.has(p))
+
             if (currentlyCollapsed) {
-              // Expand: remove all descendants from collapsed set
               allDescendants.forEach(p => newSet.delete(p))
             } else {
-              // Collapse: add all descendants to collapsed set
               allDescendants.forEach(p => newSet.add(p))
             }
             return newSet
@@ -978,15 +595,13 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
         .text(isCollapsed ? '+' : '−')
     })
 
-    // Add delete indicator only to the selected claim node (not hypothesis)
+    // Add delete indicator to selected claim
     allNodeElements.filter(d => d.type === 'claim').each(function(d) {
       const node = d3.select(this)
       const radius = 65
 
-      // Remove old indicator
       node.select('.delete-indicator').remove()
 
-      // Only show delete button on selected non-hypothesis nodes
       const isSelected = selectedItem?.type === 'claim' && selectedItem.id === d.id
       if (!onDelete || !isSelected || d.id === 'hypothesis') return
 
@@ -1032,7 +647,6 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
         d3.select(this)
           .attr('transform', `translate(${d.x},${d.y}) scale(1)`)
 
-        // Update connected edges immediately
         g.selectAll<SVGPathElement, LinkData>('.hyperedge')
           .attr('d', createCurvePath)
       })
@@ -1059,23 +673,23 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
         }
       })
 
-    // Update node text content from latest hypergraph data
+    // Update node text and colors
     allNodeElements.filter(d => d.type === 'claim').each(function(d) {
       const claim = hypergraph.claims.find(c => c.id === d.id)
       if (!claim) return
 
-      // Update the internal data
       d.text = claim.text
       d.score = claim.score ?? undefined
-      d.propagated_negative_log = claim.propagated_negative_log ?? undefined
+      d.propagated_negative_log = typeof claim.propagated_negative_log === 'number'
+        ? claim.propagated_negative_log
+        : undefined
 
       const node = d3.select(this)
 
-      // Update title tooltip
       node.select('title')
         .text(`${d.id}\n${claim.text}\nScore: ${claim.score !== null ? `${claim.score}/10` : 'Not evaluated'}`)
 
-      // Update text - need to rebuild tspans for word wrapping
+      // Update text
       const textElement = node.select<SVGTextElement>('.node-text')
       if (textElement.node()) {
         textElement.selectAll('*').remove()
@@ -1118,19 +732,19 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
       }
     })
 
-    // Update node colors based on score mode and selection highlighting
+    // Update node colors based on score mode and selection
     allNodeElements.filter(d => d.type === 'claim')
       .select('circle')
       .attr('fill', d => {
         const claim = hypergraph.claims.find(c => c.id === d.id)
         if (!claim) return 'rgb(128, 128, 128)'
-        const effectiveScore = getEffectiveScore(claim)
+        const effectiveScore = getEffectiveScore(claim, scoreMode)
         return getScoreColor(effectiveScore)
       })
       .attr('stroke', d => {
         const claim = hypergraph.claims.find(c => c.id === d.id)
         if (!claim) return 'rgb(128, 128, 128)'
-        const effectiveScore = getEffectiveScore(claim)
+        const effectiveScore = getEffectiveScore(claim, scoreMode)
         return getScoreColor(effectiveScore)
       })
       .attr('stroke-width', d => {
@@ -1151,54 +765,22 @@ function D3HypergraphViewer({ hypergraph, scoreMode, onSelect, selectedItem, res
         return 1
       })
 
-  }, [hypergraph, collapsedNodes, selectedItem, scoreMode, onSelect, calculateTreeLayout, getScoreColor, getEffectiveScore, createCurvePath, animateEdgesForNode, isConclusion, arePremisesCollapsed, getAllDescendants])
-
-  if (!hypergraph) {
-    return (
-      <div className="d3-viewer-empty">
-        <p>Select an approach to view the hypergraph</p>
-      </div>
-    )
-  }
-
-  return (
-    <div ref={containerRef} className="d3-viewer-container">
-      <svg ref={svgRef} className="d3-viewer-svg" />
-      <div className="graph-legend">
-        <div className="legend-title">Score</div>
-        <div className="legend-gradient">
-          <div className="legend-bar" />
-          <div className="legend-labels">
-            <span>0 (false)</span>
-            <span>5</span>
-            <span>10 (true)</span>
-          </div>
-        </div>
-        <div className="legend-item">
-          <span className="legend-color" style={{ background: 'rgb(128, 128, 128)' }} />
-          <span>Not evaluated</span>
-        </div>
-        {maxAvailableDepth > 0 && (
-          <div className="depth-control">
-            <label htmlFor="depth-select">Depth</label>
-            <select
-              id="depth-select"
-              value={maxDepth === null ? 'all' : maxDepth}
-              onChange={(e) => {
-                const val = e.target.value
-                setMaxDepth(val === 'all' ? null : parseInt(val, 10))
-              }}
-            >
-              <option value="all">All</option>
-              {Array.from({ length: maxAvailableDepth + 1 }, (_, i) => (
-                <option key={i} value={i}>{i}</option>
-              ))}
-            </select>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+  }, [
+    hypergraph,
+    collapsedNodes,
+    selectedItem,
+    scoreMode,
+    onSelect,
+    onDelete,
+    calculateTreeLayout,
+    animateEdgesForNode,
+    isConclusion,
+    arePremisesCollapsed,
+    getAllDescendants,
+    setCollapsedNodes,
+    conclusionToPremises,
+    orphanClaims,
+    nodePositionsRef,
+    containerRef,
+  ])
 }
-
-export default D3HypergraphViewer
