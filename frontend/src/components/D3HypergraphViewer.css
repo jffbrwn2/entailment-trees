@@ -143,3 +143,13 @@
   outline: none;
   border-color: var(--accent);
 }
+
+/* Orphan region */
+.orphan-region line {
+  pointer-events: none;
+}
+
+.orphan-region text {
+  pointer-events: none;
+  user-select: none;
+}
