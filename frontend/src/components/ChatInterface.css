@@ -230,6 +230,11 @@
   color: var(--text-secondary);
 }
 
+.tool-indicator.inline {
+  display: flex;
+  margin: 0.5rem 0;
+}
+
 .tool-indicator.running {
   color: var(--warning);
 }

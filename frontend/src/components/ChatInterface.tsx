@@ -7,11 +7,16 @@ interface ToolUse {
   status: 'running' | 'done' | 'error'
 }
 
+interface MessagePart {
+  type: 'text' | 'tool'
+  content?: string  // for text parts
+  tool?: ToolUse    // for tool parts
+}
+
 interface Message {
   id: string
   role: 'user' | 'assistant'
-  content: string
-  toolUses: ToolUse[]
+  parts: MessagePart[]  // interleaved text and tool uses
 }
 
 interface Conversation {
@@ -128,18 +133,22 @@ function ChatInterface({ approachFolder, approachName }: Props) {
         loadedMessages.push({
           id: `${turn.turn_number}-user`,
           role: 'user',
-          content: turn.user_input,
-          toolUses: [],
+          parts: [{ type: 'text', content: turn.user_input }],
         })
-        // Add assistant message with tool uses
+        // Add assistant message with tool uses at the end (historical)
+        const assistantParts: MessagePart[] = [
+          { type: 'text', content: turn.claude_response }
+        ]
+        for (const t of turn.tools_used) {
+          assistantParts.push({
+            type: 'tool',
+            tool: { name: t.tool_name, status: 'done' as const }
+          })
+        }
         loadedMessages.push({
           id: `${turn.turn_number}-assistant`,
           role: 'assistant',
-          content: turn.claude_response,
-          toolUses: turn.tools_used.map((t: { tool_name: string }) => ({
-            name: t.tool_name,
-            status: 'done' as const,
-          })),
+          parts: assistantParts,
         })
       }
 
@@ -191,8 +200,7 @@ function ChatInterface({ approachFolder, approachName }: Props) {
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
-      toolUses: [],
+      parts: [{ type: 'text', content: input.trim() }],
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -206,7 +214,7 @@ function ChatInterface({ approachFolder, approachName }: Props) {
     const assistantMessageId = (Date.now() + 1).toString()
     setMessages((prev) => [
       ...prev,
-      { id: assistantMessageId, role: 'assistant', content: '', toolUses: [] },
+      { id: assistantMessageId, role: 'assistant', parts: [] },
     ])
 
     try {
@@ -214,7 +222,7 @@ function ChatInterface({ approachFolder, approachName }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMessage.content,
+          message: userMessage.parts[0]?.content,
           approach_name: approachFolder,
         }),
         signal: abortControllerRef.current.signal,
@@ -260,7 +268,7 @@ function ChatInterface({ approachFolder, approachName }: Props) {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMessageId
-              ? { ...m, content: m.content + '\n\n*[Cancelled by user]*' }
+              ? { ...m, parts: [...m.parts, { type: 'text' as const, content: '\n\n*[Cancelled by user]*' }] }
               : m
           )
         )
@@ -269,7 +277,7 @@ function ChatInterface({ approachFolder, approachName }: Props) {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMessageId
-              ? { ...m, content: m.content + '\n\n*Error: Failed to get response*' }
+              ? { ...m, parts: [...m.parts, { type: 'text' as const, content: '\n\n*Error: Failed to get response*' }] }
               : m
           )
         )
@@ -283,8 +291,10 @@ function ChatInterface({ approachFolder, approachName }: Props) {
           m.id === assistantMessageId
             ? {
                 ...m,
-                toolUses: m.toolUses.map((t) =>
-                  t.status === 'running' ? { ...t, status: 'done' as const } : t
+                parts: m.parts.map((part) =>
+                  part.type === 'tool' && part.tool?.status === 'running'
+                    ? { ...part, tool: { ...part.tool, status: 'done' as const } }
+                    : part
                 ),
               }
             : m
@@ -300,9 +310,18 @@ function ChatInterface({ approachFolder, approachName }: Props) {
     switch (data.type) {
       case 'text':
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === messageId ? { ...m, content: m.content + (data.text || '') } : m
-          )
+          prev.map((m) => {
+            if (m.id !== messageId) return m
+            // Append text to the last text part, or create a new one
+            const parts = [...m.parts]
+            const lastPart = parts[parts.length - 1]
+            if (lastPart && lastPart.type === 'text') {
+              parts[parts.length - 1] = { ...lastPart, content: (lastPart.content || '') + (data.text || '') }
+            } else {
+              parts.push({ type: 'text', content: data.text || '' })
+            }
+            return { ...m, parts }
+          })
         )
         break
 
@@ -312,9 +331,9 @@ function ChatInterface({ approachFolder, approachName }: Props) {
             m.id === messageId
               ? {
                   ...m,
-                  toolUses: [
-                    ...m.toolUses,
-                    { name: data.tool_name || 'unknown', status: 'running' as const },
+                  parts: [
+                    ...m.parts,
+                    { type: 'tool' as const, tool: { name: data.tool_name || 'unknown', status: 'running' as const } },
                   ],
                 }
               : m
@@ -327,14 +346,15 @@ function ChatInterface({ approachFolder, approachName }: Props) {
           prev.map((m) => {
             if (m.id !== messageId) return m
             // Mark the most recent running tool with matching name as done
-            const toolUses = [...m.toolUses]
-            for (let i = toolUses.length - 1; i >= 0; i--) {
-              if (toolUses[i].name === data.tool_name && toolUses[i].status === 'running') {
-                toolUses[i] = { ...toolUses[i], status: 'done' }
+            const parts = [...m.parts]
+            for (let i = parts.length - 1; i >= 0; i--) {
+              const part = parts[i]
+              if (part.type === 'tool' && part.tool?.name === data.tool_name && part.tool?.status === 'running') {
+                parts[i] = { ...part, tool: { ...part.tool, status: 'done' } }
                 break
               }
             }
-            return { ...m, toolUses }
+            return { ...m, parts }
           })
         )
         break
@@ -343,7 +363,7 @@ function ChatInterface({ approachFolder, approachName }: Props) {
         setMessages((prev) =>
           prev.map((m) =>
             m.id === messageId
-              ? { ...m, content: m.content + `\n\n*Error: ${data.error}*` }
+              ? { ...m, parts: [...m.parts, { type: 'text' as const, content: `\n\n*Error: ${data.error}*` }] }
               : m
           )
         )
@@ -438,25 +458,24 @@ function ChatInterface({ approachFolder, approachName }: Props) {
           <div key={message.id} className={`message ${message.role}`}>
             <div className="message-content">
               {message.role === 'assistant' ? (
-                message.content ? (
-                  <ReactMarkdown>{message.content}</ReactMarkdown>
+                message.parts.length > 0 ? (
+                  message.parts.map((part, index) => (
+                    part.type === 'text' ? (
+                      <ReactMarkdown key={index}>{part.content || ''}</ReactMarkdown>
+                    ) : (
+                      <div key={index} className={`tool-indicator inline ${part.tool?.status}`}>
+                        {part.tool?.status === 'running' && <span className="spinner" />}
+                        {part.tool?.name}
+                      </div>
+                    )
+                  ))
                 ) : (
                   isStreaming && '...'
                 )
               ) : (
-                message.content
+                message.parts[0]?.content || ''
               )}
             </div>
-            {message.toolUses.length > 0 && (
-              <div className="tool-indicators">
-                {message.toolUses.map((tool, index) => (
-                  <div key={index} className={`tool-indicator ${tool.status}`}>
-                    {tool.status === 'running' && <span className="spinner" />}
-                    {tool.name}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         ))}
 
