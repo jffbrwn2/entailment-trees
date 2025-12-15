@@ -247,7 +247,11 @@ export function useTreeLayout(
     // Reserve space for orphan region above roots
     const orphanRegionHeight = visibleOrphans.length > 0 ? 180 : 0
     const treeStartY = 100 + orphanRegionHeight
-    const levelSpacing = maxLevel > 0 ? (height - treeStartY - 100) / (maxLevel + 1) : 150
+
+    // Minimum spacing to prevent overlap: claim radius (65) + junction radius (15) + padding (20) = 100
+    const minLevelSpacing = 80
+    const calculatedSpacing = maxLevel > 0 ? (height - treeStartY - 100) / (maxLevel + 1) : 150
+    const levelSpacing = Math.max(minLevelSpacing, calculatedSpacing)
 
     function positionSubtree(nodeId: string, centerX: number, level: number) {
       const y = treeStartY + level * levelSpacing
