@@ -640,12 +640,13 @@ python -m http.server 8765
                 return float('inf')
 
             score = claim.get('score')
+            evidence = claim.get('evidence', [])
 
             # Check if this is a leaf node (not a conclusion of any implication)
             if claim_id not in conclusion_to_implication:
                 # Leaf node: -log2(score/10)
-                # Handle null/None scores as unevaluated (infinite uncertainty)
-                if score is None or score <= 0:
+                # Handle null/None scores or leaf nodes without evidence as unevaluated (infinite uncertainty)
+                if score is None or score <= 0 or not evidence:
                     neg_log = float('inf')
                 else:
                     neg_log = -math.log2(score / 10.0)

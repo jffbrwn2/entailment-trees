@@ -382,7 +382,8 @@ export function useD3Graph({
     // Add claim node visuals
     enteringNodes.filter(d => d.type === 'claim').each(function(d) {
       const node = d3.select(this)
-      const effectiveScore = getEffectiveScore(d as unknown as Claim, scoreMode)
+      const isLeaf = !conclusionToPremises.has(d.id)
+      const effectiveScore = getEffectiveScore(d as unknown as Claim, scoreMode, isLeaf)
 
       node.append('circle')
         .attr('r', 65)
@@ -779,13 +780,15 @@ export function useD3Graph({
       .attr('fill', d => {
         const claim = hypergraph.claims.find(c => c.id === d.id)
         if (!claim) return 'rgb(128, 128, 128)'
-        const effectiveScore = getEffectiveScore(claim, scoreMode)
+        const isLeaf = !conclusionToPremises.has(d.id)
+        const effectiveScore = getEffectiveScore(claim, scoreMode, isLeaf)
         return getScoreColor(effectiveScore)
       })
       .attr('stroke', d => {
         const claim = hypergraph.claims.find(c => c.id === d.id)
         if (!claim) return 'rgb(128, 128, 128)'
-        const effectiveScore = getEffectiveScore(claim, scoreMode)
+        const isLeaf = !conclusionToPremises.has(d.id)
+        const effectiveScore = getEffectiveScore(claim, scoreMode, isLeaf)
         return getScoreColor(effectiveScore)
       })
       .attr('stroke-width', d => {

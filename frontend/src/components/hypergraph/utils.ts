@@ -15,8 +15,18 @@ export function getStructuralSignature(hypergraph: Hypergraph | null): string {
 
 /**
  * Get the effective score for a claim based on scoreMode.
+ * If isLeaf is true and the claim has no evidence, returns null (unevaluated).
  */
-export function getEffectiveScore(claim: Claim, scoreMode: 'score' | 'propagated'): number | null {
+export function getEffectiveScore(
+  claim: Claim,
+  scoreMode: 'score' | 'propagated',
+  isLeaf: boolean = false
+): number | null {
+  // Leaf claims without evidence are unevaluated (gray)
+  if (isLeaf && (!claim.evidence || claim.evidence.length === 0)) {
+    return null
+  }
+
   if (scoreMode === 'propagated') {
     // null or "Infinity" means infinite uncertainty, so effective score is 0
     if (claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity") {

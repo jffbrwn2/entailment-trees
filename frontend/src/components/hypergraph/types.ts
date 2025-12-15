@@ -51,6 +51,7 @@ export interface NodeData {
   text?: string
   score?: number | null
   propagated_negative_log?: number | string | null
+  evidence?: Evidence[]
   implication?: Implication
   _animX?: number
   _animY?: number
