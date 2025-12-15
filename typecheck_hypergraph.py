@@ -340,26 +340,78 @@ class HypergraphTypeChecker:
                 self.warning(path, "'reasoning' is empty")
 
     def check_references(self, implications: List[Dict[str, Any]]) -> None:
-        """Validate that all premise/conclusion references exist."""
+        """
+        Validate that all premise/conclusion references exist and are claim IDs.
+
+        Edges must only go between claims and logical nodes:
+        - premises (claims) → junction (logical node)
+        - junction → conclusion (claim)
+
+        This means premises and conclusions must be claim IDs, not implication IDs.
+        """
         for i, impl in enumerate(implications):
             path = f"implications[{i}]"
 
             # Check premises
             if 'premises' in impl and isinstance(impl['premises'], list):
                 for j, premise_id in enumerate(impl['premises']):
-                    if isinstance(premise_id, str) and premise_id not in self.claim_ids:
-                        self.error(
-                            f"{path}.premises[{j}]",
-                            f"Reference to non-existent claim '{premise_id}'"
-                        )
+                    if isinstance(premise_id, str):
+                        # Check it's not an implication ID (edges must go claim → junction)
+                        if premise_id in self.implication_ids:
+                            self.error(
+                                f"{path}.premises[{j}]",
+                                f"'{premise_id}' is an implication ID, not a claim ID. "
+                                f"Premises must be claims (edges go: claim → junction → claim)."
+                            )
+                        elif premise_id not in self.claim_ids:
+                            self.error(
+                                f"{path}.premises[{j}]",
+                                f"Reference to non-existent claim '{premise_id}'"
+                            )
 
             # Check conclusion
             if 'conclusion' in impl and isinstance(impl['conclusion'], str):
-                if impl['conclusion'] not in self.claim_ids:
+                conclusion_id = impl['conclusion']
+                # Check it's not an implication ID (edges must go junction → claim)
+                if conclusion_id in self.implication_ids:
                     self.error(
                         f"{path}.conclusion",
-                        f"Reference to non-existent claim '{impl['conclusion']}'"
+                        f"'{conclusion_id}' is an implication ID, not a claim ID. "
+                        f"Conclusions must be claims (edges go: claim → junction → claim)."
                     )
+                elif conclusion_id not in self.claim_ids:
+                    self.error(
+                        f"{path}.conclusion",
+                        f"Reference to non-existent claim '{conclusion_id}'"
+                    )
+
+    def check_single_implication_per_conclusion(self, implications: List[Dict[str, Any]]) -> None:
+        """
+        Validate that each claim is the conclusion of at most one implication.
+
+        Multiple implications pointing to the same conclusion is ambiguous -
+        it's unclear whether they should be AND'd or OR'd together.
+        """
+        conclusion_to_implications: Dict[str, List[str]] = {}
+
+        for impl in implications:
+            conclusion = impl.get('conclusion')
+            impl_id = impl.get('id', 'unknown')
+
+            if conclusion and isinstance(conclusion, str):
+                if conclusion not in conclusion_to_implications:
+                    conclusion_to_implications[conclusion] = []
+                conclusion_to_implications[conclusion].append(impl_id)
+
+        # Report errors for claims with multiple implications
+        for conclusion, impl_ids in conclusion_to_implications.items():
+            if len(impl_ids) > 1:
+                self.error(
+                    f"claim '{conclusion}'",
+                    f"Multiple implications point to this claim: {impl_ids}. "
+                    f"Each claim can only be the conclusion of one implication "
+                    f"(otherwise it's ambiguous whether to AND or OR them)."
+                )
 
     def check_hypergraph(self, hypergraph_data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         """
@@ -401,6 +453,9 @@ class HypergraphTypeChecker:
 
                 # Check references after collecting all IDs
                 self.check_references(implications)
+
+                # Check that each claim has at most one implication pointing to it
+                self.check_single_implication_per_conclusion(implications)
 
         return self.errors, self.warnings
 

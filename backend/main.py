@@ -384,7 +384,8 @@ async def delete_claim(folder: str, claim_id: str) -> dict:
         return {
             "success": True,
             "deleted_claim_id": claim_id,
-            "deleted_implications_count": len(result['deleted_implications'])
+            "deleted_implications_count": len(result['deleted_implications']),
+            "validation": result.get('validation', {})
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

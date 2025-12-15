@@ -321,6 +321,8 @@ Help the user evaluate their idea by:
 3. **Searching literature** for relevant data and prior work
 4. **Organizing findings** in a structured entailment hypergraph
 
+CRITICAL: You can NEVER change the hypothesis claim, unless the user explicitly asks you to.
+
 ## Two Core Skills You Provide
 
 ### 1. Building Logical Structure (Entailment)
@@ -414,8 +416,9 @@ The hypergraph is a JSON file with:
 }}
 ```
 
-**IMPORTANT**: Every implication MUST have a unique `id` field (like "i1", "i2", etc.).
-Check the hypergraph for existing IDs to avoid duplicates.
+**CRITICAL CONSTRAINTS**:
+1. Every implication MUST have a unique `id` field (like "i1", "i2", etc.). Check the hypergraph for existing IDs to avoid duplicates.
+2. **Each claim can only be the conclusion of ONE implication.** Multiple implications pointing to the same claim is invalid because it's ambiguous whether they should be AND'd or OR'd. If you need multiple paths to support a claim, create an intermediate claim.
 
 ## Entailment Checking (CRITICAL)
 

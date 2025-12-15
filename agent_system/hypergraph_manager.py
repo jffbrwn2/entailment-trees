@@ -103,8 +103,13 @@ class HypergraphManager:
         with open(self.hypergraph_path, 'r') as f:
             return json.load(f)
 
-    def _save_hypergraph(self, hypergraph: Dict[str, Any]) -> None:
-        """Save hypergraph to JSON file with pretty formatting and version history."""
+    def _save_hypergraph(self, hypergraph: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Save hypergraph to JSON file with pretty formatting and version history.
+
+        Returns:
+            Dict with 'errors' and 'warnings' from validation
+        """
         # Update last_updated timestamp
         hypergraph['metadata']['last_updated'] = datetime.now().strftime("%Y-%m-%d")
 
@@ -133,11 +138,26 @@ class HypergraphManager:
             with open(history_file, 'w') as f:
                 json.dump(current, f, indent=2)
 
+        # Run validation before saving
+        from typecheck_hypergraph import HypergraphTypeChecker
+        checker = HypergraphTypeChecker(base_path=self.approach_dir)
+        errors, warnings = checker.check_hypergraph(hypergraph)
+
+        # Store validation results in metadata
+        hypergraph['metadata']['validation'] = {
+            'errors': errors,
+            'warnings': warnings,
+            'valid': len(errors) == 0,
+            'checked_at': datetime.now().isoformat()
+        }
+
         # Save new version
         with open(self.hypergraph_path, 'w') as f:
             json.dump(hypergraph, f, indent=2)
 
-    def add_claim(self, claim: Claim) -> str:
+        return {'errors': errors, 'warnings': warnings}
+
+    def add_claim(self, claim: Claim) -> Dict[str, Any]:
         """
         Add a new claim to the hypergraph.
 
@@ -145,7 +165,7 @@ class HypergraphManager:
             claim: Claim object to add
 
         Returns:
-            The claim ID
+            Dict with 'id' and 'validation' results
         """
         hypergraph = self.load_hypergraph()
 
@@ -173,17 +193,20 @@ class HypergraphManager:
             claim_dict["tags"] = claim.tags
 
         hypergraph['claims'].append(claim_dict)
-        self._save_hypergraph(hypergraph)
+        validation = self._save_hypergraph(hypergraph)
 
-        return claim.id
+        return {'id': claim.id, 'validation': validation}
 
-    def update_claim(self, claim_id: str, **updates) -> None:
+    def update_claim(self, claim_id: str, **updates) -> Dict[str, Any]:
         """
         Update an existing claim.
 
         Args:
             claim_id: ID of claim to update
             **updates: Fields to update (score, reasoning, evidence, etc.)
+
+        Returns:
+            Dict with 'validation' results
         """
         hypergraph = self.load_hypergraph()
 
@@ -205,9 +228,10 @@ class HypergraphManager:
         # Update modified timestamp
         claim['modified_at'] = datetime.now().isoformat()
 
-        self._save_hypergraph(hypergraph)
+        validation = self._save_hypergraph(hypergraph)
+        return {'validation': validation}
 
-    def add_implication(self, implication: Implication) -> str:
+    def add_implication(self, implication: Implication) -> Dict[str, Any]:
         """
         Add a logical implication (hyperedge).
 
@@ -215,7 +239,7 @@ class HypergraphManager:
             implication: Implication object to add
 
         Returns:
-            The implication ID
+            Dict with 'id' and 'validation' results
         """
         hypergraph = self.load_hypergraph()
 
@@ -245,9 +269,9 @@ class HypergraphManager:
         }
 
         hypergraph['implications'].append(impl_dict)
-        self._save_hypergraph(hypergraph)
+        validation = self._save_hypergraph(hypergraph)
 
-        return implication.id
+        return {'id': implication.id, 'validation': validation}
 
     def get_claim(self, claim_id: str) -> Optional[Dict[str, Any]]:
         """Get a claim by ID."""
@@ -298,11 +322,12 @@ class HypergraphManager:
                 remaining_implications.append(impl)
         hypergraph['implications'] = remaining_implications
 
-        self._save_hypergraph(hypergraph)
+        validation = self._save_hypergraph(hypergraph)
 
         return {
             'deleted_claim': deleted_claim,
-            'deleted_implications': deleted_implications
+            'deleted_implications': deleted_implications,
+            'validation': validation
         }
 
     def get_all_claims(self) -> List[Dict[str, Any]]:
