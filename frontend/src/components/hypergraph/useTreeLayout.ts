@@ -14,10 +14,12 @@ interface UseTreeLayoutReturn {
   maxAvailableDepth: number
   orphanClaims: Set<string>
   conclusionToPremises: Map<string, string[]>
+  premiseToConclusions: Map<string, string[]>
   nodeDepths: Map<string, number>
   isConclusion: (nodeId: string) => boolean
   arePremisesCollapsed: (conclusionId: string) => boolean
   getAllDescendants: (nodeId: string, visited?: Set<string>) => string[]
+  getExclusiveDescendants: (nodeId: string) => string[]
   calculateTreeLayout: (visibleClaims: NodeData[], width: number, height: number) => TreeLayoutResult
   nodePositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>
 }
@@ -32,6 +34,7 @@ export function useTreeLayout(
 
   const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map())
   const conclusionToPremisesRef = useRef<Map<string, string[]>>(new Map())
+  const premiseToConclusionsRef = useRef<Map<string, string[]>>(new Map())
   const nodeDepthsRef = useRef<Map<string, number>>(new Map())
   const orphanClaimsRef = useRef<Set<string>>(new Set())
 
@@ -46,11 +49,18 @@ export function useTreeLayout(
   useEffect(() => {
     if (!hypergraph) return
     conclusionToPremisesRef.current.clear()
+    premiseToConclusionsRef.current.clear()
     nodeDepthsRef.current.clear()
     orphanClaimsRef.current.clear()
 
     hypergraph.implications.forEach(impl => {
       conclusionToPremisesRef.current.set(impl.conclusion, impl.premises)
+      // Build reverse map: premise -> conclusions that use it
+      impl.premises.forEach(premiseId => {
+        const conclusions = premiseToConclusionsRef.current.get(premiseId) || []
+        conclusions.push(impl.conclusion)
+        premiseToConclusionsRef.current.set(premiseId, conclusions)
+      })
     })
 
     // Calculate depth from hypothesis for each node using BFS
@@ -139,6 +149,21 @@ export function useTreeLayout(
     })
     return descendants
   }, [])
+
+  // Returns only descendants that are exclusively reachable through the given node.
+  // If a descendant has another path to the root (i.e., it's a premise for another
+  // conclusion not in the collapse set), it won't be included.
+  const getExclusiveDescendants = useCallback((nodeId: string): string[] => {
+    const allDescendants = getAllDescendants(nodeId)
+    const collapseSet = new Set([nodeId, ...allDescendants])
+
+    // Filter to only descendants that don't have outside connections
+    return allDescendants.filter(descendant => {
+      const parentConclusions = premiseToConclusionsRef.current.get(descendant) || []
+      // Check if ALL parent conclusions are within the collapse set
+      return parentConclusions.every(conclusion => collapseSet.has(conclusion))
+    })
+  }, [getAllDescendants])
 
   const calculateTreeLayout = useCallback((
     visibleClaims: NodeData[],
@@ -331,6 +356,7 @@ export function useTreeLayout(
   // Memoize the returned refs as stable values
   const orphanClaims = useMemo(() => orphanClaimsRef.current, [hypergraph])
   const conclusionToPremises = useMemo(() => conclusionToPremisesRef.current, [hypergraph])
+  const premiseToConclusions = useMemo(() => premiseToConclusionsRef.current, [hypergraph])
   const nodeDepths = useMemo(() => nodeDepthsRef.current, [hypergraph])
 
   return {
@@ -341,10 +367,12 @@ export function useTreeLayout(
     maxAvailableDepth,
     orphanClaims,
     conclusionToPremises,
+    premiseToConclusions,
     nodeDepths,
     isConclusion,
     arePremisesCollapsed,
     getAllDescendants,
+    getExclusiveDescendants,
     calculateTreeLayout,
     nodePositionsRef,
   }

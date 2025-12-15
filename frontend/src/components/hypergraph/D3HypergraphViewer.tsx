@@ -26,6 +26,7 @@ function D3HypergraphViewer({
     isConclusion,
     arePremisesCollapsed,
     getAllDescendants,
+    getExclusiveDescendants,
     calculateTreeLayout,
     nodePositionsRef,
   } = useTreeLayout(hypergraph, resetKey)
@@ -43,6 +44,7 @@ function D3HypergraphViewer({
     isConclusion,
     arePremisesCollapsed,
     getAllDescendants,
+    getExclusiveDescendants,
     calculateTreeLayout,
     nodePositionsRef,
     onSelect,

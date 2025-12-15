@@ -16,6 +16,7 @@ interface UseD3GraphParams {
   isConclusion: (nodeId: string) => boolean
   arePremisesCollapsed: (conclusionId: string) => boolean
   getAllDescendants: (nodeId: string, visited?: Set<string>) => string[]
+  getExclusiveDescendants: (nodeId: string) => string[]
   calculateTreeLayout: (visibleClaims: NodeData[], width: number, height: number) => {
     positions: Map<string, { x: number; y: number }>
     levels: Map<string, number>
@@ -39,6 +40,7 @@ export function useD3Graph({
   isConclusion,
   arePremisesCollapsed,
   getAllDescendants,
+  getExclusiveDescendants,
   calculateTreeLayout,
   nodePositionsRef,
   onSelect,
@@ -562,13 +564,18 @@ export function useD3Graph({
             const premises = conclusionToPremises.get(d.id)
             if (!premises) return prev
 
-            const allDescendants = getAllDescendants(d.id)
             const currentlyCollapsed = premises.some(p => prev.has(p))
 
             if (currentlyCollapsed) {
+              // When expanding, remove all descendants
+              const allDescendants = getAllDescendants(d.id)
               allDescendants.forEach(p => newSet.delete(p))
             } else {
-              allDescendants.forEach(p => newSet.add(p))
+              // When collapsing, only collapse nodes that don't have other paths to root
+              // This ensures nodes like c7 (premise for both c12 and hypothesis)
+              // remain visible when collapsing c12
+              const exclusiveDescendants = getExclusiveDescendants(d.id)
+              exclusiveDescendants.forEach(p => newSet.add(p))
             }
             return newSet
           })
@@ -821,6 +828,7 @@ export function useD3Graph({
     isConclusion,
     arePremisesCollapsed,
     getAllDescendants,
+    getExclusiveDescendants,
     setCollapsedNodes,
     conclusionToPremises,
     orphanClaims,
