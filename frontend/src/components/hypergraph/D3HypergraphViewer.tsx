@@ -1,8 +1,31 @@
 import { useRef } from 'react'
-import type { D3HypergraphViewerProps } from './types'
+import type { D3HypergraphViewerProps, Hypergraph } from './types'
 import { useTreeLayout } from './useTreeLayout'
 import { useD3Graph } from './useD3Graph'
 import '../D3HypergraphViewer.css'
+
+// Parse validation error to extract claim/implication reference
+function parseErrorReference(error: string, hypergraph: Hypergraph): { type: 'claim' | 'implication'; id: string } | null {
+  // Match patterns like "claims[1]" or "implications[2]"
+  const claimMatch = error.match(/^claims\[(\d+)\]/)
+  const implMatch = error.match(/^implications\[(\d+)\]/)
+
+  if (claimMatch) {
+    const index = parseInt(claimMatch[1], 10)
+    if (index >= 0 && index < hypergraph.claims.length) {
+      return { type: 'claim', id: hypergraph.claims[index].id }
+    }
+  }
+
+  if (implMatch) {
+    const index = parseInt(implMatch[1], 10)
+    if (index >= 0 && index < hypergraph.implications.length) {
+      return { type: 'implication', id: hypergraph.implications[index].id }
+    }
+  }
+
+  return null
+}
 
 function D3HypergraphViewer({
   hypergraph,
@@ -96,6 +119,34 @@ function D3HypergraphViewer({
           </div>
         )}
       </div>
+      {hypergraph.metadata?.validation && (
+        <div className={`validation-indicator ${hypergraph.metadata.validation.valid ? 'valid' : 'error'}`}>
+          <div className="validation-circle">
+            {hypergraph.metadata.validation.valid ? '✓' : hypergraph.metadata.validation.errors.length}
+          </div>
+          {!hypergraph.metadata.validation.valid && (
+            <div className="validation-popup">
+              <div className="validation-popup-header">
+                {hypergraph.metadata.validation.errors.length} validation error{hypergraph.metadata.validation.errors.length !== 1 ? 's' : ''}
+              </div>
+              <div className="validation-popup-content">
+                {hypergraph.metadata.validation.errors.map((error, i) => {
+                  const ref = parseErrorReference(error, hypergraph)
+                  return (
+                    <div
+                      key={i}
+                      className={`validation-error ${ref ? 'clickable' : ''}`}
+                      onClick={() => ref && onSelect(ref)}
+                    >
+                      {error}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

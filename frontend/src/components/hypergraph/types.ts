@@ -29,10 +29,18 @@ export interface Implication {
   entailment_explanation?: string
 }
 
+export interface ValidationResult {
+  errors: string[]
+  warnings: string[]
+  valid: boolean
+  checked_at?: string
+}
+
 export interface Hypergraph {
   metadata?: {
     name: string
     description?: string
+    validation?: ValidationResult
   }
   claims: Claim[]
   implications: Implication[]
