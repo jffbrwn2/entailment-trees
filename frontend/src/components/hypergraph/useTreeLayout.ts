@@ -199,8 +199,7 @@ export function useTreeLayout(
         .forEach(c => rootConclusions.push(c.id))
     }
 
-    // Calculate levels (orphans get level -1, roots get level 0)
-    visibleOrphans.forEach(orphan => levels.set(orphan.id, -1))
+    // Calculate levels for main tree (roots get level 0)
     rootConclusions.forEach(rootId => levels.set(rootId, 0))
 
     let changed = true
@@ -212,6 +211,11 @@ export function useTreeLayout(
       hypergraph.implications.forEach(impl => {
         if (collapsedNodes.has(impl.conclusion) ||
             impl.premises.some(p => collapsedNodes.has(p))) {
+          return
+        }
+
+        // Skip orphan implications for now - handle separately
+        if (orphans.has(impl.conclusion)) {
           return
         }
 
@@ -236,16 +240,76 @@ export function useTreeLayout(
       })
     }
 
+    // Now handle orphan subgraphs - find orphan roots and calculate their levels
+    // Orphan roots are orphan claims that are conclusions but not premises of other orphan conclusions
+    const orphanPremises = new Set<string>()
+    hypergraph.implications.forEach(impl => {
+      if (orphans.has(impl.conclusion)) {
+        impl.premises.forEach(p => orphanPremises.add(p))
+      }
+    })
+
+    const orphanRoots = visibleOrphans
+      .filter(o => conclusionToPremises.has(o.id))
+      .filter(o => !orphanPremises.has(o.id))
+      .map(o => o.id)
+
+    // Also include orphans that are standalone (no implications at all)
+    const orphanLeaves = visibleOrphans
+      .filter(o => !conclusionToPremises.has(o.id) && !orphanPremises.has(o.id))
+      .map(o => o.id)
+
+    // Set levels for orphan roots at -1 (will be adjusted later based on max depth)
+    orphanRoots.forEach(rootId => levels.set(rootId, -1))
+    orphanLeaves.forEach(leafId => levels.set(leafId, -1))
+
+    // Propagate levels through orphan subgraphs
+    changed = true
+    iterations = 0
+    while (changed && iterations < 20) {
+      changed = false
+      iterations++
+
+      hypergraph.implications.forEach(impl => {
+        if (!orphans.has(impl.conclusion)) return
+        if (collapsedNodes.has(impl.conclusion) ||
+            impl.premises.some(p => collapsedNodes.has(p))) {
+          return
+        }
+
+        const conclusionLevel = levels.get(impl.conclusion)
+        if (conclusionLevel !== undefined) {
+          const junctionId = `junction_${impl.id}`
+          const junctionLevel = conclusionLevel - 1  // Negative levels going up
+          const premiseLevel = conclusionLevel - 2
+
+          if (!levels.has(junctionId)) {
+            levels.set(junctionId, junctionLevel)
+            changed = true
+          }
+
+          impl.premises.forEach(premiseId => {
+            if (!levels.has(premiseId) || levels.get(premiseId)! > premiseLevel) {
+              levels.set(premiseId, premiseLevel)
+              changed = true
+            }
+          })
+        }
+      })
+    }
+
     // Calculate subtree widths
     const subtreeWidths = new Map<string, number>()
 
-    function calculateSubtreeWidth(nodeId: string, visited = new Set<string>()): number {
+    function calculateSubtreeWidth(nodeId: string, allowOrphans: boolean, visited = new Set<string>()): number {
       if (subtreeWidths.has(nodeId)) return subtreeWidths.get(nodeId)!
       if (visited.has(nodeId)) return 150
       visited.add(nodeId)
 
       const premises = conclusionToPremises.get(nodeId)
-      const visiblePremises = premises ? premises.filter(p => !collapsedNodes.has(p) && !orphans.has(p)) : []
+      const visiblePremises = premises ? premises.filter(p =>
+        !collapsedNodes.has(p) && (allowOrphans || !orphans.has(p))
+      ) : []
 
       if (visiblePremises.length === 0) {
         subtreeWidths.set(nodeId, 150)
@@ -254,7 +318,7 @@ export function useTreeLayout(
 
       let totalWidth = 0
       visiblePremises.forEach(premiseId => {
-        totalWidth += calculateSubtreeWidth(premiseId, visited)
+        totalWidth += calculateSubtreeWidth(premiseId, allowOrphans, visited)
       })
       totalWidth += (visiblePremises.length - 1) * 100
 
@@ -263,14 +327,22 @@ export function useTreeLayout(
       return w
     }
 
-    connectedClaims.forEach(c => calculateSubtreeWidth(c.id))
+    // Calculate widths for main tree (excluding orphans)
+    connectedClaims.forEach(c => calculateSubtreeWidth(c.id, false))
+
+    // Calculate widths for orphan subtrees (including orphan premises)
+    orphanRoots.forEach(rootId => calculateSubtreeWidth(rootId, true))
 
     // Position nodes
     const positions = new Map<string, { x: number; y: number }>()
     const maxLevel = Math.max(...Array.from(levels.values()).filter(l => l >= 0), 0)
 
+    // Calculate orphan region depth (how many levels deep the orphan trees go)
+    const minOrphanLevel = Math.min(...Array.from(levels.values()).filter(l => l < 0), -1)
+    const orphanDepth = Math.abs(minOrphanLevel)  // Number of levels in orphan region
+
     // Reserve space for orphan region above roots
-    const orphanRegionHeight = visibleOrphans.length > 0 ? 180 : 0
+    const orphanRegionHeight = visibleOrphans.length > 0 ? (orphanDepth * 80 + 100) : 0
     const treeStartY = 100 + orphanRegionHeight
 
     // Minimum spacing to prevent overlap: claim radius (65) + junction radius (15) + padding (20) = 100
@@ -334,19 +406,69 @@ export function useTreeLayout(
       rootX += rootWidth + 200
     })
 
-    // Position orphan claims in a row above the tree
+    // Position orphan subtrees above the main tree
     if (visibleOrphans.length > 0) {
-      const orphanSpacing = 180
-      const totalOrphanWidth = visibleOrphans.length * 150 + (visibleOrphans.length - 1) * (orphanSpacing - 150)
-      let orphanX = width / 2 - totalOrphanWidth / 2 + 75
+      const orphanLevelSpacing = 80
 
-      visibleOrphans.forEach(orphan => {
-        if (nodePositionsRef.current.has(orphan.id)) {
-          positions.set(orphan.id, nodePositionsRef.current.get(orphan.id)!)
+      // Function to position an orphan subtree (similar to main tree but inverted)
+      function positionOrphanSubtree(nodeId: string, centerX: number, level: number) {
+        // Orphan levels are negative, convert to Y position
+        // Level -1 is closest to main tree, more negative levels go higher
+        const y = treeStartY + (level + 1) * orphanLevelSpacing - orphanRegionHeight + 50
+
+        if (nodePositionsRef.current.has(nodeId)) {
+          positions.set(nodeId, nodePositionsRef.current.get(nodeId)!)
         } else {
-          positions.set(orphan.id, { x: orphanX, y: 100 })
+          positions.set(nodeId, { x: centerX, y })
         }
-        orphanX += orphanSpacing
+
+        const premises = conclusionToPremises.get(nodeId)
+        const visiblePremises = premises ? premises.filter(p => !collapsedNodes.has(p)) : []
+
+        if (visiblePremises.length === 0) return
+
+        // Position junction
+        const impl = hypergraph!.implications.find(i => i.conclusion === nodeId)
+        if (impl) {
+          const junctionId = `junction_${impl.id}`
+          const junctionLevel = level - 1
+          const junctionY = treeStartY + (junctionLevel + 1) * orphanLevelSpacing - orphanRegionHeight + 50
+
+          if (nodePositionsRef.current.has(junctionId)) {
+            positions.set(junctionId, nodePositionsRef.current.get(junctionId)!)
+          } else {
+            positions.set(junctionId, { x: centerX, y: junctionY })
+          }
+        }
+
+        // Position children (premises go above, so use level - 2)
+        const premiseLevel = level - 2
+        const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 150)
+        const premiseSpacing = 50
+        const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * premiseSpacing
+
+        let currentX = centerX - totalWidth / 2
+        visiblePremises.forEach((premiseId, i) => {
+          const childCenterX = currentX + childWidths[i] / 2
+          positionOrphanSubtree(premiseId, childCenterX, premiseLevel)
+          currentX += childWidths[i] + premiseSpacing
+        })
+      }
+
+      // Position orphan roots and standalone orphans
+      const allOrphanRoots = [...orphanRoots, ...orphanLeaves]
+      let totalOrphanWidth = 0
+      allOrphanRoots.forEach(rootId => {
+        totalOrphanWidth += subtreeWidths.get(rootId) || 150
+      })
+      totalOrphanWidth += (allOrphanRoots.length - 1) * 150
+
+      let orphanX = width / 2 - totalOrphanWidth / 2
+      allOrphanRoots.forEach(rootId => {
+        const rootWidth = subtreeWidths.get(rootId) || 150
+        const rootLevel = levels.get(rootId) ?? -1
+        positionOrphanSubtree(rootId, orphanX + rootWidth / 2, rootLevel)
+        orphanX += rootWidth + 150
       })
     }
 
