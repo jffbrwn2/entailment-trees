@@ -28,7 +28,7 @@ export function getEffectiveScore(
   }
 
   if (scoreMode === 'propagated') {
-    // null or "Infinity" means infinite uncertainty, so effective score is 0
+    // null or "Infinity" means failed entailment or error, show as 0
     if (claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity") {
       return 0
     }

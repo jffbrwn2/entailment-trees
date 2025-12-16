@@ -32,6 +32,26 @@ interface Props {
   approachName: string | null
 }
 
+interface SuggestionButton {
+  label: string
+  prompt: string
+}
+
+const suggestions: SuggestionButton[] = [
+  {
+    label: "Generate an entailment tree for this idea",
+    prompt: "Generate an entailment tree for this idea. Do not finish until all entailments pass as valid."
+  },
+  {
+    label: "Find evidence for the claims",
+    prompt: "Find evidence for the claims. Use the internet to look for reputable sources. The evidence should give accurate, fair context on whether the claim is true, false, or unsure. Add the evidence to the claims and run the claim evaluator tool."
+  },
+  {
+    label: "Write simulations to test the claims",
+    prompt: "Write simulations to test the claims that can be validated through computation. Create Python scripts that model the relevant physics or behavior, run them, and use the results as evidence. Add the simulation evidence to the claims and run the claim evaluator tool."
+  },
+]
+
 function ChatInterface({ approachFolder, approachName }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -382,6 +402,18 @@ function ChatInterface({ approachFolder, approachName }: Props) {
     }
   }
 
+  const handleSuggestionClick = (prompt: string) => {
+    if (isStreaming) return
+    setInput(prompt)
+    // Submit after a brief delay to show the input
+    setTimeout(() => {
+      const form = document.querySelector('.input-area') as HTMLFormElement
+      if (form) {
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      }
+    }, 50)
+  }
+
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault()
     resizeRef.current = { startY: e.clientY, startHeight: textareaHeight }
@@ -444,13 +476,20 @@ function ChatInterface({ approachFolder, approachName }: Props) {
       <div className="messages">
         {messages.length === 0 && approachFolder && (
           <div className="empty-chat">
-            <p>Start a conversation to explore your hypothesis.</p>
-            <p className="suggestions">Try:</p>
-            <ul>
-              <li>"Generate the first level of the entailment tree"</li>
-              <li>"What simulations should we run?"</li>
-              <li>"Search for prior work on this topic"</li>
-            </ul>
+            <p>Start a conversation to explore your hypothesis</p>
+            <p className="or-divider">— or choose a suggested prompt —</p>
+            <div className="suggestion-buttons">
+              {suggestions.map((suggestion, index) => (
+                <button
+                  key={index}
+                  className="suggestion-button"
+                  onClick={() => handleSuggestionClick(suggestion.prompt)}
+                  disabled={isStreaming}
+                >
+                  {suggestion.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

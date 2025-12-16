@@ -670,11 +670,9 @@ python -m http.server 8765
             # Check if this is a leaf node (not a conclusion of any implication)
             if claim_id not in conclusion_to_implication:
                 # Leaf node: -log2(score/10)
-                # Handle null/None scores or leaf nodes without evidence as unevaluated (infinite uncertainty)
-                if score is None or score <= 0 or not evidence:
-                    neg_log = float('inf')
-                else:
-                    neg_log = -math.log2(score / 10.0)
+                # Use actual score if available, otherwise default to 5 (unsure)
+                effective_score = score if score is not None and score > 0 else 5
+                neg_log = -math.log2(effective_score / 10.0)
                 propagated_logs[claim_id] = neg_log
                 return neg_log
 

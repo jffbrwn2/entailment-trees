@@ -50,11 +50,16 @@ function computeWarnings(hypergraph: Hypergraph): Warning[] {
     }
   }
 
-  // Check for failed entailments
+  // Check for failed or unchecked entailments
   for (const impl of hypergraph.implications) {
     if (impl.entailment_status === 'failed') {
       warnings.push({
         message: `${impl.id}: Entailment failed`,
+        ref: { type: 'implication', id: impl.id }
+      })
+    } else if (!impl.entailment_status) {
+      warnings.push({
+        message: `${impl.id}: Entailment not checked`,
         ref: { type: 'implication', id: impl.id }
       })
     }

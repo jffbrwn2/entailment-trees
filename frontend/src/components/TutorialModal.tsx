@@ -55,7 +55,7 @@ const tutorialSteps: TutorialStep[] = [
           </div>
           <div className="tutorial-feature">
             <span className="feature-icon" style={{ background: '#808080' }}>?</span>
-            <span>Gray = No evidence (treated as score 0)</span>
+            <span>Gray = No evidence (defaults to score 5, unsure)</span>
           </div>
         </div>
         <p><strong>Interactions:</strong></p>
