@@ -69,6 +69,7 @@ function App() {
   const [resetKey, setResetKey] = useState(0)
   const [showTutorial, setShowTutorial] = useState(false)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null)
 
   // Apply dark/light mode
   useEffect(() => {
@@ -355,6 +356,7 @@ function App() {
               scoreMode={scoreMode}
               resetKey={resetKey}
               onDelete={handleDeleteClaim}
+              onSendMessage={setPendingMessage}
             />
           </div>
           <div className="panel right-panel">
@@ -380,6 +382,8 @@ function App() {
                 <ChatInterface
                   approachFolder={currentApproach?.folder || null}
                   approachName={currentApproach?.name || null}
+                  pendingMessage={pendingMessage}
+                  onPendingMessageHandled={() => setPendingMessage(null)}
                 />
               </div>
             </Split>

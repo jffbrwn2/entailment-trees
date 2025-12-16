@@ -81,4 +81,5 @@ export interface D3HypergraphViewerProps {
   selectedItem: SelectedItem | null
   resetKey?: number
   onDelete?: (claimId: string) => void
+  onSendMessage?: (message: string) => void
 }

@@ -30,6 +30,8 @@ interface Conversation {
 interface Props {
   approachFolder: string | null
   approachName: string | null
+  pendingMessage?: string | null
+  onPendingMessageHandled?: () => void
 }
 
 interface SuggestionButton {
@@ -52,7 +54,7 @@ const suggestions: SuggestionButton[] = [
   },
 ]
 
-function ChatInterface({ approachFolder, approachName }: Props) {
+function ChatInterface({ approachFolder, approachName, pendingMessage, onPendingMessageHandled }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
@@ -80,6 +82,21 @@ function ChatInterface({ approachFolder, approachName }: Props) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Handle pending messages from other components (e.g., Fix button)
+  useEffect(() => {
+    if (pendingMessage && approachFolder && !isStreaming) {
+      setInput(pendingMessage)
+      onPendingMessageHandled?.()
+      // Submit after a brief delay
+      setTimeout(() => {
+        const form = document.querySelector('.input-area') as HTMLFormElement
+        if (form) {
+          form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+        }
+      }, 50)
+    }
+  }, [pendingMessage, approachFolder, isStreaming, onPendingMessageHandled])
 
   // Clear messages and optionally load history when approach changes
   useEffect(() => {

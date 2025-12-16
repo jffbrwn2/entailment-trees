@@ -68,7 +68,11 @@ function computeWarnings(hypergraph: Hypergraph): Warning[] {
   return warnings
 }
 
-function ValidationIndicator({ hypergraph, onSelect }: { hypergraph: Hypergraph; onSelect: (item: SelectedItem | null) => void }) {
+function ValidationIndicator({ hypergraph, onSelect, onSendMessage }: {
+  hypergraph: Hypergraph
+  onSelect: (item: SelectedItem | null) => void
+  onSendMessage?: (message: string) => void
+}) {
   const warnings = useMemo(() => computeWarnings(hypergraph), [hypergraph])
   const errors = hypergraph.metadata?.validation?.errors || []
   const hasErrors = errors.length > 0
@@ -81,6 +85,25 @@ function ValidationIndicator({ hypergraph, onSelect }: { hypergraph: Hypergraph;
   // Don't show indicator if everything is valid and no validation metadata
   if (status === 'valid' && !hypergraph.metadata?.validation) {
     return null
+  }
+
+  const handleFix = () => {
+    if (!onSendMessage) return
+
+    const issues: string[] = []
+
+    // Collect errors
+    errors.forEach(error => {
+      issues.push(`Error: ${error}`)
+    })
+
+    // Collect warnings
+    warnings.forEach(warning => {
+      issues.push(`Warning: ${warning.message}`)
+    })
+
+    const message = `Please fix the following issues in the hypergraph:\n\n${issues.join('\n')}\n\nFor unchecked entailments, run the entailment checker. For missing evidence, find appropriate evidence. For validation errors, fix the structural issues.`
+    onSendMessage(message)
   }
 
   return (
@@ -129,6 +152,13 @@ function ValidationIndicator({ hypergraph, onSelect }: { hypergraph: Hypergraph;
               </div>
             </>
           )}
+          {onSendMessage && (
+            <div className="validation-popup-footer">
+              <button className="validation-fix-button" onClick={handleFix}>
+                Fix Issues
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -142,6 +172,7 @@ function D3HypergraphViewer({
   selectedItem,
   resetKey,
   onDelete,
+  onSendMessage,
 }: D3HypergraphViewerProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -227,7 +258,7 @@ function D3HypergraphViewer({
           </div>
         )}
       </div>
-      <ValidationIndicator hypergraph={hypergraph} onSelect={onSelect} />
+      <ValidationIndicator hypergraph={hypergraph} onSelect={onSelect} onSendMessage={onSendMessage} />
     </div>
   )
 }
