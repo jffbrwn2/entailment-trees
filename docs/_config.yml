@@ -1,0 +1,13 @@
+title: AI Simulations
+description: Testing neural recording device feasibility from first principles
+baseurl: "/entailment-trees"
+url: ""
+
+markdown: kramdown
+highlighter: rouge
+
+# Build settings
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
