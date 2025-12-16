@@ -7,11 +7,18 @@
   <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
 </head>
 <body>
+  <header>
+    <nav>
+      <a href="{{ '/' | relative_url }}" class="nav-link {% if page.url == '/' %}active{% endif %}">Blog</a>
+      <a href="{{ '/about' | relative_url }}" class="nav-link {% if page.url == '/about/' %}active{% endif %}">About</a>
+      <a href="{{ '/demo' | relative_url }}" class="nav-link {% if page.url == '/demo/' %}active{% endif %}">Demo</a>
+    </nav>
+  </header>
   <main>
     {{ content }}
   </main>
   <footer>
-    <p>&copy; {{ 'now' | date: "%Y" }} AI Simulations</p>
+    <p>&copy; {{ 'now' | date: "%Y" }}</p>
   </footer>
 </body>
 </html>

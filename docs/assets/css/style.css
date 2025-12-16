@@ -26,6 +26,35 @@ body {
   flex-direction: column;
 }
 
+/* Navigation */
+header {
+  border-bottom: 1px solid var(--border);
+}
+
+nav {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+  display: flex;
+  gap: 2rem;
+}
+
+.nav-link {
+  color: var(--text-light);
+  text-decoration: none;
+  font-size: 0.95rem;
+}
+
+.nav-link:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav-link.active {
+  color: var(--text);
+  font-weight: 500;
+}
+
 main {
   max-width: 680px;
   margin: 0 auto;
