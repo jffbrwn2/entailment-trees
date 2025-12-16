@@ -30,6 +30,7 @@ from .entailment_checker import check_entailment_skill as check_entailment_impl
 from .claim_evaluator import evaluate_claim_skill as evaluate_claim_impl, add_evidence_skill as add_evidence_impl
 from .gapmap_client import GapMapClient
 from .conversation_logger import ConversationLogger
+from .path_utils import set_approach_dir, resolve_path
 
 try:
     from edison_client import EdisonClient, JobNames
@@ -982,7 +983,10 @@ class ClaudeCodeClient:
         )
 
         if should_recreate:
-            # Set approach directory for Edison tools
+            # Set approach directory for path resolution in tools
+            set_approach_dir(self.mode.working_dir)
+
+            # Also set for Edison tools if available
             if EDISON_AVAILABLE:
                 global _approach_dir
                 _approach_dir = self.mode.working_dir
@@ -1120,7 +1124,10 @@ class ClaudeCodeClient:
         # The SDK client cannot be reused across different HTTP requests (different async tasks)
         # because anyio cancel scopes must be entered/exited in the same task.
         if True:  # Always recreate for streaming
-            # Set approach directory for Edison tools
+            # Set approach directory for path resolution in tools
+            set_approach_dir(self.mode.working_dir)
+
+            # Also set for Edison tools if available
             if EDISON_AVAILABLE:
                 global _approach_dir
                 _approach_dir = self.mode.working_dir
@@ -1296,7 +1303,10 @@ class ClaudeCodeClient:
         old_working_dir = self.mode.working_dir if self.mode else None
         self.mode = new_mode
 
-        # Update approach directory for Edison tools
+        # Update approach directory for path resolution in tools
+        set_approach_dir(new_mode.working_dir)
+
+        # Also update for Edison tools if available
         if EDISON_AVAILABLE:
             global _approach_dir
             _approach_dir = new_mode.working_dir

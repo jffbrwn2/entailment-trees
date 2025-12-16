@@ -13,6 +13,7 @@ from datetime import datetime
 from anthropic import Anthropic
 import os
 from .config import DEFAULT_CONFIG
+from .path_utils import resolve_path
 
 
 def _validate_evidence_format(evidence_item: dict) -> tuple[bool, Optional[str]]:
@@ -69,7 +70,7 @@ def add_evidence_skill(
     Updates last_evidence_modified timestamp.
 
     Args:
-        hypergraph_path: Path to hypergraph.json file
+        hypergraph_path: Path to hypergraph.json file (can be relative to approach dir)
         claim_id: ID of claim to add evidence to (e.g., "c1")
         evidence: JSON string of evidence item or array of evidence items
 
@@ -77,9 +78,10 @@ def add_evidence_skill(
         Confirmation message or error
     """
     try:
-        path = Path(hypergraph_path)
+        # Resolve path (handles relative paths against approach directory)
+        path = resolve_path(hypergraph_path)
         if not path.exists():
-            return f"❌ Hypergraph not found: {hypergraph_path}"
+            return f"❌ Hypergraph not found: {hypergraph_path} (resolved to {path})"
 
         # Load hypergraph
         with open(path) as f:
@@ -230,16 +232,17 @@ def evaluate_claim_skill(
     Use add_evidence_skill first to add evidence before evaluating.
 
     Args:
-        hypergraph_path: Path to hypergraph.json file
+        hypergraph_path: Path to hypergraph.json file (can be relative to approach dir)
         claim_id: ID of claim to evaluate (e.g., "c1")
 
     Returns:
         Confirmation message with score and reasoning, or error
     """
     try:
-        path = Path(hypergraph_path)
+        # Resolve path (handles relative paths against approach directory)
+        path = resolve_path(hypergraph_path)
         if not path.exists():
-            return f"❌ Hypergraph not found: {hypergraph_path}"
+            return f"❌ Hypergraph not found: {hypergraph_path} (resolved to {path})"
 
         # Load hypergraph
         with open(path) as f:

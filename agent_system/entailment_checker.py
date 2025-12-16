@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from anthropic import Anthropic
 from .config import DEFAULT_CONFIG
+from .path_utils import resolve_path
 
 
 class EntailmentChecker:
@@ -315,7 +316,7 @@ def check_entailment_skill(
     Skill function for Claude to check entailment.
 
     Args:
-        hypergraph_path: Path to hypergraph.json file
+        hypergraph_path: Path to hypergraph.json file (can be relative to approach dir)
         force_check: If True, re-check all implications even if already checked
         implication_ids: Comma-separated list of specific implication IDs to check (e.g., "i1,i3,i5")
 
@@ -324,9 +325,10 @@ def check_entailment_skill(
     """
     checker = EntailmentChecker()
 
-    path = Path(hypergraph_path)
+    # Resolve path (handles relative paths against approach directory)
+    path = resolve_path(hypergraph_path)
     if not path.exists():
-        return f"❌ Hypergraph not found: {hypergraph_path}"
+        return f"❌ Hypergraph not found: {hypergraph_path} (resolved to {path})"
 
     # Parse implication_ids if provided
     ids_list = None
