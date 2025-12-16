@@ -1,8 +1,13 @@
-import { useRef } from 'react'
-import type { D3HypergraphViewerProps, Hypergraph } from './types'
+import { useRef, useMemo } from 'react'
+import type { D3HypergraphViewerProps, Hypergraph, SelectedItem } from './types'
 import { useTreeLayout } from './useTreeLayout'
 import { useD3Graph } from './useD3Graph'
 import '../D3HypergraphViewer.css'
+
+interface Warning {
+  message: string
+  ref: SelectedItem | null
+}
 
 // Parse validation error to extract claim/implication reference
 function parseErrorReference(error: string, hypergraph: Hypergraph): { type: 'claim' | 'implication'; id: string } | null {
@@ -25,6 +30,104 @@ function parseErrorReference(error: string, hypergraph: Hypergraph): { type: 'cl
   }
 
   return null
+}
+
+// Compute warnings for failed entailments and leaf nodes without evidence
+function computeWarnings(hypergraph: Hypergraph): Warning[] {
+  const warnings: Warning[] = []
+
+  // Find claims that are conclusions of implications
+  const conclusions = new Set(hypergraph.implications.map(impl => impl.conclusion))
+
+  // Check for leaf nodes without evidence
+  for (const claim of hypergraph.claims) {
+    const isLeaf = !conclusions.has(claim.id)
+    if (isLeaf && (!claim.evidence || claim.evidence.length === 0)) {
+      warnings.push({
+        message: `${claim.id}: Leaf node without evidence`,
+        ref: { type: 'claim', id: claim.id }
+      })
+    }
+  }
+
+  // Check for failed entailments
+  for (const impl of hypergraph.implications) {
+    if (impl.entailment_status === 'failed') {
+      warnings.push({
+        message: `${impl.id}: Entailment failed`,
+        ref: { type: 'implication', id: impl.id }
+      })
+    }
+  }
+
+  return warnings
+}
+
+function ValidationIndicator({ hypergraph, onSelect }: { hypergraph: Hypergraph; onSelect: (item: SelectedItem | null) => void }) {
+  const warnings = useMemo(() => computeWarnings(hypergraph), [hypergraph])
+  const errors = hypergraph.metadata?.validation?.errors || []
+  const hasErrors = errors.length > 0
+  const hasWarnings = warnings.length > 0
+
+  // Determine status: error > warning > valid
+  const status = hasErrors ? 'error' : hasWarnings ? 'warning' : 'valid'
+  const count = hasErrors ? errors.length : hasWarnings ? warnings.length : 0
+
+  // Don't show indicator if everything is valid and no validation metadata
+  if (status === 'valid' && !hypergraph.metadata?.validation) {
+    return null
+  }
+
+  return (
+    <div className={`validation-indicator ${status}`}>
+      <div className="validation-circle">
+        {status === 'valid' ? '✓' : count}
+      </div>
+      {(hasErrors || hasWarnings) && (
+        <div className="validation-popup">
+          {hasErrors && (
+            <>
+              <div className="validation-popup-header">
+                {errors.length} validation error{errors.length !== 1 ? 's' : ''}
+              </div>
+              <div className="validation-popup-content">
+                {errors.map((error, i) => {
+                  const ref = parseErrorReference(error, hypergraph)
+                  return (
+                    <div
+                      key={`error-${i}`}
+                      className={`validation-error ${ref ? 'clickable' : ''}`}
+                      onClick={() => ref && onSelect(ref)}
+                    >
+                      {error}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
+          {hasWarnings && (
+            <>
+              <div className={`validation-popup-header warning-header`}>
+                {warnings.length} warning{warnings.length !== 1 ? 's' : ''}
+              </div>
+              <div className="validation-popup-content">
+                {warnings.map((warning, i) => (
+                  <div
+                    key={`warning-${i}`}
+                    className={`validation-warning ${warning.ref ? 'clickable' : ''}`}
+                    onClick={() => warning.ref && onSelect(warning.ref)}
+                  >
+                    {warning.message}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function D3HypergraphViewer({
@@ -119,34 +222,7 @@ function D3HypergraphViewer({
           </div>
         )}
       </div>
-      {hypergraph.metadata?.validation && (
-        <div className={`validation-indicator ${hypergraph.metadata.validation.valid ? 'valid' : 'error'}`}>
-          <div className="validation-circle">
-            {hypergraph.metadata.validation.valid ? '✓' : hypergraph.metadata.validation.errors.length}
-          </div>
-          {!hypergraph.metadata.validation.valid && (
-            <div className="validation-popup">
-              <div className="validation-popup-header">
-                {hypergraph.metadata.validation.errors.length} validation error{hypergraph.metadata.validation.errors.length !== 1 ? 's' : ''}
-              </div>
-              <div className="validation-popup-content">
-                {hypergraph.metadata.validation.errors.map((error, i) => {
-                  const ref = parseErrorReference(error, hypergraph)
-                  return (
-                    <div
-                      key={i}
-                      className={`validation-error ${ref ? 'clickable' : ''}`}
-                      onClick={() => ref && onSelect(ref)}
-                    >
-                      {error}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <ValidationIndicator hypergraph={hypergraph} onSelect={onSelect} />
     </div>
   )
 }
