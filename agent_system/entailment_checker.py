@@ -75,6 +75,12 @@ class EntailmentChecker:
 Include in your response:
 REDUNDANT_PREMISES: [comma-separated list of premise IDs that are redundant, or "None"]
 DEGENERATE_PREMISES: [comma-separated list of premise IDs where conclusion → premise, or "None"]"""
+        elif implication_type == "OR":
+            minimality_instruction = """
+**CRITICAL for OR relationships:** Check only one property:
+
+**Singularly Sufficient premise set**: A premise is singularly sufficient if it can be true while the other premises are false, and the conclusion is still true. If the truth value of any single premise does not entail the conclusion, the OR implication is invalid.
+"""
 
         prompt = f"""You are a logic checker. Your job is to determine whether a logical entailment is valid.
 
