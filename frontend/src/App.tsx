@@ -5,6 +5,7 @@ import ChatInterface from './components/ChatInterface'
 import { D3HypergraphViewer } from './components/hypergraph'
 import SelectedItemDetail from './components/SelectedItemDetail'
 import WelcomeModal from './components/WelcomeModal'
+import TutorialModal from './components/TutorialModal'
 import './App.css'
 
 export interface Approach {
@@ -66,6 +67,8 @@ function App() {
   const [darkMode, setDarkMode] = useState(true)
   const [scoreMode, setScoreMode] = useState<'score' | 'propagated'>('propagated')
   const [resetKey, setResetKey] = useState(0)
+  const [showTutorial, setShowTutorial] = useState(false)
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false)
 
   // Apply dark/light mode
   useEffect(() => {
@@ -76,6 +79,13 @@ function App() {
   useEffect(() => {
     fetchApproaches()
   }, [])
+
+  // Show tutorial automatically when there are no approaches
+  useEffect(() => {
+    if (!loading && approaches.length === 0) {
+      setShowTutorial(true)
+    }
+  }, [loading, approaches.length])
 
   // Fetch hypergraph when approach changes
   useEffect(() => {
@@ -251,16 +261,38 @@ function App() {
 
   return (
     <div className="app">
-      {!loading && !currentApproach && (
+      {(showWelcomeModal || (!loading && !currentApproach)) && (
         <WelcomeModal
           approaches={approaches}
-          onSelect={handleSelectApproach}
-          onCreate={handleCreateApproach}
+          onSelect={(approach) => {
+            handleSelectApproach(approach)
+            setShowWelcomeModal(false)
+          }}
+          onCreate={(name, hypothesis) => {
+            handleCreateApproach(name, hypothesis)
+            setShowWelcomeModal(false)
+          }}
+        />
+      )}
+      {showTutorial && (
+        <TutorialModal
+          onClose={() => setShowTutorial(false)}
+          onGetStarted={() => {
+            setShowTutorial(false)
+            setShowWelcomeModal(true)
+          }}
         />
       )}
       <header className="app-header">
         <div className="header-left">
           <h1>Entailment Trees</h1>
+          <button
+            className="tutorial-button"
+            onClick={() => setShowTutorial(true)}
+            title="Show tutorial"
+          >
+            ?
+          </button>
         </div>
         <div className="header-center">
           <ApproachSelector
@@ -272,14 +304,14 @@ function App() {
         </div>
         <div className="header-right">
           <div className="toolbar-group">
-            <label className="toolbar-label">Score:</label>
+            <label className="toolbar-label">View:</label>
             <select
               className="toolbar-select"
               value={scoreMode}
               onChange={(e) => setScoreMode(e.target.value as 'score' | 'propagated')}
             >
-              <option value="score">Direct</option>
-              <option value="propagated">Propagated</option>
+              <option value="score">Score</option>
+              <option value="propagated">Cost</option>
             </select>
           </div>
           <button

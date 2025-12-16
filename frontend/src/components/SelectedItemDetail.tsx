@@ -102,23 +102,17 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, onC
         <div className="detail-text">{claim.text}</div>
 
         <div className="detail-scores">
-          {(() => {
-            const effectiveScore = getEffectiveScore(claim, scoreMode)
-            const displayScore = effectiveScore !== null ? effectiveScore.toFixed(1) : null
-            const label = scoreMode === 'propagated' ? 'Propagated Score' : 'Direct Score'
-            return (
-              <span className="detail-score" style={{ background: `${getScoreColor(effectiveScore)}33`, color: getScoreColor(effectiveScore) }}>
-                {label}: {displayScore !== null ? `${displayScore}/10` : 'Not evaluated'}
-              </span>
-            )
-          })()}
-          {claim.propagated_negative_log !== undefined && (
-            <span className="detail-propagated">
-              -log₂: {claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity"
-                ? '∞'
+          {scoreMode === 'score' ? (
+            <span className="detail-score" style={{ background: `${getScoreColor(claim.score)}33`, color: getScoreColor(claim.score) }}>
+              Score: {claim.score !== null ? `${claim.score.toFixed(1)}/10` : 'Not evaluated'}
+            </span>
+          ) : (
+            <span className="detail-score" style={{ background: `${getScoreColor(getEffectiveScore(claim, scoreMode))}33`, color: getScoreColor(getEffectiveScore(claim, scoreMode)) }}>
+              Cost: {claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity"
+                ? '∞ (P = 0)'
                 : typeof claim.propagated_negative_log === 'number'
-                  ? claim.propagated_negative_log.toFixed(3)
-                  : claim.propagated_negative_log}
+                  ? `${claim.propagated_negative_log.toFixed(3)} (P = ${Math.pow(2, -claim.propagated_negative_log).toFixed(3)})`
+                  : claim.propagated_negative_log ?? 'Not computed'}
             </span>
           )}
         </div>
