@@ -188,6 +188,8 @@ function D3HypergraphViewer({
     maxDepth,
     setMaxDepth,
     maxAvailableDepth,
+    layoutMode,
+    setLayoutMode,
     orphanClaims,
     conclusionToPremises,
     isConclusion,
@@ -243,6 +245,16 @@ function D3HypergraphViewer({
             >
               <option value="score">Score</option>
               <option value="propagated">Cost</option>
+            </select>
+          </div>
+          <div className="toolbar-item">
+            <label>Layout:</label>
+            <select
+              value={layoutMode}
+              onChange={(e) => setLayoutMode(e.target.value as 'compact' | 'spaced')}
+            >
+              <option value="compact">Compact</option>
+              <option value="spaced">Spaced</option>
             </select>
           </div>
           <button className="toolbar-item" onClick={onReset}>

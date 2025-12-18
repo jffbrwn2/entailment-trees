@@ -6,12 +6,16 @@ interface TreeLayoutResult {
   levels: Map<string, number>
 }
 
+export type LayoutMode = 'compact' | 'spaced'
+
 interface UseTreeLayoutReturn {
   collapsedNodes: Set<string>
   setCollapsedNodes: React.Dispatch<React.SetStateAction<Set<string>>>
   maxDepth: number | null
   setMaxDepth: React.Dispatch<React.SetStateAction<number | null>>
   maxAvailableDepth: number
+  layoutMode: LayoutMode
+  setLayoutMode: React.Dispatch<React.SetStateAction<LayoutMode>>
   orphanClaims: Set<string>
   conclusionToPremises: Map<string, string[]>
   premiseToConclusions: Map<string, string[]>
@@ -31,6 +35,7 @@ export function useTreeLayout(
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
   const [maxDepth, setMaxDepth] = useState<number | null>(null)
   const [maxAvailableDepth, setMaxAvailableDepth] = useState(0)
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('compact')
 
   const nodePositionsRef = useRef<Map<string, { x: number; y: number }>>(new Map())
   const conclusionToPremisesRef = useRef<Map<string, string[]>>(new Map())
@@ -44,6 +49,11 @@ export function useTreeLayout(
     setMaxDepth(null)
     nodePositionsRef.current.clear()
   }, [resetKey])
+
+  // Clear positions when layout mode changes to force recalculation
+  useEffect(() => {
+    nodePositionsRef.current.clear()
+  }, [layoutMode])
 
   // Build implication map and calculate node depths
   useEffect(() => {
@@ -298,7 +308,7 @@ export function useTreeLayout(
       })
     }
 
-    // Calculate subtree widths
+    // For 'spaced' mode, calculate subtree widths recursively
     const subtreeWidths = new Map<string, number>()
 
     function calculateSubtreeWidth(nodeId: string, allowOrphans: boolean, visited = new Set<string>()): number {
@@ -327,11 +337,11 @@ export function useTreeLayout(
       return w
     }
 
-    // Calculate widths for main tree (excluding orphans)
-    connectedClaims.forEach(c => calculateSubtreeWidth(c.id, false))
-
-    // Calculate widths for orphan subtrees (including orphan premises)
-    orphanRoots.forEach(rootId => calculateSubtreeWidth(rootId, true))
+    // Only calculate subtree widths for 'spaced' mode
+    if (layoutMode === 'spaced') {
+      connectedClaims.forEach(c => calculateSubtreeWidth(c.id, false))
+      orphanRoots.forEach(rootId => calculateSubtreeWidth(rootId, true))
+    }
 
     // Position nodes
     const positions = new Map<string, { x: number; y: number }>()
@@ -353,10 +363,14 @@ export function useTreeLayout(
     function positionSubtree(nodeId: string, centerX: number, level: number) {
       const y = treeStartY + level * levelSpacing
 
-      if (nodePositionsRef.current.has(nodeId)) {
+      if (layoutMode === 'compact' && nodePositionsRef.current.has(nodeId)) {
         positions.set(nodeId, nodePositionsRef.current.get(nodeId)!)
       } else {
-        positions.set(nodeId, { x: centerX, y })
+        const newPos = { x: centerX, y }
+        positions.set(nodeId, newPos)
+        if (layoutMode === 'compact') {
+          nodePositionsRef.current.set(nodeId, newPos)  // Persist for future layouts
+        }
       }
 
       const premises = conclusionToPremises.get(nodeId)
@@ -371,40 +385,71 @@ export function useTreeLayout(
         const junctionLevel = level + 1
         const junctionY = treeStartY + junctionLevel * levelSpacing
 
-        if (nodePositionsRef.current.has(junctionId)) {
+        if (layoutMode === 'compact' && nodePositionsRef.current.has(junctionId)) {
           positions.set(junctionId, nodePositionsRef.current.get(junctionId)!)
         } else {
-          positions.set(junctionId, { x: centerX, y: junctionY })
+          const newPos = { x: centerX, y: junctionY }
+          positions.set(junctionId, newPos)
+          if (layoutMode === 'compact') {
+            nodePositionsRef.current.set(junctionId, newPos)  // Persist for future layouts
+          }
         }
       }
 
-      // Position children
+      // Position children - use subtree widths for 'spaced' mode, minimum spacing for 'compact'
       const premiseLevel = level + 2
-      const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 190)
       const premiseSpacing = 70
-      const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * premiseSpacing
 
-      let currentX = centerX - totalWidth / 2
-      visiblePremises.forEach((premiseId, i) => {
-        const childCenterX = currentX + childWidths[i] / 2
-        positionSubtree(premiseId, childCenterX, premiseLevel)
-        currentX += childWidths[i] + premiseSpacing
-      })
+      if (layoutMode === 'spaced') {
+        const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 190)
+        const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * premiseSpacing
+
+        let currentX = centerX - totalWidth / 2
+        visiblePremises.forEach((premiseId, i) => {
+          const childCenterX = currentX + childWidths[i] / 2
+          positionSubtree(premiseId, childCenterX, premiseLevel)
+          currentX += childWidths[i] + premiseSpacing
+        })
+      } else {
+        // Compact mode: minimum spacing, collision detection handles overlaps
+        const nodeWidth = 190
+        const totalWidth = visiblePremises.length * nodeWidth + (visiblePremises.length - 1) * premiseSpacing
+
+        let currentX = centerX - totalWidth / 2
+        visiblePremises.forEach((premiseId) => {
+          const childCenterX = currentX + nodeWidth / 2
+          positionSubtree(premiseId, childCenterX, premiseLevel)
+          currentX += nodeWidth + premiseSpacing
+        })
+      }
     }
 
     // Position roots
-    let totalRootWidth = 0
-    rootConclusions.forEach(rootId => {
-      totalRootWidth += subtreeWidths.get(rootId) || 190
-    })
-    totalRootWidth += (rootConclusions.length - 1) * 250
+    const rootSpacing = 250
+    if (layoutMode === 'spaced') {
+      let totalRootWidth = 0
+      rootConclusions.forEach(rootId => {
+        totalRootWidth += subtreeWidths.get(rootId) || 190
+      })
+      totalRootWidth += (rootConclusions.length - 1) * rootSpacing
 
-    let rootX = width / 2 - totalRootWidth / 2
-    rootConclusions.forEach(rootId => {
-      const rootWidth = subtreeWidths.get(rootId) || 190
-      positionSubtree(rootId, rootX + rootWidth / 2, 0)
-      rootX += rootWidth + 250
-    })
+      let rootX = width / 2 - totalRootWidth / 2
+      rootConclusions.forEach(rootId => {
+        const rootWidth = subtreeWidths.get(rootId) || 190
+        positionSubtree(rootId, rootX + rootWidth / 2, 0)
+        rootX += rootWidth + rootSpacing
+      })
+    } else {
+      // Compact mode
+      const rootWidth = 190
+      const totalRootWidth = rootConclusions.length * rootWidth + (rootConclusions.length - 1) * rootSpacing
+
+      let rootX = width / 2 - totalRootWidth / 2
+      rootConclusions.forEach(rootId => {
+        positionSubtree(rootId, rootX + rootWidth / 2, 0)
+        rootX += rootWidth + rootSpacing
+      })
+    }
 
     // Position orphan subtrees above the main tree
     if (visibleOrphans.length > 0) {
@@ -416,10 +461,14 @@ export function useTreeLayout(
         // Level -1 is closest to main tree, more negative levels go higher
         const y = treeStartY + (level + 1) * orphanLevelSpacing - orphanRegionHeight + 60
 
-        if (nodePositionsRef.current.has(nodeId)) {
+        if (layoutMode === 'compact' && nodePositionsRef.current.has(nodeId)) {
           positions.set(nodeId, nodePositionsRef.current.get(nodeId)!)
         } else {
-          positions.set(nodeId, { x: centerX, y })
+          const newPos = { x: centerX, y }
+          positions.set(nodeId, newPos)
+          if (layoutMode === 'compact') {
+            nodePositionsRef.current.set(nodeId, newPos)  // Persist for future layouts
+          }
         }
 
         const premises = conclusionToPremises.get(nodeId)
@@ -434,46 +483,116 @@ export function useTreeLayout(
           const junctionLevel = level - 1
           const junctionY = treeStartY + (junctionLevel + 1) * orphanLevelSpacing - orphanRegionHeight + 60
 
-          if (nodePositionsRef.current.has(junctionId)) {
+          if (layoutMode === 'compact' && nodePositionsRef.current.has(junctionId)) {
             positions.set(junctionId, nodePositionsRef.current.get(junctionId)!)
           } else {
-            positions.set(junctionId, { x: centerX, y: junctionY })
+            const newPos = { x: centerX, y: junctionY }
+            positions.set(junctionId, newPos)
+            if (layoutMode === 'compact') {
+              nodePositionsRef.current.set(junctionId, newPos)  // Persist for future layouts
+            }
           }
         }
 
         // Position children (premises go above, so use level - 2)
         const premiseLevel = level - 2
-        const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 190)
         const premiseSpacing = 70
-        const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * premiseSpacing
 
-        let currentX = centerX - totalWidth / 2
-        visiblePremises.forEach((premiseId, i) => {
-          const childCenterX = currentX + childWidths[i] / 2
-          positionOrphanSubtree(premiseId, childCenterX, premiseLevel)
-          currentX += childWidths[i] + premiseSpacing
-        })
+        if (layoutMode === 'spaced') {
+          const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 190)
+          const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * premiseSpacing
+
+          let currentX = centerX - totalWidth / 2
+          visiblePremises.forEach((premiseId, i) => {
+            const childCenterX = currentX + childWidths[i] / 2
+            positionOrphanSubtree(premiseId, childCenterX, premiseLevel)
+            currentX += childWidths[i] + premiseSpacing
+          })
+        } else {
+          const nodeWidth = 190
+          const totalWidth = visiblePremises.length * nodeWidth + (visiblePremises.length - 1) * premiseSpacing
+
+          let currentX = centerX - totalWidth / 2
+          visiblePremises.forEach((premiseId) => {
+            const childCenterX = currentX + nodeWidth / 2
+            positionOrphanSubtree(premiseId, childCenterX, premiseLevel)
+            currentX += nodeWidth + premiseSpacing
+          })
+        }
       }
 
       // Position orphan roots and standalone orphans
       const allOrphanRoots = [...orphanRoots, ...orphanLeaves]
-      let totalOrphanWidth = 0
-      allOrphanRoots.forEach(rootId => {
-        totalOrphanWidth += subtreeWidths.get(rootId) || 190
-      })
-      totalOrphanWidth += (allOrphanRoots.length - 1) * 190
+      const orphanSpacing = 190
 
-      let orphanX = width / 2 - totalOrphanWidth / 2
-      allOrphanRoots.forEach(rootId => {
-        const rootWidth = subtreeWidths.get(rootId) || 190
-        const rootLevel = levels.get(rootId) ?? -1
-        positionOrphanSubtree(rootId, orphanX + rootWidth / 2, rootLevel)
-        orphanX += rootWidth + 190
+      if (layoutMode === 'spaced') {
+        let totalOrphanWidth = 0
+        allOrphanRoots.forEach(rootId => {
+          totalOrphanWidth += subtreeWidths.get(rootId) || 190
+        })
+        totalOrphanWidth += (allOrphanRoots.length - 1) * orphanSpacing
+
+        let orphanX = width / 2 - totalOrphanWidth / 2
+        allOrphanRoots.forEach(rootId => {
+          const rootWidth = subtreeWidths.get(rootId) || 190
+          const rootLevel = levels.get(rootId) ?? -1
+          positionOrphanSubtree(rootId, orphanX + rootWidth / 2, rootLevel)
+          orphanX += rootWidth + orphanSpacing
+        })
+      } else {
+        const orphanNodeWidth = 190
+        const totalOrphanWidth = allOrphanRoots.length * orphanNodeWidth + (allOrphanRoots.length - 1) * orphanSpacing
+
+        let orphanX = width / 2 - totalOrphanWidth / 2
+        allOrphanRoots.forEach(rootId => {
+          const rootLevel = levels.get(rootId) ?? -1
+          positionOrphanSubtree(rootId, orphanX + orphanNodeWidth / 2, rootLevel)
+          orphanX += orphanNodeWidth + orphanSpacing
+        })
+      }
+    }
+
+    // Collision detection: push apart overlapping nodes at each level (compact mode only)
+    if (layoutMode === 'compact') {
+      const minNodeDistance = 190 + 20  // node width + padding
+      const nodesByY = new Map<number, string[]>()
+
+      // Group nodes by Y position (rounded to handle floating point)
+      positions.forEach((pos, nodeId) => {
+        const roundedY = Math.round(pos.y / 10) * 10
+        if (!nodesByY.has(roundedY)) nodesByY.set(roundedY, [])
+        nodesByY.get(roundedY)!.push(nodeId)
+      })
+
+      // For each Y level, resolve horizontal overlaps
+      nodesByY.forEach((nodesAtY) => {
+        if (nodesAtY.length < 2) return
+
+        // Sort by X position
+        nodesAtY.sort((a, b) => positions.get(a)!.x - positions.get(b)!.x)
+
+        // Push apart overlapping nodes
+        for (let i = 1; i < nodesAtY.length; i++) {
+          const prevPos = positions.get(nodesAtY[i - 1])!
+          const currPos = positions.get(nodesAtY[i])!
+          const distance = currPos.x - prevPos.x
+
+          if (distance < minNodeDistance) {
+            const shift = minNodeDistance - distance
+            // Push current node and all nodes to its right
+            for (let j = i; j < nodesAtY.length; j++) {
+              const pos = positions.get(nodesAtY[j])!
+              pos.x += shift
+              // Update the ref with new position
+              nodePositionsRef.current.set(nodesAtY[j], { ...pos })
+            }
+          }
+        }
       })
     }
 
     return { positions, levels }
-  }, [hypergraph, collapsedNodes])
+  }, [hypergraph, collapsedNodes, layoutMode])
 
   // Memoize the returned refs as stable values
   const orphanClaims = useMemo(() => orphanClaimsRef.current, [hypergraph])
@@ -487,6 +606,8 @@ export function useTreeLayout(
     maxDepth,
     setMaxDepth,
     maxAvailableDepth,
+    layoutMode,
+    setLayoutMode,
     orphanClaims,
     conclusionToPremises,
     premiseToConclusions,
