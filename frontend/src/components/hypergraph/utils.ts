@@ -1,4 +1,4 @@
-import type { Hypergraph, Claim, LinkData } from './types'
+import type { Hypergraph, Claim, Implication, LinkData } from './types'
 
 /**
  * Generate a signature that represents the graph structure (not content/scores).
@@ -14,16 +14,83 @@ export function getStructuralSignature(hypergraph: Hypergraph | null): string {
 }
 
 /**
+ * Compute which claims are "evidence-backed" - meaning they have evidence
+ * support somewhere in their subtree.
+ *
+ * - Leaf nodes: backed if they have evidence
+ * - AND junctions: backed if ALL premises are backed
+ * - OR junctions: backed if ANY premise is backed
+ *
+ * Returns a Map of claimId -> boolean
+ */
+export function computeEvidenceBacked(hypergraph: Hypergraph): Map<string, boolean> {
+  const result = new Map<string, boolean>()
+
+  // Build map of conclusion -> implication
+  const conclusionToImpl = new Map<string, Implication>()
+  for (const impl of hypergraph.implications) {
+    conclusionToImpl.set(impl.conclusion, impl)
+  }
+
+  // Build map of claimId -> claim
+  const claimMap = new Map<string, Claim>()
+  for (const claim of hypergraph.claims) {
+    claimMap.set(claim.id, claim)
+  }
+
+  // Memoized recursive function
+  function isEvidenceBacked(claimId: string): boolean {
+    if (result.has(claimId)) {
+      return result.get(claimId)!
+    }
+
+    const claim = claimMap.get(claimId)
+    if (!claim) {
+      result.set(claimId, false)
+      return false
+    }
+
+    const impl = conclusionToImpl.get(claimId)
+
+    let backed: boolean
+    if (!impl) {
+      // Leaf node - backed if has evidence
+      backed = !!(claim.evidence && claim.evidence.length > 0)
+    } else {
+      // Non-leaf - check premises based on junction type
+      const premisesBacked = impl.premises.map(p => isEvidenceBacked(p))
+      if (impl.type === 'OR') {
+        // OR: backed if ANY premise is backed
+        backed = premisesBacked.some(b => b)
+      } else {
+        // AND (default): backed if ALL premises are backed
+        backed = premisesBacked.every(b => b)
+      }
+    }
+
+    result.set(claimId, backed)
+    return backed
+  }
+
+  // Compute for all claims
+  for (const claim of hypergraph.claims) {
+    isEvidenceBacked(claim.id)
+  }
+
+  return result
+}
+
+/**
  * Get the effective score for a claim based on scoreMode.
- * If isLeaf is true and the claim has no evidence, returns null (unevaluated).
+ * If isEvidenceBacked is false, returns null (unevaluated/gray).
  */
 export function getEffectiveScore(
   claim: Claim,
   scoreMode: 'score' | 'propagated',
-  isLeaf: boolean = false
+  isEvidenceBacked: boolean = true
 ): number | null {
-  // Leaf claims without evidence are unevaluated (gray)
-  if (isLeaf && (!claim.evidence || claim.evidence.length === 0)) {
+  // Claims not backed by evidence are unevaluated (gray)
+  if (!isEvidenceBacked) {
     return null
   }
 

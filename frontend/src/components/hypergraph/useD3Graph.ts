@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import * as d3 from 'd3'
 import type { Hypergraph, Claim, NodeData, LinkData, SelectedItem } from './types'
-import { getStructuralSignature, getScoreColor, getEffectiveScore, createCurvePath } from './utils'
+import { getStructuralSignature, getScoreColor, getEffectiveScore, createCurvePath, computeEvidenceBacked } from './utils'
 
 interface UseD3GraphParams {
   hypergraph: Hypergraph | null
@@ -257,6 +257,9 @@ export function useD3Graph({
     const allNodes = nodesDataRef.current
     const links = linksDataRef.current
 
+    // Compute evidence-backed status for all claims
+    const evidenceBacked = computeEvidenceBacked(hypergraph)
+
     // Calculate new layout
     const claims = allNodes.filter(n => n.type === 'claim')
     const visibleClaims = claims.filter(c => !collapsedNodes.has(c.id))
@@ -418,8 +421,8 @@ export function useD3Graph({
     // Add claim node visuals
     enteringNodes.filter(d => d.type === 'claim').each(function(d) {
       const node = d3.select(this)
-      const isLeaf = !conclusionToPremises.has(d.id)
-      const effectiveScore = getEffectiveScore(d as unknown as Claim, scoreMode, isLeaf)
+      const isBacked = evidenceBacked.get(d.id) ?? false
+      const effectiveScore = getEffectiveScore(d as unknown as Claim, scoreMode, isBacked)
 
       node.append('circle')
         .attr('r', 65)
@@ -821,15 +824,15 @@ export function useD3Graph({
       .attr('fill', d => {
         const claim = hypergraph.claims.find(c => c.id === d.id)
         if (!claim) return 'rgb(128, 128, 128)'
-        const isLeaf = !conclusionToPremises.has(d.id)
-        const effectiveScore = getEffectiveScore(claim, scoreMode, isLeaf)
+        const isBacked = evidenceBacked.get(d.id) ?? false
+        const effectiveScore = getEffectiveScore(claim, scoreMode, isBacked)
         return getScoreColor(effectiveScore)
       })
       .attr('stroke', d => {
         const claim = hypergraph.claims.find(c => c.id === d.id)
         if (!claim) return 'rgb(128, 128, 128)'
-        const isLeaf = !conclusionToPremises.has(d.id)
-        const effectiveScore = getEffectiveScore(claim, scoreMode, isLeaf)
+        const isBacked = evidenceBacked.get(d.id) ?? false
+        const effectiveScore = getEffectiveScore(claim, scoreMode, isBacked)
         return getScoreColor(effectiveScore)
       })
       .attr('stroke-width', d => {
