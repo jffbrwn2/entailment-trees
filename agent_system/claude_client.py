@@ -31,6 +31,7 @@ from .claim_evaluator import evaluate_claim_skill as evaluate_claim_impl, add_ev
 from .gapmap_client import GapMapClient
 from .conversation_logger import ConversationLogger
 from .path_utils import set_approach_dir, resolve_path
+from .runtime_settings import get_settings
 
 try:
     from edison_client import EdisonClient, JobNames
@@ -991,34 +992,37 @@ class ClaudeCodeClient:
                 global _approach_dir
                 _approach_dir = self.mode.working_dir
 
+            # Get runtime settings for tool toggles
+            runtime_settings = get_settings()
+
             # Build allowed tools list (include built-in tools + MCP tools)
             allowed = self.allowed_tools.copy() if self.allowed_tools else []
             allowed.append("mcp__entailment__check_entailment")
             allowed.append("mcp__entailment__add_evidence")
             allowed.append("mcp__entailment__evaluate_claim")
 
-            # Add Edison tools if available
-            if EDISON_AVAILABLE and edison_server:
+            # Build MCP servers dict (always include entailment)
+            mcp_servers_dict = {
+                "entailment": entailment_server,
+            }
+
+            # Add Edison tools if available AND enabled in settings
+            if EDISON_AVAILABLE and edison_server and runtime_settings.edison_tools_enabled:
                 allowed.append("mcp__edison__literature_search")
                 allowed.append("mcp__edison__precedent_search")
                 allowed.append("mcp__edison__check_edison_task")
-
-            # Add GAP-map tools
-            allowed.append("mcp__gapmap__list_fields")
-            allowed.append("mcp__gapmap__list_gaps")
-            allowed.append("mcp__gapmap__search_gaps")
-            allowed.append("mcp__gapmap__list_capabilities")
-            allowed.append("mcp__gapmap__get_capabilities")
-            allowed.append("mcp__gapmap__list_resources")
-            allowed.append("mcp__gapmap__get_resources")
-
-            # Build MCP servers dict
-            mcp_servers_dict = {
-                "entailment": entailment_server,
-                "gapmap": gapmap_server
-            }
-            if EDISON_AVAILABLE and edison_server:
                 mcp_servers_dict["edison"] = edison_server
+
+            # Add GAP-map tools if enabled in settings
+            if runtime_settings.gapmap_tools_enabled:
+                allowed.append("mcp__gapmap__list_fields")
+                allowed.append("mcp__gapmap__list_gaps")
+                allowed.append("mcp__gapmap__search_gaps")
+                allowed.append("mcp__gapmap__list_capabilities")
+                allowed.append("mcp__gapmap__get_capabilities")
+                allowed.append("mcp__gapmap__list_resources")
+                allowed.append("mcp__gapmap__get_resources")
+                mcp_servers_dict["gapmap"] = gapmap_server
 
             options = ClaudeAgentOptions(
                 system_prompt=system_prompt or "claude_code",
@@ -1132,34 +1136,37 @@ class ClaudeCodeClient:
                 global _approach_dir
                 _approach_dir = self.mode.working_dir
 
+            # Get runtime settings for tool toggles
+            runtime_settings = get_settings()
+
             # Build allowed tools list (include built-in tools + MCP tools)
             allowed = self.allowed_tools.copy() if self.allowed_tools else []
             allowed.append("mcp__entailment__check_entailment")
             allowed.append("mcp__entailment__add_evidence")
             allowed.append("mcp__entailment__evaluate_claim")
 
-            # Add Edison tools if available
-            if EDISON_AVAILABLE and edison_server:
+            # Build MCP servers dict (always include entailment)
+            mcp_servers_dict = {
+                "entailment": entailment_server,
+            }
+
+            # Add Edison tools if available AND enabled in settings
+            if EDISON_AVAILABLE and edison_server and runtime_settings.edison_tools_enabled:
                 allowed.append("mcp__edison__literature_search")
                 allowed.append("mcp__edison__precedent_search")
                 allowed.append("mcp__edison__check_edison_task")
-
-            # Add GAP-map tools
-            allowed.append("mcp__gapmap__list_fields")
-            allowed.append("mcp__gapmap__list_gaps")
-            allowed.append("mcp__gapmap__search_gaps")
-            allowed.append("mcp__gapmap__list_capabilities")
-            allowed.append("mcp__gapmap__get_capabilities")
-            allowed.append("mcp__gapmap__list_resources")
-            allowed.append("mcp__gapmap__get_resources")
-
-            # Build MCP servers dict
-            mcp_servers_dict = {
-                "entailment": entailment_server,
-                "gapmap": gapmap_server
-            }
-            if EDISON_AVAILABLE and edison_server:
                 mcp_servers_dict["edison"] = edison_server
+
+            # Add GAP-map tools if enabled in settings
+            if runtime_settings.gapmap_tools_enabled:
+                allowed.append("mcp__gapmap__list_fields")
+                allowed.append("mcp__gapmap__list_gaps")
+                allowed.append("mcp__gapmap__search_gaps")
+                allowed.append("mcp__gapmap__list_capabilities")
+                allowed.append("mcp__gapmap__get_capabilities")
+                allowed.append("mcp__gapmap__list_resources")
+                allowed.append("mcp__gapmap__get_resources")
+                mcp_servers_dict["gapmap"] = gapmap_server
 
             options = ClaudeAgentOptions(
                 system_prompt=system_prompt or "claude_code",

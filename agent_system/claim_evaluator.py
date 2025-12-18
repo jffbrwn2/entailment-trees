@@ -14,6 +14,7 @@ from anthropic import Anthropic
 import os
 from .config import DEFAULT_CONFIG
 from .path_utils import resolve_path
+from .runtime_settings import get_settings
 
 
 def _validate_evidence_format(evidence_item: dict) -> tuple[bool, Optional[str]]:
@@ -185,9 +186,13 @@ Respond in this exact format:
 SCORE: [number 0-10]
 REASONING: [your explanation]"""
 
+    # Get evaluator model from runtime settings
+    settings = get_settings()
+    model = settings.evaluator_model or DEFAULT_CONFIG.evaluation_model
+
     # Call Claude with configured model
     response = client.messages.create(
-        model=DEFAULT_CONFIG.evaluation_model,
+        model=model,
         max_tokens=1024,
         messages=[{
             "role": "user",

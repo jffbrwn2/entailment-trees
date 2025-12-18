@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Approach } from '../App'
 import './ApproachSelector.css'
 
@@ -17,9 +17,24 @@ function truncate(text: string, maxLength: number): string {
 
 function ApproachSelector({ approaches, currentApproach, onSelect, onRequestCreate }: Props) {
   const [showDropdown, setShowDropdown] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside (use capture phase to catch SVG clicks)
+  useEffect(() => {
+    if (!showDropdown) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside, true)
+    return () => document.removeEventListener('mousedown', handleClickOutside, true)
+  }, [showDropdown])
 
   return (
-    <div className="approach-selector">
+    <div className="approach-selector" ref={containerRef}>
       <button
         className="selector-button"
         onClick={() => setShowDropdown(!showDropdown)}

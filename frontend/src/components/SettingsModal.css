@@ -121,48 +121,99 @@
   color: var(--text-secondary);
 }
 
-/* Toggle switch styling */
+/* Toggle row layout */
 .toggle-row {
+  display: flex !important;
   flex-direction: row !important;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
+}
+
+.toggle-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.toggle-label-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Theme toggle with Light/Dark labels */
+.toggle-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toggle-option {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.toggle-option.active {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Toggle wrapper - contains checkbox and visual switch */
+.toggle-wrapper {
+  position: relative;
+  display: inline-block;
   cursor: pointer;
 }
 
-.toggle-row input[type="checkbox"] {
+.toggle-wrapper input[type="checkbox"] {
   position: absolute;
   opacity: 0;
   width: 0;
   height: 0;
 }
 
+/* The toggle switch track */
 .toggle-switch {
-  position: relative;
+  display: block;
   width: 44px;
   height: 24px;
-  background: var(--bg-tertiary);
+  background: #64748b;
   border-radius: 12px;
-  transition: background 0.2s;
-  flex-shrink: 0;
+  transition: background 0.2s ease;
+  position: relative;
 }
 
+/* The toggle switch knob */
 .toggle-switch::after {
   content: '';
   position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 20px;
-  height: 20px;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
   background: white;
   border-radius: 50%;
-  transition: transform 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-.toggle-row input[type="checkbox"]:checked + .toggle-switch {
-  background: var(--accent);
+/* Checked state - green/accent background, knob moves right */
+.toggle-wrapper input[type="checkbox"]:checked + .toggle-switch {
+  background: #22c55e;
 }
 
-.toggle-row input[type="checkbox"]:checked + .toggle-switch::after {
+.toggle-wrapper input[type="checkbox"]:checked + .toggle-switch::after {
   transform: translateX(20px);
+}
+
+/* Hover effect */
+.toggle-wrapper:hover .toggle-switch {
+  background: #475569;
+}
+
+.toggle-wrapper:hover input[type="checkbox"]:checked + .toggle-switch {
+  background: #16a34a;
 }

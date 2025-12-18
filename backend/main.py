@@ -35,6 +35,7 @@ from agent_system import (
 from agent_system.config import AgentConfig
 from agent_system.conversation_logger import list_conversation_logs, load_conversation_log
 from agent_system.openrouter_client import OpenRouterClient
+from agent_system.runtime_settings import get_settings, update_settings
 
 
 # Global orchestrator instance (one per server for now)
@@ -942,6 +943,35 @@ async def get_config_status() -> dict:
         "anthropic_key_set": bool(os.getenv("ANTHROPIC_API_KEY")),
         "openrouter_key_set": bool(os.getenv("OPENROUTER_API_KEY")),
     }
+
+
+# =============================================================================
+# RUNTIME SETTINGS ENDPOINTS
+# =============================================================================
+
+class UpdateSettingsRequest(BaseModel):
+    """Request to update runtime settings."""
+    chatModel: Optional[str] = None
+    evaluatorModel: Optional[str] = None
+    autoModel: Optional[str] = None
+    edisonToolsEnabled: Optional[bool] = None
+    gapMapToolsEnabled: Optional[bool] = None
+
+
+@app.get("/api/settings")
+async def get_runtime_settings() -> dict:
+    """Get current runtime settings."""
+    settings = get_settings()
+    return settings.to_dict()
+
+
+@app.put("/api/settings")
+async def update_runtime_settings(request: UpdateSettingsRequest) -> dict:
+    """Update runtime settings."""
+    # Convert request to dict, filtering out None values
+    data = {k: v for k, v in request.model_dump().items() if v is not None}
+    settings = update_settings(data)
+    return settings.to_dict()
 
 
 @app.post("/api/approaches/{folder}/auto/start")

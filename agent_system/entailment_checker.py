@@ -12,6 +12,7 @@ from typing import Dict, List, Any, Tuple, Optional
 from anthropic import Anthropic
 from .config import DEFAULT_CONFIG
 from .path_utils import resolve_path
+from .runtime_settings import get_settings
 
 
 class EntailmentChecker:
@@ -27,10 +28,15 @@ class EntailmentChecker:
 
         Args:
             model: Claude model to use for entailment checking
-                   (defaults to config.evaluation_model)
+                   (defaults to runtime settings evaluator_model)
         """
         self.client = Anthropic()
-        self.model = model or DEFAULT_CONFIG.evaluation_model
+        # Get model from: explicit argument > runtime settings > default config
+        if model:
+            self.model = model
+        else:
+            settings = get_settings()
+            self.model = settings.evaluator_model or DEFAULT_CONFIG.evaluation_model
 
     def check_implication(
         self,
