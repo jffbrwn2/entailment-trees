@@ -424,12 +424,14 @@ export function useD3Graph({
       const isBacked = evidenceBacked.get(d.id) ?? false
       const effectiveScore = getEffectiveScore(d as unknown as Claim, scoreMode, isBacked)
 
+      const isHypothesis = d.id === 'hypothesis'
       node.append('circle')
-        .attr('r', 65)
+        .attr('r', isHypothesis ? 75 : 65)
         .attr('fill', getScoreColor(effectiveScore))
         .attr('fill-opacity', 0.6)
-        .attr('stroke', getScoreColor(effectiveScore))
-        .attr('stroke-width', 2)
+        .attr('stroke', isHypothesis ? 'var(--text-primary)' : getScoreColor(effectiveScore))
+        .attr('stroke-width', isHypothesis ? 4 : 2)
+        .attr('stroke-dasharray', isHypothesis ? '8,4' : null)
         .attr('cursor', 'pointer')
 
       // Text with word wrapping
@@ -604,9 +606,8 @@ export function useD3Graph({
             const currentlyCollapsed = premises.some(p => prev.has(p))
 
             if (currentlyCollapsed) {
-              // When expanding, remove all descendants
-              const allDescendants = getAllDescendants(d.id)
-              allDescendants.forEach(p => newSet.delete(p))
+              // When expanding, only reveal direct premises (one level)
+              premises.forEach(p => newSet.delete(p))
             } else {
               // When collapsing, only collapse nodes that don't have other paths to root
               // This ensures nodes like c7 (premise for both c12 and hypothesis)
