@@ -152,31 +152,83 @@
   color: white;
 }
 
-/* Legend - scaled 1.5x for visibility */
-.graph-legend {
+/* Left side controls container */
+.graph-controls-left {
   position: absolute;
   top: 12px;
   left: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* Legend */
+.graph-legend {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 12px 15px;
-  font-size: 17px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  min-width: 160px;
+}
+
+.graph-legend.collapsed {
+  min-width: auto;
+}
+
+.legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.legend-header:hover {
+  opacity: 0.8;
 }
 
 .legend-title {
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 9px;
+  font-size: 13px;
+}
+
+.legend-toggle {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-left: 8px;
+}
+
+.legend-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.legend-section:first-of-type {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: none;
+}
+
+.legend-section-title {
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
 }
 
 .legend-gradient {
-  margin-bottom: 9px;
+  margin-bottom: 6px;
 }
 
 .legend-bar {
-  height: 12px;
-  width: 150px;
+  height: 10px;
+  width: 140px;
   border-radius: 3px;
   background: linear-gradient(to right,
     rgb(248, 81, 73) 0%,
@@ -189,56 +241,129 @@
   display: flex;
   justify-content: space-between;
   color: var(--text-secondary);
-  font-size: 14px;
-  margin-top: 3px;
+  font-size: 10px;
+  margin-top: 2px;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   color: var(--text-secondary);
+  margin-top: 4px;
+  font-size: 11px;
 }
 
 .legend-color {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* Logic node icons */
+.legend-node {
   width: 18px;
   height: 18px;
-  border-radius: 3px;
-}
-
-/* Depth control */
-.depth-control {
+  border-radius: 50%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
-.depth-control label {
-  color: var(--text-secondary);
-  font-size: 11px;
+.legend-node.and-node {
+  background: #58a6ff;
+  color: var(--bg-primary);
 }
 
-.depth-control select {
-  background: var(--bg-primary);
+.legend-node.or-node {
+  background: #d29922;
+  color: var(--bg-primary);
+}
+
+/* Edge line indicators */
+.legend-line {
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-line.passed {
+  background: #3fb950;
+}
+
+.legend-line.failed {
+  background: #f85149;
+}
+
+.legend-line.unchecked {
+  background: var(--text-secondary);
+}
+
+/* Depth control panel - separate from legend */
+.depth-control-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.depth-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+}
+
+.depth-header:hover {
+  opacity: 0.8;
+}
+
+.depth-title {
+  font-weight: 600;
   color: var(--text-primary);
+  font-size: 13px;
+}
+
+.depth-toggle {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-left: 8px;
+}
+
+.depth-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.depth-option {
+  background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 2px 6px;
+  padding: 4px 10px;
   font-size: 11px;
+  color: var(--text-secondary);
   cursor: pointer;
-  min-width: 50px;
+  transition: all 0.15s;
+  text-align: left;
 }
 
-.depth-control select:hover {
+.depth-option:hover {
   border-color: var(--accent);
+  color: var(--text-primary);
 }
 
-.depth-control select:focus {
-  outline: none;
+.depth-option.active {
+  background: var(--accent);
   border-color: var(--accent);
+  color: white;
 }
 
 /* Orphan region */

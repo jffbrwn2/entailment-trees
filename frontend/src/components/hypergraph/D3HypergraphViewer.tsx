@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useState } from 'react'
 import type { D3HypergraphViewerProps, Hypergraph, SelectedItem } from './types'
 import { useTreeLayout } from './useTreeLayout'
 import { useD3Graph } from './useD3Graph'
@@ -179,6 +179,8 @@ function D3HypergraphViewer({
 }: D3HypergraphViewerProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const [legendCollapsed, setLegendCollapsed] = useState(false)
+  const [depthCollapsed, setDepthCollapsed] = useState(false)
 
   const {
     collapsedNodes,
@@ -251,36 +253,83 @@ function D3HypergraphViewer({
           </button>
         </div>
       </div>
-      <div className="graph-legend">
-        <div className="legend-title">Score</div>
-        <div className="legend-gradient">
-          <div className="legend-bar" />
-          <div className="legend-labels">
-            <span>0 (false)</span>
-            <span>5</span>
-            <span>10 (true)</span>
+      <div className="graph-controls-left">
+        <div className={`graph-legend ${legendCollapsed ? 'collapsed' : ''}`}>
+          <div className="legend-header" onClick={() => setLegendCollapsed(!legendCollapsed)}>
+            <span className="legend-title">Legend</span>
+            <span className="legend-toggle">{legendCollapsed ? '▶' : '▼'}</span>
           </div>
-        </div>
-        <div className="legend-item">
-          <span className="legend-color" style={{ background: 'rgb(128, 128, 128)' }} />
-          <span>Not evaluated</span>
+          {!legendCollapsed && (
+            <>
+              <div className="legend-section">
+                <div className="legend-section-title">Score</div>
+                <div className="legend-gradient">
+                  <div className="legend-bar" />
+                  <div className="legend-labels">
+                    <span>0 (false)</span>
+                    <span>5</span>
+                    <span>10 (true)</span>
+                  </div>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-color" style={{ background: 'rgb(128, 128, 128)' }} />
+                  <span>Not evaluated</span>
+                </div>
+              </div>
+              <div className="legend-section">
+                <div className="legend-section-title">Logic Nodes</div>
+                <div className="legend-item">
+                  <span className="legend-node and-node">∧</span>
+                  <span>AND (all required)</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-node or-node">∨</span>
+                  <span>OR (any sufficient)</span>
+                </div>
+              </div>
+              <div className="legend-section">
+                <div className="legend-section-title">Edges</div>
+                <div className="legend-item">
+                  <span className="legend-line passed" />
+                  <span>Passed</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-line failed" />
+                  <span>Failed</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-line unchecked" />
+                  <span>Not checked</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
         {maxAvailableDepth > 0 && (
-          <div className="depth-control">
-            <label htmlFor="depth-select">Depth</label>
-            <select
-              id="depth-select"
-              value={maxDepth === null ? 'all' : maxDepth}
-              onChange={(e) => {
-                const val = e.target.value
-                setMaxDepth(val === 'all' ? null : parseInt(val, 10))
-              }}
-            >
-              <option value="all">All</option>
-              {Array.from({ length: maxAvailableDepth + 1 }, (_, i) => (
-                <option key={i} value={i}>{i}</option>
-              ))}
-            </select>
+          <div className={`depth-control-panel ${depthCollapsed ? 'collapsed' : ''}`}>
+            <div className="depth-header" onClick={() => setDepthCollapsed(!depthCollapsed)}>
+              <span className="depth-title">Depth</span>
+              <span className="depth-toggle">{depthCollapsed ? '▶' : '▼'}</span>
+            </div>
+            {!depthCollapsed && (
+              <div className="depth-options">
+                <button
+                  className={`depth-option ${maxDepth === null ? 'active' : ''}`}
+                  onClick={() => setMaxDepth(null)}
+                >
+                  All
+                </button>
+                {Array.from({ length: maxAvailableDepth + 1 }, (_, i) => (
+                  <button
+                    key={i}
+                    className={`depth-option ${maxDepth === i ? 'active' : ''}`}
+                    onClick={() => setMaxDepth(i)}
+                  >
+                    {i}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
