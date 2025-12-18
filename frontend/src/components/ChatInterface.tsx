@@ -139,6 +139,129 @@ function ChatInterface({
     }
   }, [approachFolder])
 
+  // WebSocket for auto mode events
+  useEffect(() => {
+    if (!approachFolder || !autoModeEnabled) return
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/hypergraph/${approachFolder}`)
+
+    // Track current assistant message ID for streaming
+    let currentAssistantMessageId: string | null = null
+
+    ws.onmessage = (event) => {
+      if (event.data === 'ping') return
+
+      try {
+        const data = JSON.parse(event.data)
+
+        switch (data.type) {
+          case 'auto_message':
+            // Add auto agent message
+            const autoMessage: Message = {
+              id: `auto-${Date.now()}`,
+              role: 'auto',
+              parts: [{ type: 'text', content: data.text }],
+            }
+            setMessages((prev) => [...prev, autoMessage])
+            break
+
+          case 'text':
+            // Claude's response text (during auto mode)
+            if (!currentAssistantMessageId) {
+              currentAssistantMessageId = `assistant-${Date.now()}`
+              setMessages((prev) => [
+                ...prev,
+                { id: currentAssistantMessageId!, role: 'assistant', parts: [] },
+              ])
+            }
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== currentAssistantMessageId) return m
+                const parts = [...m.parts]
+                const lastPart = parts[parts.length - 1]
+                if (lastPart && lastPart.type === 'text') {
+                  parts[parts.length - 1] = { ...lastPart, content: (lastPart.content || '') + (data.text || '') }
+                } else {
+                  parts.push({ type: 'text', content: data.text || '' })
+                }
+                return { ...m, parts }
+              })
+            )
+            break
+
+          case 'tool_use':
+            if (currentAssistantMessageId) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === currentAssistantMessageId
+                    ? {
+                        ...m,
+                        parts: [
+                          ...m.parts,
+                          { type: 'tool' as const, tool: { name: data.tool_name || 'unknown', status: 'running' as const } },
+                        ],
+                      }
+                    : m
+                )
+              )
+            }
+            break
+
+          case 'tool_result':
+            if (currentAssistantMessageId) {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== currentAssistantMessageId) return m
+                  const parts = [...m.parts]
+                  for (let i = parts.length - 1; i >= 0; i--) {
+                    const part = parts[i]
+                    if (part.type === 'tool' && part.tool?.name === data.tool_name && part.tool?.status === 'running') {
+                      parts[i] = { ...part, tool: { ...part.tool, status: 'done' } }
+                      break
+                    }
+                  }
+                  return { ...m, parts }
+                })
+              )
+            }
+            break
+
+          case 'done':
+            // Claude finished responding - reset for next turn
+            currentAssistantMessageId = null
+            break
+
+          case 'auto_turn':
+            onAutoTurnUpdate?.(data.turn_number)
+            break
+
+          case 'auto_status':
+            // Status updates are handled by parent component via polling
+            break
+
+          case 'error':
+            if (currentAssistantMessageId) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === currentAssistantMessageId
+                    ? { ...m, parts: [...m.parts, { type: 'text' as const, content: `\n\n*Error: ${data.error}*` }] }
+                    : m
+                )
+              )
+            }
+            break
+        }
+      } catch (e) {
+        console.error('WebSocket message error:', e)
+      }
+    }
+
+    return () => {
+      ws.close()
+    }
+  }, [approachFolder, autoModeEnabled, onAutoTurnUpdate])
+
   const handleNewChat = async () => {
     if (!approachFolder || isStreaming) return
 
@@ -528,6 +651,19 @@ function ChatInterface({
         )}
       </div>
 
+      {autoModeEnabled && approachFolder && (
+        <AutoControls
+          active={autoModeActive}
+          paused={autoModePaused}
+          turnCount={autoTurnCount}
+          maxTurns={autoMaxTurns}
+          onStart={onAutoStart || (() => {})}
+          onPause={onAutoPause || (() => {})}
+          onResume={onAutoResume || (() => {})}
+          onStop={onAutoStop || (() => {})}
+        />
+      )}
+
       <div className="messages">
         {messages.length === 0 && approachFolder && (
           <div className="empty-chat">
@@ -550,8 +686,9 @@ function ChatInterface({
 
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.role}`}>
+            {message.role === 'auto' && <span className="auto-label">Auto</span>}
             <div className="message-content">
-              {message.role === 'assistant' ? (
+              {message.role === 'assistant' || message.role === 'auto' ? (
                 message.parts.length > 0 ? (
                   message.parts.map((part, index) => (
                     part.type === 'text' ? (

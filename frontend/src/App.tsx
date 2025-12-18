@@ -71,6 +71,14 @@ function App() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
 
+  // Auto mode state
+  const [autoModeEnabled, setAutoModeEnabled] = useState(false)
+  const [autoModeActive, setAutoModeActive] = useState(false)
+  const [autoModePaused, setAutoModePaused] = useState(false)
+  const [autoTurnCount, setAutoTurnCount] = useState(0)
+  const [autoMaxTurns, setAutoMaxTurns] = useState(20)
+  const [autoModel, setAutoModel] = useState<string>('anthropic/claude-3-haiku')
+
   // Apply dark/light mode
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
@@ -87,6 +95,39 @@ function App() {
       setShowTutorial(true)
     }
   }, [loading, approaches.length])
+
+  // Fetch auto mode status when approach changes
+  useEffect(() => {
+    if (currentApproach) {
+      fetchAutoModeStatus(currentApproach.folder)
+    } else {
+      // Reset auto mode state when no approach selected
+      setAutoModeEnabled(false)
+      setAutoModeActive(false)
+      setAutoModePaused(false)
+      setAutoTurnCount(0)
+    }
+  }, [currentApproach])
+
+  const fetchAutoModeStatus = async (folder: string) => {
+    try {
+      const response = await fetch(`/api/approaches/${folder}/auto/status`)
+      if (response.ok) {
+        const status = await response.json()
+        setAutoModeActive(status.active)
+        setAutoModePaused(status.paused)
+        setAutoTurnCount(status.turn_count)
+        if (status.max_turns) setAutoMaxTurns(status.max_turns)
+        if (status.model) setAutoModel(status.model)
+        // Enable auto mode UI if there's an active session
+        if (status.active || status.paused) {
+          setAutoModeEnabled(true)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch auto mode status:', error)
+    }
+  }
 
   // Fetch hypergraph when approach changes
   useEffect(() => {
@@ -170,7 +211,7 @@ function App() {
     }
   }
 
-  const handleCreateApproach = async (name: string, hypothesis: string) => {
+  const handleCreateApproach = async (name: string, hypothesis: string, enableAutoMode?: boolean, model?: string) => {
     try {
       const response = await fetch('/api/approaches', {
         method: 'POST',
@@ -191,10 +232,72 @@ function App() {
         const newApproach = updatedApproaches.find((a: Approach) => a.folder === data.folder)
         if (newApproach) {
           setCurrentApproach(newApproach)
+
+          // Start auto mode if enabled
+          if (enableAutoMode && model) {
+            setAutoModeEnabled(true)
+            setAutoModel(model)
+            // Start auto mode after a brief delay to let the approach load
+            setTimeout(() => {
+              handleAutoStart(data.folder, model)
+            }, 500)
+          }
         }
       }
     } catch (error) {
       console.error('Failed to create approach:', error)
+    }
+  }
+
+  // Auto mode control functions
+  const handleAutoStart = async (folder: string, model: string) => {
+    try {
+      const response = await fetch(`/api/approaches/${folder}/auto/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setAutoModeActive(true)
+        setAutoModePaused(false)
+        setAutoTurnCount(0)
+        setAutoMaxTurns(data.max_turns)
+      }
+    } catch (error) {
+      console.error('Failed to start auto mode:', error)
+    }
+  }
+
+  const handleAutoStop = async () => {
+    if (!currentApproach) return
+    try {
+      await fetch(`/api/approaches/${currentApproach.folder}/auto/stop`, { method: 'POST' })
+      setAutoModeActive(false)
+      setAutoModePaused(false)
+    } catch (error) {
+      console.error('Failed to stop auto mode:', error)
+    }
+  }
+
+  const handleAutoPause = async () => {
+    if (!currentApproach) return
+    try {
+      await fetch(`/api/approaches/${currentApproach.folder}/auto/pause`, { method: 'POST' })
+      setAutoModePaused(true)
+    } catch (error) {
+      console.error('Failed to pause auto mode:', error)
+    }
+  }
+
+  const handleAutoResume = async () => {
+    if (!currentApproach) return
+    try {
+      await fetch(`/api/approaches/${currentApproach.folder}/auto/resume`, { method: 'POST' })
+      setAutoModePaused(false)
+      setAutoModeActive(true)
+    } catch (error) {
+      console.error('Failed to resume auto mode:', error)
     }
   }
 
@@ -269,8 +372,8 @@ function App() {
             handleSelectApproach(approach)
             setShowWelcomeModal(false)
           }}
-          onCreate={(name, hypothesis) => {
-            handleCreateApproach(name, hypothesis)
+          onCreate={(name, hypothesis, enableAutoMode, model) => {
+            handleCreateApproach(name, hypothesis, enableAutoMode, model)
             setShowWelcomeModal(false)
           }}
         />
@@ -384,6 +487,16 @@ function App() {
                   approachName={currentApproach?.name || null}
                   pendingMessage={pendingMessage}
                   onPendingMessageHandled={() => setPendingMessage(null)}
+                  autoModeEnabled={autoModeEnabled}
+                  autoModeActive={autoModeActive}
+                  autoModePaused={autoModePaused}
+                  autoTurnCount={autoTurnCount}
+                  autoMaxTurns={autoMaxTurns}
+                  onAutoStart={() => currentApproach && handleAutoStart(currentApproach.folder, autoModel)}
+                  onAutoPause={handleAutoPause}
+                  onAutoResume={handleAutoResume}
+                  onAutoStop={handleAutoStop}
+                  onAutoTurnUpdate={setAutoTurnCount}
                 />
               </div>
             </Split>

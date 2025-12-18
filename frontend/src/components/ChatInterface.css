@@ -142,6 +142,22 @@
   align-self: flex-start;
 }
 
+.message.auto {
+  align-self: flex-end;
+  position: relative;
+}
+
+.auto-label {
+  position: absolute;
+  top: -1.25rem;
+  right: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #8b5cf6;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .message-content {
   padding: 0.75rem 1rem;
   border-radius: 12px;
@@ -161,6 +177,38 @@
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border-bottom-left-radius: 4px;
+}
+
+.message.auto .message-content {
+  background: linear-gradient(135deg, #8b5cf6, #6366f1);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+/* Markdown styles for auto messages */
+.message.auto .message-content p {
+  margin: 0 0 0.75rem 0;
+}
+
+.message.auto .message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.message.auto .message-content code {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 0.85em;
+}
+
+.message.auto .message-content strong {
+  font-weight: 600;
+}
+
+.message.auto .message-content a {
+  color: white;
+  text-decoration: underline;
 }
 
 /* Markdown styles for assistant messages */

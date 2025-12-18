@@ -1,11 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Approach } from '../App'
 import './WelcomeModal.css'
+
+interface OpenRouterModel {
+  id: string
+  name: string
+  pricing?: { prompt?: string; completion?: string }
+  context_length?: number
+}
 
 interface Props {
   approaches: Approach[]
   onSelect: (approach: Approach) => void
-  onCreate: (name: string, hypothesis: string) => void
+  onCreate: (name: string, hypothesis: string, enableAutoMode?: boolean, model?: string) => void
 }
 
 function WelcomeModal({ approaches, onSelect, onCreate }: Props) {
@@ -14,6 +21,60 @@ function WelcomeModal({ approaches, onSelect, onCreate }: Props) {
   const [newHypothesis, setNewHypothesis] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [showNameField, setShowNameField] = useState(false)
+
+  // Auto mode state
+  const [autoModeEnabled, setAutoModeEnabled] = useState(true)
+  const [availableModels, setAvailableModels] = useState<OpenRouterModel[]>([])
+  const [selectedModel, setSelectedModel] = useState('anthropic/claude-3-haiku')
+  const [loadingModels, setLoadingModels] = useState(false)
+
+  // API key status (null = not yet checked)
+  const [anthropicKeySet, setAnthropicKeySet] = useState<boolean | null>(null)
+  const [openrouterKeySet, setOpenrouterKeySet] = useState<boolean | null>(null)
+
+  // Fetch config status on mount
+  useEffect(() => {
+    fetchConfigStatus()
+  }, [])
+
+  const fetchConfigStatus = async () => {
+    try {
+      const response = await fetch('/api/config/status')
+      if (response.ok) {
+        const status = await response.json()
+        setAnthropicKeySet(status.anthropic_key_set)
+        setOpenrouterKeySet(status.openrouter_key_set)
+      }
+    } catch (error) {
+      console.error('Failed to fetch config status:', error)
+    }
+  }
+
+  // Fetch available models when auto mode is enabled
+  useEffect(() => {
+    if (autoModeEnabled && availableModels.length === 0) {
+      fetchModels()
+    }
+  }, [autoModeEnabled])
+
+  const fetchModels = async () => {
+    setLoadingModels(true)
+    try {
+      const response = await fetch('/api/openrouter/models')
+      if (response.ok) {
+        const models = await response.json()
+        // Sort by name and filter to popular/useful models
+        const sortedModels = models.sort((a: OpenRouterModel, b: OpenRouterModel) =>
+          (a.name || a.id).localeCompare(b.name || b.id)
+        )
+        setAvailableModels(sortedModels)
+      }
+    } catch (error) {
+      console.error('Failed to fetch models:', error)
+    } finally {
+      setLoadingModels(false)
+    }
+  }
 
   const handleCreate = async () => {
     if (!newHypothesis.trim()) return
@@ -43,7 +104,7 @@ function WelcomeModal({ approaches, onSelect, onCreate }: Props) {
       }
     }
 
-    onCreate(name, newHypothesis.trim())
+    onCreate(name, newHypothesis.trim(), autoModeEnabled, autoModeEnabled ? selectedModel : undefined)
     setIsCreating(false)
   }
 
@@ -127,6 +188,45 @@ function WelcomeModal({ approaches, onSelect, onCreate }: Props) {
               </button>
             )}
 
+            <div className="auto-mode-section">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={autoModeEnabled}
+                  onChange={(e) => setAutoModeEnabled(e.target.checked)}
+                />
+                <span className="checkbox-text">
+                  <strong>Auto Mode</strong>
+                  <small>AI will automatically explore and validate your hypothesis</small>
+                </span>
+              </label>
+
+              {autoModeEnabled && (
+                <div className="model-selector">
+                  <label htmlFor="auto-model">Auto agent model:</label>
+                  {loadingModels ? (
+                    <span className="loading-models">Loading models...</span>
+                  ) : (
+                    <select
+                      id="auto-model"
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                    >
+                      {availableModels.length === 0 ? (
+                        <option value="anthropic/claude-3-haiku">anthropic/claude-3-haiku</option>
+                      ) : (
+                        availableModels.map((model) => (
+                          <option key={model.id} value={model.id}>
+                            {model.name || model.id}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="form-actions">
               <button
                 className="back-button"
@@ -147,6 +247,23 @@ function WelcomeModal({ approaches, onSelect, onCreate }: Props) {
                 {isCreating ? 'Creating...' : 'Start Evaluating'}
               </button>
             </div>
+
+            {(anthropicKeySet === false || (autoModeEnabled && openrouterKeySet === false)) && (
+              <div className="api-key-warnings">
+                {anthropicKeySet === false && (
+                  <div className="warning">
+                    <span className="warning-icon">⚠️</span>
+                    <span>ANTHROPIC_API_KEY not set</span>
+                  </div>
+                )}
+                {autoModeEnabled && openrouterKeySet === false && (
+                  <div className="warning">
+                    <span className="warning-icon">⚠️</span>
+                    <span>OPENROUTER_API_KEY not set (required for Auto Mode)</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

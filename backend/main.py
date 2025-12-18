@@ -34,6 +34,7 @@ from agent_system import (
 )
 from agent_system.config import AgentConfig
 from agent_system.conversation_logger import list_conversation_logs, load_conversation_log
+from agent_system.openrouter_client import OpenRouterClient
 
 
 # Global orchestrator instance (one per server for now)
@@ -46,6 +47,56 @@ hypergraph_connections: dict[str, list[WebSocket]] = {}
 file_observer: Optional[Observer] = None
 # Event loop reference for async calls from file watcher thread
 main_event_loop: Optional[asyncio.AbstractEventLoop] = None
+
+# Auto mode state tracking
+from dataclasses import dataclass, field
+from typing import Dict, List
+import uuid
+
+
+@dataclass
+class AutoModeSession:
+    """Tracks state for an auto mode session."""
+    folder: str
+    session_id: str
+    model: str
+    active: bool = True
+    paused: bool = False
+    turn_count: int = 0
+    max_turns: int = 20
+    hypothesis: str = ""
+    conversation_history: List[dict] = field(default_factory=list)
+    task: Optional[asyncio.Task] = None
+
+
+# Active auto mode sessions by folder
+auto_mode_sessions: Dict[str, AutoModeSession] = {}
+
+# OpenRouter client instance (initialized lazily)
+openrouter_client: Optional[OpenRouterClient] = None
+
+
+AUTO_AGENT_SYSTEM_PROMPT = """You are an Auto Agent rigorously evaluating a hypothesis through an entailment tree.
+
+Your role: Act as a knowledgeable user who systematically:
+1. Identifies claims needing evidence or scoring
+2. Requests simulations and literature searches
+3. Points out logical gaps
+4. Brainstorms alternatives when hitting blockers
+
+Current hypothesis: {hypothesis}
+
+Current entailment tree (full hypergraph.json):
+{hypergraph}
+
+Guidelines:
+- Work through claims systematically, one at a time
+- Prioritize high-impact claims
+- Give Claude clear, specific instructions
+- When blocked, suggest OR pathways (alternatives)
+- Stop when hypothesis is clearly supported or refuted
+
+Generate your next message to Claude:"""
 
 
 class HypergraphFileHandler(FileSystemEventHandler):
@@ -701,6 +752,354 @@ async def notify_hypergraph_update(folder: str):
     for ws in disconnected:
         hypergraph_connections[folder].remove(ws)
 
+
+# =============================================================================
+# AUTO MODE ENDPOINTS
+# =============================================================================
+
+class AutoStartRequest(BaseModel):
+    """Request to start auto mode."""
+    model: str = "anthropic/claude-3-haiku"
+
+
+class AutoInterjectRequest(BaseModel):
+    """Request for user to interject during auto mode."""
+    message: str
+
+
+def get_openrouter_client() -> OpenRouterClient:
+    """Get or create the OpenRouter client."""
+    global openrouter_client
+    if openrouter_client is None:
+        openrouter_client = OpenRouterClient()
+    return openrouter_client
+
+
+async def get_auto_agent_response(
+    client: OpenRouterClient,
+    model: str,
+    hypothesis: str,
+    hypergraph: dict,
+    conversation_history: list[dict]
+) -> str:
+    """Get next message from the Auto agent via OpenRouter."""
+    system_prompt = AUTO_AGENT_SYSTEM_PROMPT.format(
+        hypothesis=hypothesis,
+        hypergraph=json.dumps(hypergraph, indent=2)
+    )
+
+    messages = [{"role": "system", "content": system_prompt}] + conversation_history
+    return await client.chat(messages, model)
+
+
+async def run_auto_mode_loop(folder: str, session: AutoModeSession):
+    """Background task that runs the auto mode loop."""
+    print(f"[AUTO MODE] Starting loop for {folder}", flush=True)
+
+    while session.active and not session.paused and session.turn_count < session.max_turns:
+        try:
+            # Load current hypergraph state
+            hypergraph_path = orchestrator.config.approaches_dir / folder / "hypergraph.json"
+            if not hypergraph_path.exists():
+                print(f"[AUTO MODE] Hypergraph not found for {folder}", flush=True)
+                break
+
+            with open(hypergraph_path) as f:
+                hypergraph = json.load(f)
+
+            # Get Auto agent's next message
+            print(f"[AUTO MODE] Turn {session.turn_count + 1}: Getting Auto agent response", flush=True)
+            client = get_openrouter_client()
+            auto_message = await get_auto_agent_response(
+                client,
+                session.model,
+                session.hypothesis,
+                hypergraph,
+                session.conversation_history
+            )
+
+            print(f"[AUTO MODE] Auto agent says: {auto_message[:100]}...", flush=True)
+
+            # Add Auto agent message to history
+            session.conversation_history.append({"role": "assistant", "content": auto_message})
+
+            # Notify WebSocket clients of the auto message
+            await notify_auto_event(folder, {
+                "type": "auto_message",
+                "text": auto_message,
+                "source": "auto"
+            })
+
+            # Check for stop signals before sending to Claude
+            if not session.active or session.paused:
+                break
+
+            # Send to Claude via the existing chat endpoint logic
+            # We need to capture Claude's response to add to history
+            claude_response = ""
+            approach_dir = orchestrator.config.approaches_dir / folder
+
+            # Load approach if not already loaded
+            if (orchestrator.current_session is None or
+                str(orchestrator.current_session.approach_dir) != str(approach_dir)):
+                orchestrator.load_approach(approach_dir)
+
+            system_prompt = orchestrator.get_system_prompt()
+
+            async for event in orchestrator.claude_client.query_stream(
+                auto_message,
+                system_prompt=system_prompt
+            ):
+                if isinstance(event, TextEvent):
+                    claude_response += event.text
+                    await notify_auto_event(folder, {"type": "text", "text": event.text})
+                elif isinstance(event, ToolUseEvent):
+                    await notify_auto_event(folder, {
+                        "type": "tool_use",
+                        "tool_name": event.tool_name,
+                        "tool_input": event.tool_input
+                    })
+                elif isinstance(event, ToolResultEvent):
+                    await notify_auto_event(folder, {
+                        "type": "tool_result",
+                        "tool_name": event.tool_name,
+                        "result": event.result,
+                        "is_error": event.is_error
+                    })
+                elif isinstance(event, ErrorEvent):
+                    await notify_auto_event(folder, {"type": "error", "error": event.error})
+                elif isinstance(event, DoneEvent):
+                    await notify_auto_event(folder, {
+                        "type": "done",
+                        "full_response": event.full_response
+                    })
+
+            # Add Claude's response to history (for Auto agent's context)
+            session.conversation_history.append({"role": "user", "content": claude_response})
+
+            session.turn_count += 1
+            await notify_auto_event(folder, {
+                "type": "auto_turn",
+                "turn_number": session.turn_count,
+                "max_turns": session.max_turns
+            })
+
+            # Brief delay before next turn
+            await asyncio.sleep(1)
+
+        except Exception as e:
+            print(f"[AUTO MODE] Error in loop: {e}", flush=True)
+            await notify_auto_event(folder, {"type": "error", "error": str(e)})
+            break
+
+    # Clean up
+    session.active = False
+    await notify_auto_event(folder, {"type": "auto_status", "status": "stopped"})
+    print(f"[AUTO MODE] Loop ended for {folder} after {session.turn_count} turns", flush=True)
+
+
+async def notify_auto_event(folder: str, event: dict):
+    """Send an auto mode event to WebSocket clients."""
+    if folder not in hypergraph_connections:
+        return
+
+    disconnected = []
+    for websocket in hypergraph_connections[folder]:
+        try:
+            await websocket.send_json(event)
+        except Exception:
+            disconnected.append(websocket)
+
+    for ws in disconnected:
+        hypergraph_connections[folder].remove(ws)
+
+
+@app.get("/api/openrouter/models")
+async def list_openrouter_models() -> list[dict]:
+    """List available models from OpenRouter."""
+    try:
+        client = get_openrouter_client()
+        models = await client.list_models()
+        # Return simplified model info
+        return [
+            {
+                "id": m.get("id"),
+                "name": m.get("name"),
+                "pricing": m.get("pricing", {}),
+                "context_length": m.get("context_length"),
+            }
+            for m in models
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch models: {str(e)}")
+
+
+@app.get("/api/config/status")
+async def get_config_status() -> dict:
+    """Check if required API keys are configured."""
+    import os
+    return {
+        "anthropic_key_set": bool(os.getenv("ANTHROPIC_API_KEY")),
+        "openrouter_key_set": bool(os.getenv("OPENROUTER_API_KEY")),
+    }
+
+
+@app.post("/api/approaches/{folder}/auto/start")
+async def start_auto_mode(folder: str, request: AutoStartRequest) -> dict:
+    """Start auto mode for an approach."""
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    approach_dir = orchestrator.config.approaches_dir / folder
+    if not approach_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
+
+    # Check if already running
+    if folder in auto_mode_sessions and auto_mode_sessions[folder].active:
+        raise HTTPException(status_code=400, detail="Auto mode already running for this approach")
+
+    # Load hypergraph to get hypothesis
+    hypergraph_path = approach_dir / "hypergraph.json"
+    with open(hypergraph_path) as f:
+        hypergraph = json.load(f)
+
+    hypothesis = hypergraph.get("metadata", {}).get("hypothesis", "")
+    if not hypothesis:
+        # Try to get from root claim
+        claims = hypergraph.get("claims", [])
+        root_claims = [c for c in claims if c.get("id") == "root" or c.get("is_root")]
+        if root_claims:
+            hypothesis = root_claims[0].get("claim", "")
+
+    # Create session
+    session = AutoModeSession(
+        folder=folder,
+        session_id=str(uuid.uuid4()),
+        model=request.model,
+        hypothesis=hypothesis,
+        max_turns=orchestrator.config.auto_mode_max_turns,
+    )
+    auto_mode_sessions[folder] = session
+
+    # Start background task
+    session.task = asyncio.create_task(run_auto_mode_loop(folder, session))
+
+    await notify_auto_event(folder, {"type": "auto_status", "status": "started"})
+
+    return {
+        "success": True,
+        "session_id": session.session_id,
+        "model": session.model,
+        "max_turns": session.max_turns,
+    }
+
+
+@app.post("/api/approaches/{folder}/auto/stop")
+async def stop_auto_mode(folder: str) -> dict:
+    """Stop auto mode for an approach."""
+    if folder not in auto_mode_sessions:
+        raise HTTPException(status_code=404, detail="No auto mode session for this approach")
+
+    session = auto_mode_sessions[folder]
+    session.active = False
+    session.paused = False
+
+    # Cancel the task if running
+    if session.task and not session.task.done():
+        session.task.cancel()
+
+    await notify_auto_event(folder, {"type": "auto_status", "status": "stopped"})
+
+    return {"success": True, "turns_completed": session.turn_count}
+
+
+@app.post("/api/approaches/{folder}/auto/pause")
+async def pause_auto_mode(folder: str) -> dict:
+    """Pause auto mode for an approach."""
+    if folder not in auto_mode_sessions:
+        raise HTTPException(status_code=404, detail="No auto mode session for this approach")
+
+    session = auto_mode_sessions[folder]
+    if not session.active:
+        raise HTTPException(status_code=400, detail="Auto mode not active")
+
+    session.paused = True
+    await notify_auto_event(folder, {"type": "auto_status", "status": "paused"})
+
+    return {"success": True, "turn_count": session.turn_count}
+
+
+@app.post("/api/approaches/{folder}/auto/resume")
+async def resume_auto_mode(folder: str) -> dict:
+    """Resume paused auto mode for an approach."""
+    if folder not in auto_mode_sessions:
+        raise HTTPException(status_code=404, detail="No auto mode session for this approach")
+
+    session = auto_mode_sessions[folder]
+    if not session.paused:
+        raise HTTPException(status_code=400, detail="Auto mode not paused")
+
+    session.paused = False
+    session.active = True
+
+    # Restart the loop
+    session.task = asyncio.create_task(run_auto_mode_loop(folder, session))
+
+    await notify_auto_event(folder, {"type": "auto_status", "status": "resumed"})
+
+    return {"success": True, "turn_count": session.turn_count}
+
+
+@app.get("/api/approaches/{folder}/auto/status")
+async def get_auto_mode_status(folder: str) -> dict:
+    """Get auto mode status for an approach."""
+    if folder not in auto_mode_sessions:
+        return {
+            "active": False,
+            "paused": False,
+            "turn_count": 0,
+            "session_id": None,
+        }
+
+    session = auto_mode_sessions[folder]
+    return {
+        "active": session.active,
+        "paused": session.paused,
+        "turn_count": session.turn_count,
+        "max_turns": session.max_turns,
+        "session_id": session.session_id,
+        "model": session.model,
+    }
+
+
+@app.post("/api/approaches/{folder}/auto/interject")
+async def auto_mode_interject(folder: str, request: AutoInterjectRequest) -> dict:
+    """User interjection during auto mode - pauses auto and sends user message."""
+    if folder not in auto_mode_sessions:
+        raise HTTPException(status_code=404, detail="No auto mode session for this approach")
+
+    session = auto_mode_sessions[folder]
+
+    # Pause auto mode
+    session.paused = True
+    await notify_auto_event(folder, {"type": "auto_status", "status": "paused"})
+
+    # Add user message to history
+    session.conversation_history.append({"role": "user", "content": request.message})
+
+    # The message will be sent via the normal chat endpoint
+    # Frontend should call /api/chat after this
+
+    return {
+        "success": True,
+        "message": "Auto mode paused for interjection",
+        "turn_count": session.turn_count
+    }
+
+
+# =============================================================================
+# STATIC FILES
+# =============================================================================
 
 # Mount static files for visualization
 # These must be mounted AFTER all API routes
