@@ -303,7 +303,7 @@ export function useTreeLayout(
 
     function calculateSubtreeWidth(nodeId: string, allowOrphans: boolean, visited = new Set<string>()): number {
       if (subtreeWidths.has(nodeId)) return subtreeWidths.get(nodeId)!
-      if (visited.has(nodeId)) return 150
+      if (visited.has(nodeId)) return 190
       visited.add(nodeId)
 
       const premises = conclusionToPremises.get(nodeId)
@@ -312,17 +312,17 @@ export function useTreeLayout(
       ) : []
 
       if (visiblePremises.length === 0) {
-        subtreeWidths.set(nodeId, 150)
-        return 150
+        subtreeWidths.set(nodeId, 190)
+        return 190
       }
 
       let totalWidth = 0
       visiblePremises.forEach(premiseId => {
         totalWidth += calculateSubtreeWidth(premiseId, allowOrphans, visited)
       })
-      totalWidth += (visiblePremises.length - 1) * 100
+      totalWidth += (visiblePremises.length - 1) * 130
 
-      const w = Math.max(150, totalWidth)
+      const w = Math.max(190, totalWidth)
       subtreeWidths.set(nodeId, w)
       return w
     }
@@ -342,12 +342,12 @@ export function useTreeLayout(
     const orphanDepth = Math.abs(minOrphanLevel)  // Number of levels in orphan region
 
     // Reserve space for orphan region above roots
-    const orphanRegionHeight = visibleOrphans.length > 0 ? (orphanDepth * 80 + 100) : 0
-    const treeStartY = 100 + orphanRegionHeight
+    const orphanRegionHeight = visibleOrphans.length > 0 ? (orphanDepth * 110 + 120) : 0
+    const treeStartY = 120 + orphanRegionHeight
 
-    // Minimum spacing to prevent overlap: claim radius (65) + junction radius (15) + padding (20) = 100
-    const minLevelSpacing = 80
-    const calculatedSpacing = maxLevel > 0 ? (height - treeStartY - 100) / (maxLevel + 1) : 150
+    // Minimum spacing to prevent overlap: claim radius (85) + junction radius (15) + padding (20) = 120
+    const minLevelSpacing = 110
+    const calculatedSpacing = maxLevel > 0 ? (height - treeStartY - 120) / (maxLevel + 1) : 190
     const levelSpacing = Math.max(minLevelSpacing, calculatedSpacing)
 
     function positionSubtree(nodeId: string, centerX: number, level: number) {
@@ -380,8 +380,8 @@ export function useTreeLayout(
 
       // Position children
       const premiseLevel = level + 2
-      const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 150)
-      const premiseSpacing = 50
+      const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 190)
+      const premiseSpacing = 70
       const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * premiseSpacing
 
       let currentX = centerX - totalWidth / 2
@@ -395,26 +395,26 @@ export function useTreeLayout(
     // Position roots
     let totalRootWidth = 0
     rootConclusions.forEach(rootId => {
-      totalRootWidth += subtreeWidths.get(rootId) || 150
+      totalRootWidth += subtreeWidths.get(rootId) || 190
     })
-    totalRootWidth += (rootConclusions.length - 1) * 200
+    totalRootWidth += (rootConclusions.length - 1) * 250
 
     let rootX = width / 2 - totalRootWidth / 2
     rootConclusions.forEach(rootId => {
-      const rootWidth = subtreeWidths.get(rootId) || 150
+      const rootWidth = subtreeWidths.get(rootId) || 190
       positionSubtree(rootId, rootX + rootWidth / 2, 0)
-      rootX += rootWidth + 200
+      rootX += rootWidth + 250
     })
 
     // Position orphan subtrees above the main tree
     if (visibleOrphans.length > 0) {
-      const orphanLevelSpacing = 80
+      const orphanLevelSpacing = 110
 
       // Function to position an orphan subtree (similar to main tree but inverted)
       function positionOrphanSubtree(nodeId: string, centerX: number, level: number) {
         // Orphan levels are negative, convert to Y position
         // Level -1 is closest to main tree, more negative levels go higher
-        const y = treeStartY + (level + 1) * orphanLevelSpacing - orphanRegionHeight + 50
+        const y = treeStartY + (level + 1) * orphanLevelSpacing - orphanRegionHeight + 60
 
         if (nodePositionsRef.current.has(nodeId)) {
           positions.set(nodeId, nodePositionsRef.current.get(nodeId)!)
@@ -432,7 +432,7 @@ export function useTreeLayout(
         if (impl) {
           const junctionId = `junction_${impl.id}`
           const junctionLevel = level - 1
-          const junctionY = treeStartY + (junctionLevel + 1) * orphanLevelSpacing - orphanRegionHeight + 50
+          const junctionY = treeStartY + (junctionLevel + 1) * orphanLevelSpacing - orphanRegionHeight + 60
 
           if (nodePositionsRef.current.has(junctionId)) {
             positions.set(junctionId, nodePositionsRef.current.get(junctionId)!)
@@ -443,8 +443,8 @@ export function useTreeLayout(
 
         // Position children (premises go above, so use level - 2)
         const premiseLevel = level - 2
-        const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 150)
-        const premiseSpacing = 50
+        const childWidths = visiblePremises.map(p => subtreeWidths.get(p) || 190)
+        const premiseSpacing = 70
         const totalWidth = childWidths.reduce((a, b) => a + b, 0) + (visiblePremises.length - 1) * premiseSpacing
 
         let currentX = centerX - totalWidth / 2
@@ -459,16 +459,16 @@ export function useTreeLayout(
       const allOrphanRoots = [...orphanRoots, ...orphanLeaves]
       let totalOrphanWidth = 0
       allOrphanRoots.forEach(rootId => {
-        totalOrphanWidth += subtreeWidths.get(rootId) || 150
+        totalOrphanWidth += subtreeWidths.get(rootId) || 190
       })
-      totalOrphanWidth += (allOrphanRoots.length - 1) * 150
+      totalOrphanWidth += (allOrphanRoots.length - 1) * 190
 
       let orphanX = width / 2 - totalOrphanWidth / 2
       allOrphanRoots.forEach(rootId => {
-        const rootWidth = subtreeWidths.get(rootId) || 150
+        const rootWidth = subtreeWidths.get(rootId) || 190
         const rootLevel = levels.get(rootId) ?? -1
         positionOrphanSubtree(rootId, orphanX + rootWidth / 2, rootLevel)
-        orphanX += rootWidth + 150
+        orphanX += rootWidth + 190
       })
     }
 

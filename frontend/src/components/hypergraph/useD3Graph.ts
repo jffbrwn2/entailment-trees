@@ -359,7 +359,7 @@ export function useD3Graph({
         if (status === 'passed') return '#3fb950'
         return 'var(--text-secondary)'
       })
-      .attr('stroke-width', d => d.type === 'junction-to-conclusion' ? 3 : 2)
+      .attr('stroke-width', d => d.type === 'junction-to-conclusion' ? 4 : 3)
       .attr('fill', 'none')
       .attr('stroke-linecap', 'round')
       .attr('marker-end', d => {
@@ -426,7 +426,7 @@ export function useD3Graph({
 
       const isHypothesis = d.id === 'hypothesis'
       node.append('circle')
-        .attr('r', isHypothesis ? 75 : 65)
+        .attr('r', isHypothesis ? 95 : 85)
         .attr('fill', getScoreColor(effectiveScore))
         .attr('fill-opacity', 0.6)
         .attr('stroke', isHypothesis ? 'var(--text-primary)' : getScoreColor(effectiveScore))
@@ -439,13 +439,13 @@ export function useD3Graph({
         .attr('class', 'node-text')
         .attr('text-anchor', 'middle')
         .attr('fill', 'var(--text-primary)')
-        .attr('font-size', '10px')
+        .attr('font-size', '15px')
         .attr('font-weight', '500')
         .attr('pointer-events', 'none')
 
       const words = (d.text || '').split(/\s+/)
-      const maxWidth = 110
-      const lineHeight = 11
+      const maxWidth = 145
+      const lineHeight = 17
       const maxLines = 10
 
       let line: string[] = []
@@ -488,10 +488,10 @@ export function useD3Graph({
       const node = d3.select(this)
 
       node.append('circle')
-        .attr('r', 8)
+        .attr('r', 12)
         .attr('fill', d.implication?.type === 'OR' ? '#d29922' : '#58a6ff')
         .attr('stroke', d.implication?.type === 'OR' ? '#d29922' : '#58a6ff')
-        .attr('stroke-width', 2)
+        .attr('stroke-width', 3)
         .attr('opacity', 0.9)
         .attr('cursor', 'pointer')
 
@@ -500,7 +500,7 @@ export function useD3Graph({
         .attr('text-anchor', 'middle')
         .attr('dy', '0.35em')
         .attr('fill', 'var(--bg-primary)')
-        .attr('font-size', '12px')
+        .attr('font-size', '16px')
         .attr('font-weight', '700')
         .attr('pointer-events', 'none')
 
@@ -589,7 +589,7 @@ export function useD3Graph({
     // Update expand/collapse indicators
     allNodeElements.filter(d => d.type === 'claim' && isConclusion(d.id)).each(function(d) {
       const node = d3.select(this)
-      const radius = 65
+      const radius = 85
 
       node.select('.expand-indicator').remove()
 
@@ -644,7 +644,7 @@ export function useD3Graph({
     // Add delete indicator to selected claim
     allNodeElements.filter(d => d.type === 'claim').each(function(d) {
       const node = d3.select(this)
-      const radius = 65
+      const radius = 85
 
       node.select('.delete-indicator').remove()
 
@@ -781,8 +781,8 @@ export function useD3Graph({
       if (textElement.node()) {
         textElement.selectAll('*').remove()
 
-        const maxWidth = 110
-        const lineHeight = 11
+        const maxWidth = 145
+        const lineHeight = 17
         const maxLines = 10
         const words = (claim.text || '').split(/\s+/)
         let line: string[] = []
