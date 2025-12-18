@@ -3,6 +3,12 @@ import ReactMarkdown from 'react-markdown'
 import AutoControls from './AutoControls'
 import './ChatInterface.css'
 
+// Truncate text to a max length with ellipsis
+function truncate(text: string, maxLength: number): string {
+  if (!text || text.length <= maxLength) return text
+  return text.slice(0, maxLength - 1) + '…'
+}
+
 interface ToolUse {
   name: string
   status: 'running' | 'done' | 'error'
@@ -616,7 +622,7 @@ function ChatInterface({
     <div className="chat-interface">
       <div className="chat-header">
         <div className="chat-header-top">
-          <h2>{approachName || 'Chat'}</h2>
+          <h2 title={approachName || ''}>{truncate(approachName || 'Chat', 40)}</h2>
           <div className="header-buttons">
             {approachFolder && (
               <button

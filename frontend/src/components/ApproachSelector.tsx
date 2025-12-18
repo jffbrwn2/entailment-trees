@@ -9,6 +9,12 @@ interface Props {
   onRequestCreate: () => void
 }
 
+// Truncate text to a max length with ellipsis
+function truncate(text: string, maxLength: number): string {
+  if (!text || text.length <= maxLength) return text
+  return text.slice(0, maxLength - 1) + '…'
+}
+
 function ApproachSelector({ approaches, currentApproach, onSelect, onRequestCreate }: Props) {
   const [showDropdown, setShowDropdown] = useState(false)
 
@@ -17,8 +23,9 @@ function ApproachSelector({ approaches, currentApproach, onSelect, onRequestCrea
       <button
         className="selector-button"
         onClick={() => setShowDropdown(!showDropdown)}
+        title={currentApproach?.description || ''}
       >
-        {currentApproach ? currentApproach.name : 'Select Approach'}
+        {currentApproach ? truncate(currentApproach.description || currentApproach.name, 50) : 'Select Approach'}
         <span className="arrow">▼</span>
       </button>
 
@@ -53,8 +60,9 @@ function ApproachSelector({ approaches, currentApproach, onSelect, onRequestCrea
                     onSelect(approach)
                     setShowDropdown(false)
                   }}
+                  title={approach.description || approach.name}
                 >
-                  <div className="item-name">{approach.name}</div>
+                  <div className="item-name">{truncate(approach.description || approach.name, 60)}</div>
                   <div className="item-meta">
                     {approach.num_claims} claims · {approach.num_implications} implications
                   </div>

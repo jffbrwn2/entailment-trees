@@ -79,6 +79,10 @@ function App() {
   const [evaluatorModel, setEvaluatorModel] = useState<string>('anthropic/claude-sonnet-4')
   const [autoModel, setAutoModel] = useState<string>('anthropic/claude-3-haiku')
 
+  // Tool toggles
+  const [edisonToolsEnabled, setEdisonToolsEnabled] = useState(true)
+  const [gapMapToolsEnabled, setGapMapToolsEnabled] = useState(true)
+
   // Auto mode state
   const [autoModeActive, setAutoModeActive] = useState(false)
   const [autoModePaused, setAutoModePaused] = useState(false)
@@ -90,10 +94,55 @@ function App() {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
-  // Fetch approaches on mount
+  // Fetch approaches and settings on mount
   useEffect(() => {
     fetchApproaches()
+    fetchSettings()
   }, [])
+
+  // Fetch settings from backend
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch('/api/settings')
+      if (response.ok) {
+        const data = await response.json()
+        setClaudeModel(data.chatModel || 'anthropic/claude-sonnet-4')
+        setEvaluatorModel(data.evaluatorModel || 'anthropic/claude-sonnet-4')
+        setAutoModel(data.autoModel || 'anthropic/claude-3-haiku')
+        setEdisonToolsEnabled(data.edisonToolsEnabled ?? true)
+        setGapMapToolsEnabled(data.gapMapToolsEnabled ?? true)
+      }
+    } catch (error) {
+      console.error('Failed to fetch settings:', error)
+    }
+  }
+
+  // Update settings on backend
+  const updateSettings = async (newSettings: {
+    claudeModel?: string
+    evaluatorModel?: string
+    autoModel?: string
+    edisonToolsEnabled?: boolean
+    gapMapToolsEnabled?: boolean
+  }) => {
+    try {
+      // Map frontend names to backend API names
+      const data: Record<string, unknown> = {}
+      if (newSettings.claudeModel !== undefined) data.chatModel = newSettings.claudeModel
+      if (newSettings.evaluatorModel !== undefined) data.evaluatorModel = newSettings.evaluatorModel
+      if (newSettings.autoModel !== undefined) data.autoModel = newSettings.autoModel
+      if (newSettings.edisonToolsEnabled !== undefined) data.edisonToolsEnabled = newSettings.edisonToolsEnabled
+      if (newSettings.gapMapToolsEnabled !== undefined) data.gapMapToolsEnabled = newSettings.gapMapToolsEnabled
+
+      await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+    } catch (error) {
+      console.error('Failed to update settings:', error)
+    }
+  }
 
   // Show tutorial automatically when there are no approaches
   useEffect(() => {
@@ -437,12 +486,26 @@ function App() {
           claudeModel,
           evaluatorModel,
           autoModel,
+          edisonToolsEnabled,
+          gapMapToolsEnabled,
         }}
         onSettingsChange={(newSettings) => {
+          // Update local state
           setDarkMode(newSettings.darkMode)
           setClaudeModel(newSettings.claudeModel)
           setEvaluatorModel(newSettings.evaluatorModel)
           setAutoModel(newSettings.autoModel)
+          setEdisonToolsEnabled(newSettings.edisonToolsEnabled)
+          setGapMapToolsEnabled(newSettings.gapMapToolsEnabled)
+
+          // Sync non-UI settings with backend
+          updateSettings({
+            claudeModel: newSettings.claudeModel,
+            evaluatorModel: newSettings.evaluatorModel,
+            autoModel: newSettings.autoModel,
+            edisonToolsEnabled: newSettings.edisonToolsEnabled,
+            gapMapToolsEnabled: newSettings.gapMapToolsEnabled,
+          })
         }}
       />
 
@@ -490,7 +553,7 @@ function App() {
               <div className="chat-pane">
                 <ChatInterface
                   approachFolder={currentApproach?.folder || null}
-                  approachName={currentApproach?.name || null}
+                  approachName={currentApproach?.description || currentApproach?.name || null}
                   pendingMessage={pendingMessage}
                   onPendingMessageHandled={() => setPendingMessage(null)}
                   autoModeActive={autoModeActive}

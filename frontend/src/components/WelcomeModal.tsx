@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react'
 import type { Approach } from '../App'
 import './WelcomeModal.css'
 
+// Truncate text to a max length with ellipsis
+function truncate(text: string, maxLength: number): string {
+  if (!text || text.length <= maxLength) return text
+  return text.slice(0, maxLength - 1) + '…'
+}
+
 interface OpenRouterModel {
   id: string
   name: string
@@ -148,8 +154,9 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
                         key={approach.folder}
                         className="approach-item"
                         onClick={() => onSelect(approach)}
+                        title={approach.description || approach.name}
                       >
-                        <div className="approach-name">{approach.name}</div>
+                        <div className="approach-name">{truncate(approach.description || approach.name, 80)}</div>
                         <div className="approach-meta">
                           {approach.num_claims} claims · {approach.num_implications} implications
                         </div>

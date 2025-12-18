@@ -71,7 +71,7 @@ class HypergraphManager:
         hypergraph = {
             "metadata": {
                 "name": name,
-                "description": description or f"Evaluating: {initial_claim}",
+                "description": description or initial_claim,
                 "created": datetime.now().strftime("%Y-%m-%d"),
                 "last_updated": datetime.now().strftime("%Y-%m-%d"),
                 "version": "1.0"
