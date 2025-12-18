@@ -73,7 +73,6 @@ function App() {
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
 
   // Auto mode state
-  const [autoModeEnabled, setAutoModeEnabled] = useState(false)
   const [autoModeActive, setAutoModeActive] = useState(false)
   const [autoModePaused, setAutoModePaused] = useState(false)
   const [autoTurnCount, setAutoTurnCount] = useState(0)
@@ -103,7 +102,6 @@ function App() {
       fetchAutoModeStatus(currentApproach.folder)
     } else {
       // Reset auto mode state when no approach selected
-      setAutoModeEnabled(false)
       setAutoModeActive(false)
       setAutoModePaused(false)
       setAutoTurnCount(0)
@@ -120,10 +118,6 @@ function App() {
         setAutoTurnCount(status.turn_count)
         if (status.max_turns) setAutoMaxTurns(status.max_turns)
         if (status.model) setAutoModel(status.model)
-        // Enable auto mode UI if there's an active session
-        if (status.active || status.paused) {
-          setAutoModeEnabled(true)
-        }
       }
     } catch (error) {
       console.error('Failed to fetch auto mode status:', error)
@@ -236,7 +230,6 @@ function App() {
 
           // Start auto mode if enabled
           if (enableAutoMode && model) {
-            setAutoModeEnabled(true)
             setAutoModel(model)
             // Start auto mode after a brief delay to let the approach load
             setTimeout(() => {
@@ -300,10 +293,6 @@ function App() {
     } catch (error) {
       console.error('Failed to resume auto mode:', error)
     }
-  }
-
-  const handleAutoModeEnable = () => {
-    setAutoModeEnabled(true)
   }
 
   const handleSelect = useCallback((item: SelectedItem | null) => {
@@ -501,7 +490,6 @@ function App() {
                   approachName={currentApproach?.name || null}
                   pendingMessage={pendingMessage}
                   onPendingMessageHandled={() => setPendingMessage(null)}
-                  autoModeEnabled={autoModeEnabled}
                   autoModeActive={autoModeActive}
                   autoModePaused={autoModePaused}
                   autoTurnCount={autoTurnCount}
@@ -511,7 +499,6 @@ function App() {
                   onAutoResume={handleAutoResume}
                   onAutoStop={handleAutoStop}
                   onAutoTurnUpdate={setAutoTurnCount}
-                  onAutoModeEnable={handleAutoModeEnable}
                 />
               </div>
             </Split>

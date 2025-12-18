@@ -34,7 +34,6 @@ interface Props {
   pendingMessage?: string | null
   onPendingMessageHandled?: () => void
   // Auto mode props
-  autoModeEnabled?: boolean
   autoModeActive?: boolean
   autoModePaused?: boolean
   autoTurnCount?: number
@@ -71,7 +70,6 @@ function ChatInterface({
   approachName,
   pendingMessage,
   onPendingMessageHandled,
-  autoModeEnabled = false,
   autoModeActive = false,
   autoModePaused = false,
   autoTurnCount = 0,
@@ -141,7 +139,7 @@ function ChatInterface({
 
   // WebSocket for auto mode events
   useEffect(() => {
-    if (!approachFolder || !autoModeEnabled) return
+    if (!approachFolder) return
 
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/hypergraph/${approachFolder}`)
@@ -260,7 +258,7 @@ function ChatInterface({
     return () => {
       ws.close()
     }
-  }, [approachFolder, autoModeEnabled, onAutoTurnUpdate])
+  }, [approachFolder, onAutoTurnUpdate])
 
   const handleNewChat = async () => {
     if (!approachFolder || isStreaming) return
@@ -619,16 +617,18 @@ function ChatInterface({
       <div className="chat-header">
         <div className="chat-header-top">
           <h2>{approachName || 'Chat'}</h2>
-          {approachFolder && (
-            <button
-              className="new-chat-button"
-              onClick={handleNewChat}
-              disabled={isStreaming}
-              title="Start a new conversation"
-            >
-              + New Chat
-            </button>
-          )}
+          <div className="header-buttons">
+            {approachFolder && (
+              <button
+                className="new-chat-button"
+                onClick={handleNewChat}
+                disabled={isStreaming}
+                title="Start a new conversation"
+              >
+                + New Chat
+              </button>
+            )}
+          </div>
         </div>
         {approachFolder && conversations.length > 0 && (
           <div className="conversation-selector">
@@ -651,7 +651,7 @@ function ChatInterface({
         )}
       </div>
 
-      {autoModeEnabled && approachFolder && (
+      {approachFolder && (
         <AutoControls
           active={autoModeActive}
           paused={autoModePaused}

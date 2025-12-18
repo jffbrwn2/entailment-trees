@@ -15,6 +15,11 @@
   align-items: center;
 }
 
+.header-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .chat-header h2 {
   font-size: 1rem;
   font-weight: 600;
@@ -143,17 +148,17 @@
 }
 
 .message.auto {
-  align-self: flex-end;
+  align-self: flex-start;
   position: relative;
 }
 
 .auto-label {
   position: absolute;
   top: -1.25rem;
-  right: 0;
+  left: 0;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #8b5cf6;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -180,75 +185,65 @@
 }
 
 .message.auto .message-content {
-  background: linear-gradient(135deg, #8b5cf6, #6366f1);
-  color: white;
-  border-bottom-right-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-bottom-left-radius: 4px;
 }
 
-/* Markdown styles for auto messages */
+/* Markdown styles for assistant and auto messages */
+.message.assistant .message-content p,
 .message.auto .message-content p {
   margin: 0 0 0.75rem 0;
 }
 
+.message.assistant .message-content p:last-child,
 .message.auto .message-content p:last-child {
-  margin-bottom: 0;
-}
-
-.message.auto .message-content code {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
-  font-size: 0.85em;
-}
-
-.message.auto .message-content strong {
-  font-weight: 600;
-}
-
-.message.auto .message-content a {
-  color: white;
-  text-decoration: underline;
-}
-
-/* Markdown styles for assistant messages */
-.message.assistant .message-content p {
-  margin: 0 0 0.75rem 0;
-}
-
-.message.assistant .message-content p:last-child {
   margin-bottom: 0;
 }
 
 .message.assistant .message-content h1,
 .message.assistant .message-content h2,
 .message.assistant .message-content h3,
-.message.assistant .message-content h4 {
+.message.assistant .message-content h4,
+.message.auto .message-content h1,
+.message.auto .message-content h2,
+.message.auto .message-content h3,
+.message.auto .message-content h4 {
   margin: 1rem 0 0.5rem 0;
   font-weight: 600;
 }
 
 .message.assistant .message-content h1:first-child,
 .message.assistant .message-content h2:first-child,
-.message.assistant .message-content h3:first-child {
+.message.assistant .message-content h3:first-child,
+.message.auto .message-content h1:first-child,
+.message.auto .message-content h2:first-child,
+.message.auto .message-content h3:first-child {
   margin-top: 0;
 }
 
-.message.assistant .message-content h1 { font-size: 1.25rem; }
-.message.assistant .message-content h2 { font-size: 1.1rem; }
-.message.assistant .message-content h3 { font-size: 1rem; }
+.message.assistant .message-content h1,
+.message.auto .message-content h1 { font-size: 1.25rem; }
+.message.assistant .message-content h2,
+.message.auto .message-content h2 { font-size: 1.1rem; }
+.message.assistant .message-content h3,
+.message.auto .message-content h3 { font-size: 1rem; }
 
 .message.assistant .message-content ul,
-.message.assistant .message-content ol {
+.message.assistant .message-content ol,
+.message.auto .message-content ul,
+.message.auto .message-content ol {
   margin: 0.5rem 0;
   padding-left: 1.5rem;
 }
 
-.message.assistant .message-content li {
+.message.assistant .message-content li,
+.message.auto .message-content li {
   margin: 0.25rem 0;
 }
 
-.message.assistant .message-content code {
+.message.assistant .message-content code,
+.message.auto .message-content code {
   background: var(--bg-primary);
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
@@ -256,7 +251,8 @@
   font-size: 0.85em;
 }
 
-.message.assistant .message-content pre {
+.message.assistant .message-content pre,
+.message.auto .message-content pre {
   background: var(--bg-primary);
   padding: 0.75rem 1rem;
   border-radius: 6px;
@@ -264,24 +260,28 @@
   margin: 0.75rem 0;
 }
 
-.message.assistant .message-content pre code {
+.message.assistant .message-content pre code,
+.message.auto .message-content pre code {
   background: none;
   padding: 0;
   font-size: 0.85rem;
 }
 
-.message.assistant .message-content blockquote {
+.message.assistant .message-content blockquote,
+.message.auto .message-content blockquote {
   border-left: 3px solid var(--accent);
   margin: 0.75rem 0;
   padding-left: 1rem;
   color: var(--text-secondary);
 }
 
-.message.assistant .message-content strong {
+.message.assistant .message-content strong,
+.message.auto .message-content strong {
   font-weight: 600;
 }
 
-.message.assistant .message-content a {
+.message.assistant .message-content a,
+.message.auto .message-content a {
   color: var(--accent);
   text-decoration: underline;
 }
