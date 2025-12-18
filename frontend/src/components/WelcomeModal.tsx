@@ -13,10 +13,12 @@ interface Props {
   approaches: Approach[]
   onSelect: (approach: Approach) => void
   onCreate: (name: string, hypothesis: string, enableAutoMode?: boolean, model?: string) => void
+  initialMode?: 'choose' | 'create'
+  onClose?: () => void  // For when opened from ApproachSelector
 }
 
-function WelcomeModal({ approaches, onSelect, onCreate }: Props) {
-  const [mode, setMode] = useState<'choose' | 'create'>('choose')
+function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', onClose }: Props) {
+  const [mode, setMode] = useState<'choose' | 'create'>(initialMode)
   const [newName, setNewName] = useState('')
   const [newHypothesis, setNewHypothesis] = useState('')
   const [isCreating, setIsCreating] = useState(false)
@@ -31,6 +33,11 @@ function WelcomeModal({ approaches, onSelect, onCreate }: Props) {
   // API key status (null = not yet checked)
   const [anthropicKeySet, setAnthropicKeySet] = useState<boolean | null>(null)
   const [openrouterKeySet, setOpenrouterKeySet] = useState<boolean | null>(null)
+
+  // Sync mode with initialMode when it changes (e.g., when opened from ApproachSelector)
+  useEffect(() => {
+    setMode(initialMode)
+  }, [initialMode])
 
   // Fetch config status on mount
   useEffect(() => {
@@ -231,13 +238,19 @@ function WelcomeModal({ approaches, onSelect, onCreate }: Props) {
               <button
                 className="back-button"
                 onClick={() => {
-                  setMode('choose')
+                  if (onClose) {
+                    // Close modal entirely when opened from ApproachSelector
+                    onClose()
+                  } else {
+                    // Go back to choose mode when on welcome screen
+                    setMode('choose')
+                  }
                   setShowNameField(false)
                   setNewName('')
                   setNewHypothesis('')
                 }}
               >
-                Back
+                {onClose ? 'Cancel' : 'Back'}
               </button>
               <button
                 className="create-button"

@@ -69,6 +69,7 @@ function App() {
   const [resetKey, setResetKey] = useState(0)
   const [showTutorial, setShowTutorial] = useState(false)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)
+  const [welcomeModalMode, setWelcomeModalMode] = useState<'choose' | 'create'>('choose')
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
 
   // Auto mode state
@@ -301,6 +302,10 @@ function App() {
     }
   }
 
+  const handleAutoModeEnable = () => {
+    setAutoModeEnabled(true)
+  }
+
   const handleSelect = useCallback((item: SelectedItem | null) => {
     setSelectedItem(item)
   }, [])
@@ -370,11 +375,18 @@ function App() {
           onSelect={(approach) => {
             handleSelectApproach(approach)
             setShowWelcomeModal(false)
+            setWelcomeModalMode('choose')
           }}
           onCreate={(name, hypothesis, enableAutoMode, model) => {
             handleCreateApproach(name, hypothesis, enableAutoMode, model)
             setShowWelcomeModal(false)
+            setWelcomeModalMode('choose')
           }}
+          initialMode={welcomeModalMode}
+          onClose={currentApproach ? () => {
+            setShowWelcomeModal(false)
+            setWelcomeModalMode('choose')
+          } : undefined}
         />
       )}
       {showTutorial && (
@@ -402,7 +414,10 @@ function App() {
             approaches={approaches}
             currentApproach={currentApproach}
             onSelect={handleSelectApproach}
-            onCreate={handleCreateApproach}
+            onRequestCreate={() => {
+              setWelcomeModalMode('create')
+              setShowWelcomeModal(true)
+            }}
           />
         </div>
         <div className="header-right">
@@ -496,6 +511,7 @@ function App() {
                   onAutoResume={handleAutoResume}
                   onAutoStop={handleAutoStop}
                   onAutoTurnUpdate={setAutoTurnCount}
+                  onAutoModeEnable={handleAutoModeEnable}
                 />
               </div>
             </Split>

@@ -6,23 +6,11 @@ interface Props {
   approaches: Approach[]
   currentApproach: Approach | null
   onSelect: (approach: Approach) => void
-  onCreate: (name: string, hypothesis: string) => void
+  onRequestCreate: () => void
 }
 
-function ApproachSelector({ approaches, currentApproach, onSelect, onCreate }: Props) {
+function ApproachSelector({ approaches, currentApproach, onSelect, onRequestCreate }: Props) {
   const [showDropdown, setShowDropdown] = useState(false)
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [newName, setNewName] = useState('')
-  const [newHypothesis, setNewHypothesis] = useState('')
-
-  const handleCreate = () => {
-    if (newName.trim() && newHypothesis.trim()) {
-      onCreate(newName.trim(), newHypothesis.trim())
-      setNewName('')
-      setNewHypothesis('')
-      setShowCreateModal(false)
-    }
-  }
 
   return (
     <div className="approach-selector">
@@ -42,7 +30,7 @@ function ApproachSelector({ approaches, currentApproach, onSelect, onCreate }: P
               className="create-button"
               onClick={() => {
                 setShowDropdown(false)
-                setShowCreateModal(true)
+                onRequestCreate()
               }}
             >
               + New
@@ -73,53 +61,6 @@ function ApproachSelector({ approaches, currentApproach, onSelect, onCreate }: P
                 </button>
               ))
             )}
-          </div>
-        </div>
-      )}
-
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>New Approach</h2>
-
-            <div className="form-group">
-              <label htmlFor="name">Name</label>
-              <input
-                id="name"
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="e.g., Ultrasound Neural Recording"
-                autoFocus
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="hypothesis">Hypothesis</label>
-              <textarea
-                id="hypothesis"
-                value={newHypothesis}
-                onChange={(e) => setNewHypothesis(e.target.value)}
-                placeholder="e.g., We can detect neural signals using ultrasound"
-                rows={3}
-              />
-            </div>
-
-            <div className="modal-actions">
-              <button
-                className="cancel-button"
-                onClick={() => setShowCreateModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="submit-button"
-                onClick={handleCreate}
-                disabled={!newName.trim() || !newHypothesis.trim()}
-              >
-                Create
-              </button>
-            </div>
           </div>
         </div>
       )}
