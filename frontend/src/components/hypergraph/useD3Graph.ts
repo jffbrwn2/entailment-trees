@@ -130,6 +130,7 @@ export function useD3Graph({
     // Defs for markers
     const defs = svg.append('defs')
 
+    // Default arrowhead (gray)
     defs.append('marker')
       .attr('id', 'arrowhead')
       .attr('viewBox', '0 -5 10 10')
@@ -140,7 +141,33 @@ export function useD3Graph({
       .attr('orient', 'auto')
       .append('path')
       .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', 'var(--accent)')
+      .attr('fill', 'var(--text-secondary)')
+
+    // Passed arrowhead (green)
+    defs.append('marker')
+      .attr('id', 'arrowhead-passed')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 20)
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', '#3fb950')
+
+    // Failed arrowhead (red)
+    defs.append('marker')
+      .attr('id', 'arrowhead-failed')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 20)
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', '#f85149')
 
     // Create nodes data
     const claims: NodeData[] = hypergraph.claims.map(c => ({
@@ -325,17 +352,21 @@ export function useD3Graph({
       .attr('stroke', d => {
         const impl = hypergraph.implications.find(i => i.id === d.implId)
         const status = impl?.entailment_status
-        if (d.type === 'junction-to-conclusion') {
-          if (status === 'failed') return '#f85149'
-          if (status === 'passed') return 'var(--accent)'
-          return 'var(--text-secondary)'
-        }
+        if (status === 'failed') return '#f85149'
+        if (status === 'passed') return '#3fb950'
         return 'var(--text-secondary)'
       })
       .attr('stroke-width', d => d.type === 'junction-to-conclusion' ? 3 : 2)
       .attr('fill', 'none')
       .attr('stroke-linecap', 'round')
-      .attr('marker-end', d => d.type === 'junction-to-conclusion' ? 'url(#arrowhead)' : null)
+      .attr('marker-end', d => {
+        if (d.type !== 'junction-to-conclusion') return null
+        const impl = hypergraph.implications.find(i => i.id === d.implId)
+        const status = impl?.entailment_status
+        if (status === 'failed') return 'url(#arrowhead-failed)'
+        if (status === 'passed') return 'url(#arrowhead-passed)'
+        return 'url(#arrowhead)'
+      })
       .attr('cursor', 'pointer')
       .attr('opacity', 0)
       .on('dblclick', (event, d) => {
