@@ -55,6 +55,103 @@
   filter: brightness(1.2);
 }
 
+/* Graph toolbar dropdown */
+.graph-toolbar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+}
+
+.toolbar-trigger {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 4px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.toolbar-trigger:hover {
+  background: var(--bg-tertiary, rgba(255, 255, 255, 0.1));
+}
+
+.toolbar-arrow {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.toolbar-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 4px;
+}
+
+.graph-toolbar:hover .toolbar-dropdown {
+  opacity: 1;
+  visibility: visible;
+}
+
+.toolbar-dropdown .toolbar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.toolbar-dropdown .toolbar-item label {
+  color: var(--text-secondary);
+}
+
+.toolbar-dropdown .toolbar-item select {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.toolbar-dropdown .toolbar-item select:hover {
+  border-color: var(--accent);
+}
+
+.toolbar-dropdown button.toolbar-item {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.toolbar-dropdown button.toolbar-item:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
 /* Legend - scaled 1.5x for visibility */
 .graph-legend {
   position: absolute;

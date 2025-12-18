@@ -168,9 +168,12 @@ function ValidationIndicator({ hypergraph, onSelect, onSendMessage }: {
 function D3HypergraphViewer({
   hypergraph,
   scoreMode,
+  onScoreModeChange,
   onSelect,
   selectedItem,
   resetKey,
+  onReset,
+  onCleanup,
   onDelete,
   onSendMessage,
 }: D3HypergraphViewerProps) {
@@ -225,6 +228,29 @@ function D3HypergraphViewer({
   return (
     <div ref={containerRef} className="d3-viewer-container">
       <svg ref={svgRef} className="d3-viewer-svg" />
+      <div className="graph-toolbar">
+        <div className="toolbar-trigger">
+          <span className="toolbar-arrow">▼</span>
+        </div>
+        <div className="toolbar-dropdown">
+          <div className="toolbar-item">
+            <label>View:</label>
+            <select
+              value={scoreMode}
+              onChange={(e) => onScoreModeChange(e.target.value as 'score' | 'propagated')}
+            >
+              <option value="score">Score</option>
+              <option value="propagated">Cost</option>
+            </select>
+          </div>
+          <button className="toolbar-item" onClick={onReset}>
+            Reset Layout
+          </button>
+          <button className="toolbar-item" onClick={onCleanup}>
+            Clean Up
+          </button>
+        </div>
+      </div>
       <div className="graph-legend">
         <div className="legend-title">Score</div>
         <div className="legend-gradient">

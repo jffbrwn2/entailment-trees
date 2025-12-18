@@ -77,9 +77,12 @@ export interface LinkData {
 export interface D3HypergraphViewerProps {
   hypergraph: Hypergraph | null
   scoreMode: 'score' | 'propagated'
+  onScoreModeChange: (mode: 'score' | 'propagated') => void
   onSelect: (item: SelectedItem | null) => void
   selectedItem: SelectedItem | null
   resetKey?: number
+  onReset: () => void
+  onCleanup: () => void
   onDelete?: (claimId: string) => void
   onSendMessage?: (message: string) => void
 }

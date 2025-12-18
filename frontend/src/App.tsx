@@ -416,32 +416,6 @@ function App() {
           />
         </div>
         <div className="header-right">
-          <div className="toolbar-group">
-            <label className="toolbar-label">View:</label>
-            <select
-              className="toolbar-select"
-              value={scoreMode}
-              onChange={(e) => setScoreMode(e.target.value as 'score' | 'propagated')}
-            >
-              <option value="score">Score</option>
-              <option value="propagated">Cost</option>
-            </select>
-          </div>
-          <button
-            className="toolbar-button"
-            onClick={() => setResetKey(k => k + 1)}
-            title="Reset graph layout"
-          >
-            Reset
-          </button>
-          <button
-            className="toolbar-button"
-            onClick={handleCleanup}
-            disabled={!currentApproach}
-            title="Remove unreachable nodes from hypergraph"
-          >
-            Clean Up
-          </button>
           <button
             className="toolbar-button settings-button"
             onClick={() => setShowSettings(true)}
@@ -486,7 +460,10 @@ function App() {
               selectedItem={selectedItem}
               onSelect={handleSelect}
               scoreMode={scoreMode}
+              onScoreModeChange={setScoreMode}
               resetKey={resetKey}
+              onReset={() => setResetKey(k => k + 1)}
+              onCleanup={handleCleanup}
               onDelete={handleDeleteClaim}
               onSendMessage={setPendingMessage}
             />

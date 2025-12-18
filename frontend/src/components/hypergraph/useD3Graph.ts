@@ -57,6 +57,8 @@ export function useD3Graph({
   // Clear state on reset
   useEffect(() => {
     prevStructureRef.current = ''
+    nodesDataRef.current = []
+    linksDataRef.current = []
   }, [resetKey])
 
   // Animation helper for edges
@@ -119,6 +121,7 @@ export function useD3Graph({
       })
 
     svg.call(zoom)
+      .call(zoom.transform, d3.zoomIdentity)  // Reset zoom/pan to initial state
       .on('dblclick.zoom', null)
       .on('dblclick', () => {
         onSelect(null)
