@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
+import AutoControls from './AutoControls'
 import './ChatInterface.css'
 
 interface ToolUse {
@@ -15,7 +16,7 @@ interface MessagePart {
 
 interface Message {
   id: string
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'auto'
   parts: MessagePart[]  // interleaved text and tool uses
 }
 
@@ -32,6 +33,17 @@ interface Props {
   approachName: string | null
   pendingMessage?: string | null
   onPendingMessageHandled?: () => void
+  // Auto mode props
+  autoModeEnabled?: boolean
+  autoModeActive?: boolean
+  autoModePaused?: boolean
+  autoTurnCount?: number
+  autoMaxTurns?: number
+  onAutoStart?: () => void
+  onAutoPause?: () => void
+  onAutoResume?: () => void
+  onAutoStop?: () => void
+  onAutoTurnUpdate?: (turn: number) => void
 }
 
 interface SuggestionButton {
@@ -54,7 +66,22 @@ const suggestions: SuggestionButton[] = [
   },
 ]
 
-function ChatInterface({ approachFolder, approachName, pendingMessage, onPendingMessageHandled }: Props) {
+function ChatInterface({
+  approachFolder,
+  approachName,
+  pendingMessage,
+  onPendingMessageHandled,
+  autoModeEnabled = false,
+  autoModeActive = false,
+  autoModePaused = false,
+  autoTurnCount = 0,
+  autoMaxTurns = 20,
+  onAutoStart,
+  onAutoPause,
+  onAutoResume,
+  onAutoStop,
+  onAutoTurnUpdate,
+}: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
@@ -172,15 +199,26 @@ function ChatInterface({ approachFolder, approachName, pendingMessage, onPending
           role: 'user',
           parts: [{ type: 'text', content: turn.user_input }],
         })
-        // Add assistant message with tool uses at the end (historical)
-        const assistantParts: MessagePart[] = [
-          { type: 'text', content: turn.claude_response }
-        ]
-        for (const t of turn.tools_used) {
-          assistantParts.push({
-            type: 'tool',
-            tool: { name: t.tool_name, status: 'done' as const }
+        // Build assistant message parts - use response_parts if available for correct interleaving
+        let assistantParts: MessagePart[]
+        if (turn.response_parts && turn.response_parts.length > 0) {
+          // Use interleaved response_parts from conversation log
+          assistantParts = turn.response_parts.map((part: { type: string; content?: string; tool_name?: string }) => {
+            if (part.type === 'text') {
+              return { type: 'text' as const, content: part.content || '' }
+            } else {
+              return { type: 'tool' as const, tool: { name: part.tool_name || 'unknown', status: 'done' as const } }
+            }
           })
+        } else {
+          // Fallback for old logs without response_parts - tools at end
+          assistantParts = [{ type: 'text', content: turn.claude_response }]
+          for (const t of turn.tools_used) {
+            assistantParts.push({
+              type: 'tool',
+              tool: { name: t.tool_name, status: 'done' as const }
+            })
+          }
         }
         loadedMessages.push({
           id: `${turn.turn_number}-assistant`,

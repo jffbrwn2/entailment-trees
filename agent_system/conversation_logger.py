@@ -20,6 +20,14 @@ from datetime import datetime
 
 
 @dataclass
+class ResponsePart:
+    """Represents a part of the response - either text or a tool call."""
+    type: str  # "text" or "tool"
+    content: Optional[str] = None  # For text parts
+    tool_name: Optional[str] = None  # For tool parts
+
+
+@dataclass
 class ToolCall:
     """Represents a single tool invocation."""
     tool_name: str
@@ -37,6 +45,7 @@ class Turn:
     user_input: str
     claude_response: str
     tools_used: List[ToolCall] = field(default_factory=list)
+    response_parts: List[ResponsePart] = field(default_factory=list)  # Interleaved text/tool order
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     cost_usd: Optional[float] = None
     raw_metadata: Dict[str, Any] = field(default_factory=dict)
@@ -104,6 +113,8 @@ class ConversationLogger:
 
         # Track current turn tools
         self.current_turn_tools: List[ToolCall] = []
+        # Track interleaved response parts (text and tool indicators)
+        self.current_response_parts: List[ResponsePart] = []
 
         # Log file path
         self.log_file = self.logs_dir / f"conversation_{self.session_id}.json"
@@ -119,8 +130,36 @@ class ConversationLogger:
             user_input: User's message/prompt
         """
         self.current_turn_tools = []
+        self.current_response_parts = []
         self._current_user_input = user_input
         self._turn_start_time = datetime.now()
+
+    def log_text_part(self, text: str):
+        """
+        Log a text chunk during streaming to track interleaved order.
+
+        Args:
+            text: Text content from the stream
+        """
+        # Append to last text part if it exists, otherwise create new
+        if self.current_response_parts and self.current_response_parts[-1].type == "text":
+            # Accumulate into existing text part
+            self.current_response_parts[-1].content += text
+        else:
+            # Create new text part
+            self.current_response_parts.append(ResponsePart(type="text", content=text))
+
+    def log_tool_use(self, tool_name: str):
+        """
+        Log a tool use indicator during streaming.
+
+        This is called when a tool starts running, to track the order.
+        The full tool_call with results is logged separately via log_tool_call.
+
+        Args:
+            tool_name: Name of the tool being used
+        """
+        self.current_response_parts.append(ResponsePart(type="tool", tool_name=tool_name))
 
     def log_tool_call(self, tool_name: str, parameters: Dict[str, Any],
                       result: Optional[str] = None, error: Optional[str] = None,
@@ -159,12 +198,14 @@ class ConversationLogger:
             user_input=self._current_user_input,
             claude_response=claude_response,
             tools_used=self.current_turn_tools.copy(),
+            response_parts=self.current_response_parts.copy(),
             cost_usd=cost_usd,
             raw_metadata=raw_metadata or {}
         )
 
         self.log.turns.append(turn)
         self.current_turn_tools = []
+        self.current_response_parts = []
 
         # Save after each turn
         self.save()

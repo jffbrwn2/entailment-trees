@@ -1203,11 +1203,17 @@ class ClaudeCodeClient:
                     for block in message.content:
                         if isinstance(block, TextBlock):
                             response_text.append(block.text)
+                            # Log text part for interleaved tracking
+                            if self.logger:
+                                self.logger.log_text_part(block.text)
                             yield TextEvent(block.text)
                         elif isinstance(block, ToolUseBlock):
                             tool_id = getattr(block, 'id', None)
                             if tool_id:
                                 tool_id_to_name[tool_id] = block.name
+                            # Log tool use for interleaved tracking
+                            if self.logger:
+                                self.logger.log_tool_use(block.name)
                             yield ToolUseEvent(
                                 tool_name=block.name,
                                 tool_input=block.input if hasattr(block, 'input') else {}
