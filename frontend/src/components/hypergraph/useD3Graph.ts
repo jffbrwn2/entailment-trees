@@ -53,6 +53,7 @@ export function useD3Graph({
   const linksDataRef = useRef<LinkData[]>([])
   const isInitializedRef = useRef(false)
   const prevStructureRef = useRef<string>('')
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
 
   // Clear state on reset
   useEffect(() => {
@@ -120,6 +121,7 @@ export function useD3Graph({
         g.attr('transform', event.transform)
       })
 
+    zoomRef.current = zoom
     svg.call(zoom)
       .call(zoom.transform, d3.zoomIdentity)  // Reset zoom/pan to initial state
       .on('dblclick.zoom', null)
@@ -300,6 +302,67 @@ export function useD3Graph({
         node.y = pos.y
       }
     })
+
+    // Fit view to visible nodes (excluding orphans)
+    if (zoomRef.current && svgRef.current) {
+      const visibleNodes = allNodes.filter(n => {
+        // Exclude collapsed claims
+        if (n.type === 'claim') {
+          if (collapsedNodes.has(n.id)) return false
+          // Exclude orphan claims
+          if (orphanClaims.has(n.id)) return false
+          return true
+        }
+        // Filter junctions whose implications are collapsed or orphaned
+        if (n.type === 'junction' && n.implication) {
+          const impl = n.implication
+          // Exclude if conclusion is collapsed or orphaned
+          if (collapsedNodes.has(impl.conclusion) || orphanClaims.has(impl.conclusion)) return false
+          // Exclude if all premises are collapsed or orphaned
+          if (!impl.premises.some(p => !collapsedNodes.has(p) && !orphanClaims.has(p))) return false
+          return true
+        }
+        return true
+      })
+
+      if (visibleNodes.length > 0) {
+        const padding = 100
+        const nodeRadius = 85
+
+        // Calculate bounding box of visible nodes
+        const minX = Math.min(...visibleNodes.map(n => n.x)) - nodeRadius - padding
+        const maxX = Math.max(...visibleNodes.map(n => n.x)) + nodeRadius + padding
+        const minY = Math.min(...visibleNodes.map(n => n.y)) - nodeRadius - padding
+        const maxY = Math.max(...visibleNodes.map(n => n.y)) + nodeRadius + padding
+
+        const bboxWidth = maxX - minX
+        const bboxHeight = maxY - minY
+
+        // Calculate scale to fit
+        const scale = Math.min(
+          width / bboxWidth,
+          height / bboxHeight,
+          1.5  // Max zoom level
+        )
+
+        // Calculate center
+        const centerX = (minX + maxX) / 2
+        const centerY = (minY + maxY) / 2
+
+        // Create transform to center and scale
+        const transform = d3.zoomIdentity
+          .translate(width / 2, height / 2)
+          .scale(scale)
+          .translate(-centerX, -centerY)
+
+        // Animate zoom with same duration as node transitions
+        d3.select(svgRef.current)
+          .transition()
+          .duration(transitionDuration)
+          .ease(d3.easeCubicInOut)
+          .call(zoomRef.current.transform, transform)
+      }
+    }
 
     // Update orphan region
     const orphanRegion = g.select<SVGGElement>('.orphan-region')
@@ -872,5 +935,6 @@ export function useD3Graph({
     orphanClaims,
     nodePositionsRef,
     containerRef,
+    svgRef,
   ])
 }

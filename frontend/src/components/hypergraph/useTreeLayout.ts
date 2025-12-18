@@ -459,7 +459,7 @@ export function useTreeLayout(
       function positionOrphanSubtree(nodeId: string, centerX: number, level: number) {
         // Orphan levels are negative, convert to Y position
         // Level -1 is closest to main tree, more negative levels go higher
-        const y = treeStartY + (level + 1) * orphanLevelSpacing - orphanRegionHeight + 60
+        const y = treeStartY + (level + 1) * orphanLevelSpacing - orphanRegionHeight - 40
 
         if (layoutMode === 'compact' && nodePositionsRef.current.has(nodeId)) {
           positions.set(nodeId, nodePositionsRef.current.get(nodeId)!)
@@ -481,7 +481,7 @@ export function useTreeLayout(
         if (impl) {
           const junctionId = `junction_${impl.id}`
           const junctionLevel = level - 1
-          const junctionY = treeStartY + (junctionLevel + 1) * orphanLevelSpacing - orphanRegionHeight + 60
+          const junctionY = treeStartY + (junctionLevel + 1) * orphanLevelSpacing - orphanRegionHeight - 40
 
           if (layoutMode === 'compact' && nodePositionsRef.current.has(junctionId)) {
             positions.set(junctionId, nodePositionsRef.current.get(junctionId)!)
@@ -594,8 +594,40 @@ export function useTreeLayout(
     return { positions, levels }
   }, [hypergraph, collapsedNodes, layoutMode])
 
-  // Memoize the returned refs as stable values
-  const orphanClaims = useMemo(() => orphanClaimsRef.current, [hypergraph])
+  // Compute orphan claims directly (claims not connected to hypothesis)
+  const orphanClaims = useMemo(() => {
+    if (!hypergraph) return new Set<string>()
+
+    // Build the connection map
+    const conclusionToPremises = new Map<string, string[]>()
+    hypergraph.implications.forEach(impl => {
+      conclusionToPremises.set(impl.conclusion, impl.premises)
+    })
+
+    // BFS from hypothesis to find all connected claims
+    const connected = new Set<string>()
+    const queue = ['hypothesis']
+    while (queue.length > 0) {
+      const current = queue.shift()!
+      if (connected.has(current)) continue
+      connected.add(current)
+      const premises = conclusionToPremises.get(current)
+      if (premises) {
+        premises.forEach(p => {
+          if (!connected.has(p)) queue.push(p)
+        })
+      }
+    }
+
+    // Orphans are claims not in connected set
+    const orphans = new Set<string>()
+    hypergraph.claims.forEach(claim => {
+      if (!connected.has(claim.id)) {
+        orphans.add(claim.id)
+      }
+    })
+    return orphans
+  }, [hypergraph])
   const conclusionToPremises = useMemo(() => conclusionToPremisesRef.current, [hypergraph])
   const premiseToConclusions = useMemo(() => premiseToConclusionsRef.current, [hypergraph])
   const nodeDepths = useMemo(() => nodeDepthsRef.current, [hypergraph])
