@@ -323,8 +323,7 @@ function App() {
         } else {
           alert('No unreachable nodes found. Hypergraph is clean!')
         }
-        // Refresh hypergraph (WebSocket should handle this, but fetch just in case)
-        fetchHypergraph(currentApproach.folder)
+        // WebSocket will trigger the refresh - no need to fetch manually
       }
     } catch (error) {
       console.error('Failed to cleanup hypergraph:', error)
