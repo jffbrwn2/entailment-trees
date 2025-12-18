@@ -79,6 +79,22 @@
   background: var(--bg-secondary);
 }
 
+.toolbar-button.settings-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem;
+}
+
+.toolbar-button.settings-button svg {
+  display: block;
+}
+
+.toolbar-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .app-main {
   flex: 1;
   overflow: hidden;
