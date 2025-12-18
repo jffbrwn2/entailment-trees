@@ -55,32 +55,32 @@
   filter: brightness(1.2);
 }
 
-/* Legend */
+/* Legend - scaled 1.5x for visibility */
 .graph-legend {
   position: absolute;
   top: 12px;
   left: 12px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 11px;
+  border-radius: 9px;
+  padding: 12px 15px;
+  font-size: 17px;
 }
 
 .legend-title {
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 6px;
+  margin-bottom: 9px;
 }
 
 .legend-gradient {
-  margin-bottom: 6px;
+  margin-bottom: 9px;
 }
 
 .legend-bar {
-  height: 8px;
-  width: 100px;
-  border-radius: 2px;
+  height: 12px;
+  width: 150px;
+  border-radius: 3px;
   background: linear-gradient(to right,
     rgb(248, 81, 73) 0%,
     rgb(248, 217, 34) 50%,
@@ -92,21 +92,21 @@
   display: flex;
   justify-content: space-between;
   color: var(--text-secondary);
-  font-size: 9px;
-  margin-top: 2px;
+  font-size: 14px;
+  margin-top: 3px;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 9px;
   color: var(--text-secondary);
 }
 
 .legend-color {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
 }
 
 /* Depth control */
@@ -158,7 +158,7 @@
 .validation-indicator {
   position: absolute;
   left: 12px;
-  top: calc(12px + 130px + 8px); /* legend top + approx legend height + gap */
+  top: calc(12px + 195px + 8px); /* legend top + approx legend height (scaled 1.5x) + gap */
 }
 
 .validation-circle {
