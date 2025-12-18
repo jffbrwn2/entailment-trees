@@ -3,20 +3,20 @@ layout: default
 title: Entailment Trees
 ---
 
-# Entailment Trees: A Cost Function for Ideas
+# Entailment Trees: A Framework for Evaluating Scientific Ideas
 
-As AI systems become more intelligent, it ought to be possible to use them to both discover truly interesting new scientific ideas and evaluate them. Additionally, we need systems that can make their reasoning and evaluation clear to us. It's not helpful if an AI system gives you 20 pages of impenetrable reasoning when you're the one who has to sign the check or run the experiment. You need to understand what's going on, how the different parts of the idea play together, what the critical bottlenecks or risky parts are.
+As AI systems become more intelligent, it ought to be possible to use them to both discover truly interesting new scientific ideas and evaluate them. Additionally, we need systems that can make their reasoning and evaluation clear to us. It's not helpful if an AI system gives you 20 pages of impenetrable reasoning when you're the one who has to sign the check or run the experiment. You need to understand what's going on, how the different parts of the idea play together, what the critical bottlenecks or risky parts are, etc.
 
-So, we explore the idea of an **entailment tree**.
+To address this, we explore the framework of **entailment trees**.
 
-Entailment trees formalize a simple idea: to understand a big idea, break it down into simpler parts. Specifically, in these trees, we break claims into premises that, if true, imply the claim. This kind of relationship is called "entailment."
+Entailment trees formalize a simple idea: to understand a big idea, break it down into simpler parts. In these trees, we break claims into premises that, if true, imply the claim. This kind of relationship is called "entailment." 
 
-In an entailment tree, there are **claim nodes** that contain a particular claim that can be rated as true or false with varying degrees of certainty, and logical **AND** and **OR** nodes. Multiple claim nodes can point to a single logical node:
+More formally, in an entailment tree, there are **claim nodes** that represent claims that can be evaluated as true or false with varying degrees of certainty, and logical **AND** and **OR** nodes. Multiple claim nodes can point to a single logical node:
 
 - If multiple claims lead into an **AND** node, they are ANDed together; i.e., the resulting claim is true if and only if every subclaim is true.
 - If multiple claims lead into an **OR** node, they are ORed together; i.e., the resulting claim is true if at least one subclaim is true.
 
-A single logical node can then lead to a claim node, defining the implication or entailment relationship.
+A single logical node can then lead to a claim node, defining the entailment relationship.
 
 ---
 
@@ -24,13 +24,36 @@ A single logical node can then lead to a claim node, defining the implication or
 
 ANDing multiple claims together captures the intuition that many things have to work together for an idea to work out. Breaking down the idea into its components is designed to identify claims that are more specific and more usefully concrete. This was one of the original motivations; if you could repeatedly break down an idea into more fundamental parts, these would be easier to evaluate and understand.
 
+
 ---
 
-## The Magical "OR"
+## The Transformative "OR"
 
-When it comes to transformative ideas, often the interesting thing is that someone comes up with a new solution to an outstanding problem. Think, for instance, about the use of GCaMP, a protein that is used to monitor the activity of neurons with light. Prior to the discovery of Green Fluorescent Protein in jellyfish, I imagine it was really hard to think of a way of studying neurons without using electrical recordings. However, eventually there came a new strategy, a "we could do this OR this new thing," and that opened up an entirely new way of interacting with the problem.
+When it comes to transformative ideas, breakthroughs often strike when someone comes up with a new perspective on an old problem.
 
-The ability to introduce OR nodes in the graph represents this possibility.
+<figure style="text-align: center; margin: 2em 0;">
+  <img src="assets/images/gcamp6s_movie.gif" alt="GCaMP6s calcium imaging" style="max-width: 100%; border-radius: 8px;">
+  <figcaption style="margin-top: 0.5em; font-style: italic; color: #666;">
+    GCaMP6s fluorescence reveals neural activity in real time—no electrodes required.
+  </figcaption>
+</figure>
+
+<figure style="text-align: center; margin: 2em 0;">
+  <img src="assets/images/expansion_microscopy.jpeg" alt="Expansion microscopy" style="max-width: 100%; border-radius: 8px;">
+  <figcaption style="margin-top: 0.5em; font-style: italic; color: #666;">
+    Expansion microscopy physically enlarges samples, achieving nanoscale resolution with conventional optics.
+  </figcaption>
+</figure>
+
+<figure style="text-align: center; margin: 2em 0;">
+  <img src="assets/images/scaling_laws.png" alt="AI scaling laws" style="max-width: 100%; border-radius: 8px;">
+  <figcaption style="margin-top: 0.5em; font-style: italic; color: #666;">
+    Scaling laws: more data and compute yield predictable improvements in AI performance.
+  </figcaption>
+</figure>
+
+Each of these approaches reimagine new solutions for old problems—that moment of "we could do this OR we could do that" that opened up an entirely new way of interacting with the problem. The ability to introduce OR nodes in the graph represents this possibility.
+
 
 ---
 
@@ -50,3 +73,4 @@ To do so, you assign each leaf a "probability" *P* from 0 (False) to 1 (True), w
 - **OR**: Cost(C) = min −log *Pᵢ*
 
 The cost function has the properties we outlined. True claims don't add anything to the cost (−log 1 = 0), while expressly false claims add a lot (infinite if the claim probability is 0).
+
