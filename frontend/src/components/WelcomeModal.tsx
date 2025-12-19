@@ -40,6 +40,7 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
   const [newHypothesis, setNewHypothesis] = useState(initialHypothesis || '')
   const [isCreating, setIsCreating] = useState(false)
   const [showNameField, setShowNameField] = useState(false)
+  const [isRegenerating, setIsRegenerating] = useState(false)
 
   // Auto mode state
   const [autoModeEnabled, setAutoModeEnabled] = useState(true)
@@ -107,6 +108,55 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
     }
   }
 
+  const handleRegenerate = async () => {
+    if (!exploreSource) return
+
+    setIsRegenerating(true)
+    try {
+      let requestBody: Record<string, string>
+
+      if (exploreSource.type === 'capability' && exploreSource.sourceGapName) {
+        requestBody = {
+          mode: 'capability_gap',
+          capability_name: exploreSource.name,
+          capability_description: '',
+          gap_name: exploreSource.sourceGapName,
+          gap_description: '',
+        }
+      } else if (exploreSource.type === 'gap') {
+        requestBody = {
+          mode: 'gap_only',
+          gap_name: exploreSource.name,
+          gap_description: '',
+        }
+      } else {
+        // Capability without source gap
+        requestBody = {
+          mode: 'capability_gap',
+          capability_name: exploreSource.name,
+          capability_description: '',
+          gap_name: '',
+          gap_description: '',
+        }
+      }
+
+      const response = await fetch('/api/gapmap/generate-hypothesis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setNewHypothesis(data.hypothesis)
+      }
+    } catch (err) {
+      console.error('Failed to regenerate hypothesis:', err)
+    } finally {
+      setIsRegenerating(false)
+    }
+  }
+
   const handleCreate = async () => {
     if (!newHypothesis.trim()) return
 
@@ -149,11 +199,30 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
 
         {mode === 'create' && exploreSource && (
           <div className="explore-source-badge">
-            <span className="source-type">{exploreSource.type === 'gap' ? 'Research Gap' : 'Capability'}</span>
-            <span className="source-name">{exploreSource.name}</span>
-            {exploreSource.sourceGapName && (
-              <span className="source-gap">via {exploreSource.sourceGapName}</span>
-            )}
+            <div className="source-info">
+              <span className="source-type">{exploreSource.type === 'gap' ? 'Research Gap' : 'Capability'}</span>
+              <span className="source-name">{exploreSource.name}</span>
+              {exploreSource.sourceGapName && (
+                <span className="source-gap">via {exploreSource.sourceGapName}</span>
+              )}
+            </div>
+            <button
+              className="regenerate-button"
+              onClick={handleRegenerate}
+              disabled={isRegenerating}
+              title="Generate a different hypothesis"
+            >
+              {isRegenerating ? (
+                <span className="regenerate-spinner" />
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 2v6h-6"></path>
+                  <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+                  <path d="M3 22v-6h6"></path>
+                  <path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path>
+                </svg>
+              )}
+            </button>
           </div>
         )}
 

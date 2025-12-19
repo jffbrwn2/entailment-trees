@@ -202,11 +202,59 @@
   line-height: 1.5;
 }
 
-.entailment-explanation {
-  font-family: 'SF Mono', Monaco, monospace;
-  font-size: 0.8rem;
-  line-height: 1.4;
-  white-space: pre-wrap;
+.entailment-details {
+  font-size: 0.9rem;
+  line-height: 1.6;
   color: var(--text-secondary);
-  margin: 0;
+}
+
+.entailment-analysis {
+  margin-bottom: 0.75rem;
+}
+
+.entailment-analysis p {
+  margin: 0 0 0.5rem 0;
+}
+
+.entailment-analysis ul,
+.entailment-analysis ol {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.entailment-analysis li {
+  margin: 0.25rem 0;
+}
+
+.entailment-analysis strong {
+  color: var(--text-primary);
+}
+
+.entailment-analysis code {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.85em;
+  background: var(--bg-tertiary);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+.entailment-warning {
+  background: rgba(210, 153, 34, 0.1);
+  border-left: 3px solid var(--warning);
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.entailment-suggestions {
+  background: rgba(88, 166, 255, 0.1);
+  border-left: 3px solid var(--accent);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.entailment-suggestions p {
+  margin: 0.25rem 0;
 }

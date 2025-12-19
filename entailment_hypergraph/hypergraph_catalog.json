@@ -23,6 +23,91 @@
       "category": "approach"
     },
     {
+      "name": "adam-eisen",
+      "path": "/approaches/adam-eisen/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "alien-existence-proof",
+      "path": "/approaches/alien-existence-proof/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "atomic-scale-imaging",
+      "path": "/approaches/atomic-scale-imaging/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "code-validation-research",
+      "path": "/approaches/code-validation-research/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "cookies-rule-research",
+      "path": "/approaches/cookies-rule-research/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "entailment-tree",
+      "path": "/approaches/entailment-tree/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "evidence-of-persistence",
+      "path": "/approaches/evidence-of-persistence/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "extraterrestrial-existence-proof",
+      "path": "/approaches/extraterrestrial-existence-proof/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "human-flight-potential",
+      "path": "/approaches/human-flight-potential/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "light-bead-microscopy",
+      "path": "/approaches/light-bead-microscopy/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "magic-food-hypothesis",
+      "path": "/approaches/magic-food-hypothesis/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "making-friends",
+      "path": "/approaches/making-friends/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "making-friends2",
+      "path": "/approaches/making-friends2/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "mind-pattern-transfer",
+      "path": "/approaches/mind-pattern-transfer/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "neural-dust",
+      "path": "/approaches/neural-dust/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "neural-state-transducers",
+      "path": "/approaches/neural-state-transducers/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "neurips-conference",
+      "path": "/approaches/neurips-conference/hypergraph.json",
+      "category": "approach"
+    },
+    {
       "name": "new-limb",
       "path": "/approaches/new-limb/hypergraph.json",
       "category": "approach"
@@ -33,8 +118,23 @@
       "category": "approach"
     },
     {
+      "name": "psychic-human-potential",
+      "path": "/approaches/psychic-human-potential/hypergraph.json",
+      "category": "approach"
+    },
+    {
       "name": "record-neural-activity-with-tardigrades",
       "path": "/approaches/record-neural-activity-with-tardigrades/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "triangle-angle-theorem",
+      "path": "/approaches/triangle-angle-theorem/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "untitled-approach",
+      "path": "/approaches/untitled-approach/hypergraph.json",
       "category": "approach"
     }
   ]

@@ -550,7 +550,12 @@ function App() {
 
       <ExploreModal
         isOpen={showExplore}
-        onClose={() => setShowExplore(false)}
+        onClose={() => {
+          setShowExplore(false)
+          // Clear source when closing without using an idea
+          setExploreSource(null)
+          setExploreHypothesis(null)
+        }}
         onUseIdea={(hypothesis, source) => {
           setExploreHypothesis(hypothesis)
           setExploreSource(source)

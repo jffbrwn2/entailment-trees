@@ -1224,14 +1224,14 @@ Capability: {request.capability_name}
 Research Gap: {request.gap_name}
 {request.gap_description or ''}
 
-Write a single hypothesis statement in the form: "[Capability] can be used to [address gap]"
+Write a single hypothesis statement that proposes a specific approach to this capability.
 Be specific and concise. Output only the hypothesis statement, nothing else."""
         fallback = f"{request.capability_name} can be used to address {request.gap_name}"
 
     try:
         # chat() returns the response text directly as a string
         hypothesis = await openrouter_client.chat(
-            model="anthropic/claude-3-haiku",
+            model="anthropic/claude-opus-4.5",
             messages=[{"role": "user", "content": prompt}],
         )
         return {"hypothesis": hypothesis.strip()}

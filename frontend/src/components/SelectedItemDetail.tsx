@@ -1,3 +1,4 @@
+import ReactMarkdown from 'react-markdown'
 import './SelectedItemDetail.css'
 
 interface Claim {
@@ -42,6 +43,29 @@ interface Props {
   implications: Implication[]
   scoreMode: 'score' | 'propagated'
   onClose: () => void
+}
+
+// Parse XML tags from entailment explanation
+function parseEntailmentExplanation(explanation: string): {
+  analysis: string
+  valid: string
+  redundantPremises: string
+  degeneratePremises: string
+  suggestions: string
+} {
+  const extractTag = (text: string, tag: string): string => {
+    const pattern = new RegExp(`<${tag}>(.*?)</${tag}>`, 'is')
+    const match = text.match(pattern)
+    return match ? match[1].trim() : ''
+  }
+
+  return {
+    analysis: extractTag(explanation, 'analysis'),
+    valid: extractTag(explanation, 'valid'),
+    redundantPremises: extractTag(explanation, 'redundant_premises'),
+    degeneratePremises: extractTag(explanation, 'degenerate_premises'),
+    suggestions: extractTag(explanation, 'suggestions'),
+  }
 }
 
 function getScoreColor(score: number | null): string {
@@ -211,12 +235,37 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, onC
           <div className="detail-section-content">{impl.reasoning}</div>
         </div>
 
-        {impl.entailment_explanation && (
-          <div className="detail-section">
-            <div className="detail-section-title">Entailment Check Details</div>
-            <pre className="entailment-explanation">{impl.entailment_explanation}</pre>
-          </div>
-        )}
+        {impl.entailment_explanation && (() => {
+          const parsed = parseEntailmentExplanation(impl.entailment_explanation)
+          return (
+            <div className="detail-section">
+              <div className="detail-section-title">Entailment Check Details</div>
+              <div className="entailment-details">
+                {parsed.analysis && (
+                  <div className="entailment-analysis">
+                    <ReactMarkdown>{parsed.analysis}</ReactMarkdown>
+                  </div>
+                )}
+                {(parsed.redundantPremises && parsed.redundantPremises.toLowerCase() !== 'none') && (
+                  <div className="entailment-warning">
+                    <strong>Redundant premises:</strong> {parsed.redundantPremises}
+                  </div>
+                )}
+                {(parsed.degeneratePremises && parsed.degeneratePremises.toLowerCase() !== 'none') && (
+                  <div className="entailment-warning">
+                    <strong>Degenerate premises:</strong> {parsed.degeneratePremises}
+                  </div>
+                )}
+                {(parsed.suggestions && parsed.suggestions.toLowerCase() !== 'none') && (
+                  <div className="entailment-suggestions">
+                    <strong>Suggestions:</strong>
+                    <ReactMarkdown>{parsed.suggestions}</ReactMarkdown>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })()}
       </div>
     )
   }

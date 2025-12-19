@@ -36,13 +36,22 @@
 /* Gap Map source indicator */
 .explore-source-badge {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
   padding: 0.875rem 1rem;
   background: rgba(16, 185, 129, 0.1);
   border: 1px solid rgba(16, 185, 129, 0.3);
   border-radius: 10px;
   margin-bottom: 1.5rem;
+}
+
+.explore-source-badge .source-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .explore-source-badge .source-type {
@@ -64,6 +73,40 @@
   font-size: 0.85rem;
   color: var(--text-secondary);
   margin-top: 0.125rem;
+}
+
+.explore-source-badge .regenerate-button {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  color: #10b981;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.explore-source-badge .regenerate-button:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+}
+
+.explore-source-badge .regenerate-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.explore-source-badge .regenerate-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .welcome-options {
