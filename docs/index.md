@@ -5,6 +5,10 @@ title: Entailment Trees
 
 # Entailment Trees: A Framework for Evaluating Scientific Ideas
 
+<p style="text-align: center; margin: 1.5em 0;">
+  <a href="https://github.com/jffbrwn2/entailment-trees" style="display: inline-block; padding: 0.75em 1.5em; background: #2ea44f; color: white; text-decoration: none; border-radius: 6px; font-weight: 600;">View Demo on GitHub</a>
+</p>
+
 As AI systems become more intelligent, it ought to be possible to use them to both discover truly interesting new scientific ideas and evaluate them. Additionally, we need systems that can make their reasoning and evaluation clear to us. It's not helpful if an AI system gives you 20 pages of impenetrable reasoning when you're the one who has to sign the check or run the experiment. You need to understand what's going on, how the different parts of the idea play together, what the critical bottlenecks or risky parts are, etc.
 
 To address this, we explore the framework of **entailment trees**.
@@ -29,19 +33,19 @@ ANDing multiple claims together captures the intuition that many things have to 
 
 ## The Transformative "OR"
 
-When it comes to transformative ideas, breakthroughs often strike when someone comes up with a new perspective on an old problem.
+When it comes to transformative ideas, breakthroughs often strike when someone comes up with a new perspective on an old problem. Think, for example, about fluorescent proteins for measuring the activity of firing neurons instead of electrode arrays; physically expanding biological samples to image at nanoscale resolution instead of super resolution microscopy; or scaling up data and compute to achieve superhuman AI performance instead of hand-crafted heuristics/frameworks. 
 
 <figure style="text-align: center; margin: 2em 0;">
   <img src="assets/images/gcamp6s_movie.gif" alt="GCaMP6s calcium imaging" style="max-width: 100%; border-radius: 8px;">
   <figcaption style="margin-top: 0.5em; font-style: italic; color: #666;">
-    GCaMP6s fluorescence reveals neural activity in real time—no electrodes required.
+    GCaMP6: Fluorescent proteins reveal neural activity in real time without electrodes.
   </figcaption>
 </figure>
 
 <figure style="text-align: center; margin: 2em 0;">
   <img src="assets/images/expansion_microscopy.jpeg" alt="Expansion microscopy" style="max-width: 100%; border-radius: 8px;">
   <figcaption style="margin-top: 0.5em; font-style: italic; color: #666;">
-    Expansion microscopy physically enlarges samples, achieving nanoscale resolution with conventional optics.
+    Expansion microscopy: Physically enlarges samples, achieving nanoscale resolution with conventional optics.
   </figcaption>
 </figure>
 
@@ -53,7 +57,6 @@ When it comes to transformative ideas, breakthroughs often strike when someone c
 </figure>
 
 Each of these approaches reimagine new solutions for old problems—that moment of "we could do this OR we could do that" that opened up an entirely new way of interacting with the problem. The ability to introduce OR nodes in the graph represents this possibility.
-
 
 ---
 
