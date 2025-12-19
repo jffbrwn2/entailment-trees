@@ -393,7 +393,7 @@ export function useD3Graph({
         .attr('fill', 'var(--text-secondary)')
         .attr('font-size', '11px')
         .attr('font-style', 'italic')
-        .text('Disconnected claims (drag to connect)')
+        .text('Claims disconnected from hypothesis')
     }
 
     // Update edges
