@@ -36,6 +36,7 @@ from agent_system.config import AgentConfig
 from agent_system.conversation_logger import list_conversation_logs, load_conversation_log
 from agent_system.openrouter_client import OpenRouterClient
 from agent_system.runtime_settings import get_settings, update_settings
+from agent_system.gapmap_client import GapMapClient
 
 
 # Global orchestrator instance (one per server for now)
@@ -75,6 +76,9 @@ auto_mode_sessions: Dict[str, AutoModeSession] = {}
 
 # OpenRouter client instance (initialized lazily)
 openrouter_client: Optional[OpenRouterClient] = None
+
+# Gap Map client instance (initialized lazily)
+gapmap_client: Optional[GapMapClient] = None
 
 
 AUTO_AGENT_SYSTEM_PROMPT = """You are an Auto Agent rigorously evaluating a hypothesis through an entailment tree.
@@ -1125,6 +1129,144 @@ async def auto_mode_interject(folder: str, request: AutoInterjectRequest) -> dic
         "message": "Auto mode paused for interjection",
         "turn_count": session.turn_count
     }
+
+
+# =============================================================================
+# GAP MAP API
+# =============================================================================
+
+
+def get_gapmap_client() -> GapMapClient:
+    """Get or create Gap Map client instance."""
+    global gapmap_client
+    if gapmap_client is None:
+        gapmap_client = GapMapClient()
+    return gapmap_client
+
+
+@app.get("/api/gapmap/gaps")
+async def get_gapmap_gaps():
+    """Get all research gaps from Gap Map."""
+    try:
+        client = get_gapmap_client()
+        gaps = client.get_all_gaps()
+        return gaps
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch gaps: {str(e)}")
+
+
+@app.get("/api/gapmap/capabilities")
+async def get_gapmap_capabilities():
+    """Get all capabilities from Gap Map."""
+    try:
+        client = get_gapmap_client()
+        capabilities = client.get_all_capabilities()
+        return capabilities
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch capabilities: {str(e)}")
+
+
+@app.get("/api/gapmap/fields")
+async def get_gapmap_fields():
+    """Get all fields from Gap Map for filtering."""
+    try:
+        client = get_gapmap_client()
+        fields = client.get_all_fields()
+        return fields
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch fields: {str(e)}")
+
+
+@app.get("/api/gapmap/resources")
+async def get_gapmap_resources():
+    """Get all resources from Gap Map."""
+    try:
+        client = get_gapmap_client()
+        resources = client.get_all_resources()
+        return resources
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch resources: {str(e)}")
+
+
+class GenerateHypothesisRequest(BaseModel):
+    """Request to generate a hypothesis from capability and gap."""
+    capability_name: Optional[str] = None
+    capability_description: Optional[str] = None
+    gap_name: Optional[str] = None
+    gap_description: Optional[str] = None
+    mode: str = "capability_gap"  # "capability_gap" or "gap_only"
+
+
+@app.post("/api/gapmap/generate-hypothesis")
+async def generate_capability_hypothesis(request: GenerateHypothesisRequest):
+    """Generate a hypothesis using Haiku."""
+    global openrouter_client
+    if openrouter_client is None:
+        openrouter_client = OpenRouterClient()
+
+    if request.mode == "gap_only" and request.gap_name:
+        # Generate hypothesis for a gap (problem to be solved)
+        prompt = f"""Convert this research gap into a clear, testable hypothesis about how it could be solved.
+
+Research Gap: {request.gap_name}
+{request.gap_description or ''}
+
+Write a single hypothesis statement that proposes a specific approach to address this gap.
+Be specific and concise. Output only the hypothesis statement, nothing else."""
+        fallback = f"It is possible to address {request.gap_name}"
+    else:
+        # Generate hypothesis connecting capability to gap
+        prompt = f"""Convert this capability and research gap into a clear, testable hypothesis claim.
+
+Capability: {request.capability_name}
+{request.capability_description or ''}
+
+Research Gap: {request.gap_name}
+{request.gap_description or ''}
+
+Write a single hypothesis statement in the form: "[Capability] can be used to [address gap]"
+Be specific and concise. Output only the hypothesis statement, nothing else."""
+        fallback = f"{request.capability_name} can be used to address {request.gap_name}"
+
+    try:
+        # chat() returns the response text directly as a string
+        hypothesis = await openrouter_client.chat(
+            model="anthropic/claude-3-haiku",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return {"hypothesis": hypothesis.strip()}
+    except Exception as e:
+        return {"hypothesis": fallback, "error": str(e)}
+
+
+@app.get("/api/gapmap/gaps/{gap_id}/capabilities")
+async def get_capabilities_for_gap(gap_id: str):
+    """Get capabilities that address a specific gap."""
+    try:
+        client = get_gapmap_client()
+        capabilities = client.get_capabilities_for_gap(gap_id)
+        return capabilities
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch capabilities for gap: {str(e)}")
+
+
+@app.get("/api/gapmap/capabilities/{capability_id}/gaps")
+async def get_gaps_for_capability(capability_id: str):
+    """Get gaps that a capability addresses."""
+    try:
+        client = get_gapmap_client()
+        gaps = client.get_all_gaps()
+
+        # Find gaps that have this capability in their foundationalCapabilities
+        # (Gap Map data has gaps -> capabilities, not capabilities -> gaps)
+        matching_gaps = [
+            g for g in gaps
+            if capability_id in g.get("foundationalCapabilities", [])
+        ]
+
+        return matching_gaps
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch gaps for capability: {str(e)}")
 
 
 # =============================================================================

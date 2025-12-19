@@ -20,13 +20,15 @@ interface Props {
   onSelect: (approach: Approach) => void
   onCreate: (name: string, hypothesis: string, enableAutoMode?: boolean, model?: string) => void
   initialMode?: 'choose' | 'create'
+  initialHypothesis?: string  // Pre-fill hypothesis from Explore
+  onOpenExplore?: () => void  // Open explore modal
   onClose?: () => void  // For when opened from ApproachSelector
 }
 
-function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', onClose }: Props) {
+function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', initialHypothesis, onOpenExplore, onClose }: Props) {
   const [mode, setMode] = useState<'choose' | 'create'>(initialMode)
   const [newName, setNewName] = useState('')
-  const [newHypothesis, setNewHypothesis] = useState('')
+  const [newHypothesis, setNewHypothesis] = useState(initialHypothesis || '')
   const [isCreating, setIsCreating] = useState(false)
   const [showNameField, setShowNameField] = useState(false)
 
@@ -44,6 +46,13 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
   useEffect(() => {
     setMode(initialMode)
   }, [initialMode])
+
+  // Sync hypothesis with initialHypothesis when it changes (e.g., from Explore)
+  useEffect(() => {
+    if (initialHypothesis) {
+      setNewHypothesis(initialHypothesis)
+    }
+  }, [initialHypothesis])
 
   // Fetch config status on mount
   useEffect(() => {
@@ -142,6 +151,24 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
                   <small>Start evaluating a new idea</small>
                 </span>
               </button>
+
+              {onOpenExplore && (
+                <button
+                  className="welcome-option-button"
+                  onClick={onOpenExplore}
+                >
+                  <span className="option-icon explore-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                    </svg>
+                  </span>
+                  <span className="option-text">
+                    <strong>Explore Gap Map</strong>
+                    <small>Browse open research problems</small>
+                  </span>
+                </button>
+              )}
 
               {approaches.length > 0 && (
                 <div className="existing-approaches">

@@ -7,6 +7,7 @@ import SelectedItemDetail from './components/SelectedItemDetail'
 import WelcomeModal from './components/WelcomeModal'
 import TutorialModal from './components/TutorialModal'
 import SettingsModal from './components/SettingsModal'
+import ExploreModal from './components/ExploreModal'
 import './App.css'
 
 export interface Approach {
@@ -73,6 +74,8 @@ function App() {
   const [welcomeModalMode, setWelcomeModalMode] = useState<'choose' | 'create'>('choose')
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [showExplore, setShowExplore] = useState(false)
+  const [exploreHypothesis, setExploreHypothesis] = useState<string | null>(null)
 
   // Model settings
   const [claudeModel, setClaudeModel] = useState<string>('anthropic/claude-sonnet-4')
@@ -421,16 +424,24 @@ function App() {
             handleSelectApproach(approach)
             setShowWelcomeModal(false)
             setWelcomeModalMode('choose')
+            setExploreHypothesis(null)
           }}
           onCreate={(name, hypothesis, enableAutoMode, model) => {
             handleCreateApproach(name, hypothesis, enableAutoMode, model)
             setShowWelcomeModal(false)
             setWelcomeModalMode('choose')
+            setExploreHypothesis(null)
           }}
           initialMode={welcomeModalMode}
+          initialHypothesis={exploreHypothesis || undefined}
+          onOpenExplore={() => {
+            setShowWelcomeModal(false)
+            setShowExplore(true)
+          }}
           onClose={currentApproach ? () => {
             setShowWelcomeModal(false)
             setWelcomeModalMode('choose')
+            setExploreHypothesis(null)
           } : undefined}
         />
       )}
@@ -465,6 +476,16 @@ function App() {
             title="Show tutorial"
           >
             ?
+          </button>
+          <button
+            className="toolbar-button explore-button"
+            onClick={() => setShowExplore(true)}
+            title="Explore Gap Map"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+            </svg>
           </button>
           <button
             className="toolbar-button settings-button"
@@ -507,6 +528,17 @@ function App() {
             edisonToolsEnabled: newSettings.edisonToolsEnabled,
             gapMapToolsEnabled: newSettings.gapMapToolsEnabled,
           })
+        }}
+      />
+
+      <ExploreModal
+        isOpen={showExplore}
+        onClose={() => setShowExplore(false)}
+        onUseIdea={(hypothesis) => {
+          setExploreHypothesis(hypothesis)
+          setShowExplore(false)
+          setWelcomeModalMode('create')
+          setShowWelcomeModal(true)
         }}
       />
 

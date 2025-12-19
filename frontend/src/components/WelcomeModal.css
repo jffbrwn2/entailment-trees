@@ -79,6 +79,15 @@
   flex-shrink: 0;
 }
 
+.option-icon.explore-icon {
+  background: #10b981;
+}
+
+.option-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
 .option-text {
   display: flex;
   flex-direction: column;

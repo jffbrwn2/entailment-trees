@@ -79,15 +79,21 @@
   background: var(--bg-secondary);
 }
 
-.toolbar-button.settings-button {
+.toolbar-button.settings-button,
+.toolbar-button.explore-button {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0.4rem;
 }
 
-.toolbar-button.settings-button svg {
+.toolbar-button.settings-button svg,
+.toolbar-button.explore-button svg {
   display: block;
+}
+
+.toolbar-button.explore-button:hover {
+  border-color: #10b981;
 }
 
 .toolbar-button:disabled {
