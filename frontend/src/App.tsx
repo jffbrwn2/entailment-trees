@@ -199,7 +199,8 @@ function App() {
           const data = JSON.parse(event.data)
           console.log('[WS] Received message:', data.type)
           if (data.type === 'update') {
-            // Debounce: wait 100ms before fetching, reset if another update arrives
+            // Debounce: wait 600ms before fetching, reset if another update arrives
+            // (backend file watcher has 500ms debounce, so this covers both notifications)
             if (updateTimeout) {
               clearTimeout(updateTimeout)
             }
@@ -207,7 +208,7 @@ function App() {
               console.log('[WS] Fetching updated hypergraph (debounced)')
               fetchHypergraph(currentApproach.folder)
               updateTimeout = null
-            }, 100)
+            }, 600)
           }
         } catch (e) {
           console.error('WebSocket message error:', e)
