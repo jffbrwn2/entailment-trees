@@ -23,9 +23,10 @@ interface Props {
   initialHypothesis?: string  // Pre-fill hypothesis from Explore
   onOpenExplore?: () => void  // Open explore modal
   onClose?: () => void  // For when opened from ApproachSelector
+  onBack?: () => void  // Called when user clicks Back from create mode
 }
 
-function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', initialHypothesis, onOpenExplore, onClose }: Props) {
+function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', initialHypothesis, onOpenExplore, onClose, onBack }: Props) {
   const [mode, setMode] = useState<'choose' | 'create'>(initialMode)
   const [newName, setNewName] = useState('')
   const [newHypothesis, setNewHypothesis] = useState(initialHypothesis || '')
@@ -278,6 +279,8 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
                   } else {
                     // Go back to choose mode when on welcome screen
                     setMode('choose')
+                    // Notify parent so it can reset its state
+                    if (onBack) onBack()
                   }
                   setShowNameField(false)
                   setNewName('')

@@ -72,6 +72,7 @@ function ExploreModal({ isOpen, onClose, onUseIdea }: Props) {
       setRelatedItems([])
       setSearchQuery('')
       setSelectedField('')
+      setGeneratingHypothesis(false)
       // Fetch data if not already loaded
       if (gaps.length === 0) {
         fetchData()

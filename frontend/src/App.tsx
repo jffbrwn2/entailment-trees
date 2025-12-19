@@ -438,6 +438,11 @@ function App() {
             setShowWelcomeModal(false)
             setShowExplore(true)
           }}
+          onBack={() => {
+            // Reset state when user clicks Back from create mode
+            setWelcomeModalMode('choose')
+            setExploreHypothesis(null)
+          }}
           onClose={currentApproach ? () => {
             setShowWelcomeModal(false)
             setWelcomeModalMode('choose')
