@@ -4,9 +4,18 @@
 
 set -e
 
-# Configuration
-BACKEND_PORT=${BACKEND_PORT:-8000}
-FRONTEND_PORT=${FRONTEND_PORT:-5173}
+# Find an available port starting from the given port
+find_port() {
+    local port=$1
+    while lsof -ti:$port &>/dev/null; do
+        port=$((port + 1))
+    done
+    echo $port
+}
+
+# Configuration (auto-find available ports if defaults are taken)
+BACKEND_PORT=${BACKEND_PORT:-$(find_port 8000)}
+FRONTEND_PORT=${FRONTEND_PORT:-$(find_port 5173)}
 
 echo "🚀 Starting Entailment Trees Web Application"
 echo "=============================================="
