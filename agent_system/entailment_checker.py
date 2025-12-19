@@ -310,6 +310,15 @@ Respond using these XML tags:
             except Exception as e:
                 warnings.append(f"Failed to update check results: {e}")
 
+            # Recalculate costs after entailment status changes
+            # (failed entailments add +Infinity penalty)
+            try:
+                from .hypergraph_manager import HypergraphManager
+                manager = HypergraphManager(hypergraph_path.parent)
+                manager.update_costs()
+            except Exception as e:
+                warnings.append(f"Failed to recalculate costs after entailment check: {e}")
+
         return errors, warnings
 
 
