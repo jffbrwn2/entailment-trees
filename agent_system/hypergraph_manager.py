@@ -671,8 +671,12 @@ python -m http.server 8765
             if claim_id not in conclusion_to_implication:
                 # Leaf node: -log2(score/10)
                 # Use actual score if available, otherwise default to 5 (unsure)
-                effective_score = score if score is not None and score > 0 else 5
-                neg_log = -math.log2(effective_score / 10.0)
+                effective_score = score if score is not None else 5
+                # Score <= 0 means definitely false = infinite cost
+                if effective_score <= 0:
+                    neg_log = float('inf')
+                else:
+                    neg_log = -math.log2(effective_score / 10.0)
                 propagated_logs[claim_id] = neg_log
                 return neg_log
 
