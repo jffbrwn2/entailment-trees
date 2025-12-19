@@ -496,7 +496,7 @@ export function useD3Graph({
       node.append('circle')
         .attr('r', isHypothesis ? 95 : 85)
         .attr('fill', getScoreColor(effectiveScore))
-        .attr('fill-opacity', 0.6)
+        .attr('fill-opacity', 0.9)
         .attr('stroke', isHypothesis ? 'var(--text-primary)' : getScoreColor(effectiveScore))
         .attr('stroke-width', isHypothesis ? 4 : 2)
         .attr('stroke-dasharray', isHypothesis ? '8,4' : null)
@@ -514,7 +514,7 @@ export function useD3Graph({
       const words = (d.text || '').split(/\s+/)
       const maxCharsPerLine = 20  // ~145px at 15px font
       const lineHeight = 17
-      const maxLines = 10
+      const maxLines = 7
 
       let line: string[] = []
       let lineNumber = 0
@@ -658,7 +658,10 @@ export function useD3Graph({
     // Update expand/collapse indicators
     allNodeElements.filter(d => d.type === 'claim' && isConclusion(d.id)).each(function(d) {
       const node = d3.select(this)
-      const radius = 85
+      const isHypothesis = d.id === 'hypothesis'
+      const radius = isHypothesis ? 95 : 85
+      // Position at corner (0.75 puts it nicely at the edge)
+      const cornerOffset = radius * 0.75
 
       node.select('.expand-indicator').remove()
 
@@ -689,8 +692,8 @@ export function useD3Graph({
         })
 
       indicatorG.append('circle')
-        .attr('cx', radius * 0.6)
-        .attr('cy', radius * 0.6)
+        .attr('cx', cornerOffset)
+        .attr('cy', cornerOffset)
         .attr('r', 12)
         .attr('fill', 'var(--accent)')
         .attr('stroke', 'var(--text-primary)')
@@ -699,8 +702,8 @@ export function useD3Graph({
       const isCollapsed = arePremisesCollapsed(d.id)
       indicatorG.append('text')
         .attr('class', 'expand-symbol')
-        .attr('x', radius * 0.6)
-        .attr('y', radius * 0.6)
+        .attr('x', cornerOffset)
+        .attr('y', cornerOffset)
         .attr('text-anchor', 'middle')
         .attr('dy', '0.35em')
         .attr('fill', 'var(--bg-primary)')
@@ -852,7 +855,7 @@ export function useD3Graph({
 
         const maxCharsPerLine = 20  // ~145px at 15px font
         const lineHeight = 17
-        const maxLines = 10
+        const maxLines = 7
         const words = (claim.text || '').split(/\s+/)
         let line: string[] = []
         let lineNumber = 0
