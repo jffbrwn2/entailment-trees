@@ -74,17 +74,18 @@ function getScoreColor(score: number | null): string {
     return isLightMode ? 'rgb(200, 200, 200)' : 'rgb(128, 128, 128)'
   }
   const clampedScore = Math.max(0, Math.min(10, score))
+  // Muted color palette: coral red -> amber -> teal green
   if (clampedScore <= 5) {
     const t = clampedScore / 5
-    const r = 248
-    const g = Math.round(81 + (217 - 81) * t)
-    const b = Math.round(73 + (34 - 73) * t)
+    const r = Math.round(180 - (180 - 170) * t)
+    const g = Math.round(85 + (135 - 85) * t)
+    const b = Math.round(80 + (75 - 80) * t)
     return `rgb(${r}, ${g}, ${b})`
   } else {
     const t = (clampedScore - 5) / 5
-    const r = Math.round(217 - (217 - 63) * t)
-    const g = Math.round(217 - (217 - 185) * t)
-    const b = Math.round(34 + (80 - 34) * t)
+    const r = Math.round(170 - (170 - 75) * t)
+    const g = Math.round(135 + (145 - 135) * t)
+    const b = Math.round(75 + (110 - 75) * t)
     return `rgb(${r}, ${g}, ${b})`
   }
 }

@@ -113,7 +113,8 @@ export function getEffectiveScore(
 
 /**
  * Convert a score (0-10) to a color.
- * 0 = red, 5 = yellow, 10 = green, null = grey
+ * 0 = muted red, 5 = muted amber, 10 = muted green, null = grey
+ * Colors are softer/more muted for better text readability
  */
 export function getScoreColor(score: number | null): string {
   // Null/unevaluated scores are grey (lighter in light mode)
@@ -122,17 +123,18 @@ export function getScoreColor(score: number | null): string {
     return isLightMode ? 'rgb(200, 200, 200)' : 'rgb(128, 128, 128)'
   }
   const clampedScore = Math.max(0, Math.min(10, score))
+  // Muted color palette: coral red -> amber -> teal green
   if (clampedScore <= 5) {
     const t = clampedScore / 5
-    const r = 248
-    const g = Math.round(81 + (217 - 81) * t)
-    const b = Math.round(73 + (34 - 73) * t)
+    const r = Math.round(180 - (180 - 170) * t)  // 180 -> 170
+    const g = Math.round(85 + (135 - 85) * t)    // 85 -> 135
+    const b = Math.round(80 + (75 - 80) * t)     // 80 -> 75
     return `rgb(${r}, ${g}, ${b})`
   } else {
     const t = (clampedScore - 5) / 5
-    const r = Math.round(217 - (217 - 63) * t)
-    const g = Math.round(217 - (217 - 185) * t)
-    const b = Math.round(34 + (80 - 34) * t)
+    const r = Math.round(170 - (170 - 75) * t)   // 170 -> 75
+    const g = Math.round(135 + (145 - 135) * t)  // 135 -> 145
+    const b = Math.round(75 + (110 - 75) * t)    // 75 -> 110
     return `rgb(${r}, ${g}, ${b})`
   }
 }
