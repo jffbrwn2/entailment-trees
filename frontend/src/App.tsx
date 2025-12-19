@@ -445,13 +445,6 @@ function App() {
       <header className="app-header">
         <div className="header-left">
           <h1>Entailment Trees</h1>
-          <button
-            className="tutorial-button"
-            onClick={() => setShowTutorial(true)}
-            title="Show tutorial"
-          >
-            ?
-          </button>
         </div>
         <div className="header-center">
           <ApproachSelector
@@ -465,6 +458,13 @@ function App() {
           />
         </div>
         <div className="header-right">
+          <button
+            className="tutorial-button"
+            onClick={() => setShowTutorial(true)}
+            title="Show tutorial"
+          >
+            ?
+          </button>
           <button
             className="toolbar-button settings-button"
             onClick={() => setShowSettings(true)}

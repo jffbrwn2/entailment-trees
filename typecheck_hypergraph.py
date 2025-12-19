@@ -189,7 +189,16 @@ class HypergraphTypeChecker:
             # Verify code/reference_text matches source file
             if self.base_path and evidence_type in ('literature', 'simulation'):
                 source = item.get('source')
-                if source and not source.startswith('TODO'):
+                # Skip sources that look like citations rather than file paths
+                # (contain special chars, are very long, or have spaces with no path separators)
+                is_file_path = (
+                    source and
+                    not source.startswith('TODO') and
+                    len(source) < 200 and
+                    '(' not in source and
+                    ':' not in source
+                )
+                if is_file_path:
                     source_file = self.base_path / source
                     if source_file.exists():
                         if evidence_type == 'literature' and 'lines' in item:

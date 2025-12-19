@@ -261,7 +261,7 @@ function D3HypergraphViewer({
             Reset Layout
           </button>
           <button className="toolbar-item" onClick={onCleanup}>
-            Clean Up
+            Remove Disconnected
           </button>
         </div>
       </div>
