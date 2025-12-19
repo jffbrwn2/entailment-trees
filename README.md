@@ -1,18 +1,18 @@
 # Entailment Trees
 
-A tool for collaborating with an AI agent to rigorously evaluate ideas through structured reasoning, simulations, and literature research.
+Let AI agents autonomously explore and evaluate your ideas, or collaborate with them directly. The system breaks hypotheses into testable claims, researches literature, writes simulations, and builds a visual map of evidence and logical connections.
 
 **How it works:**
-1. Start with an idea or hypothesis you want to evaluate
-2. The agent breaks it down into testable claims and maps how they logically connect
-3. Chat with the agent to research claims - it searches literature, writes simulations, and runs calculations
-4. Watch the hypergraph visualization update as evidence accumulates and scores propagate
+1. Enter an idea or hypothesis
+2. Enable Auto Mode to let agents explore autonomously, or chat to guide the investigation yourself
+3. Watch the hypergraph update as evidence accumulates and scores propagate
 
 ## Requirements
 
 - **Node.js 18+** - [Download here](https://nodejs.org/) or use `nvm install 20`
 - **Python 3.10+** - Installed automatically by the setup script via uv
 - **Anthropic API key** - [Get one here](https://console.anthropic.com/settings/keys)
+- **OpenRouter API key** (for Auto Mode) - [Get one here](https://openrouter.ai/keys)
 
 > ⚠️ **Anaconda/Conda users:** Conda often has outdated Node.js versions (e.g., v6.x). Install Node.js separately from https://nodejs.org/ or use nvm.
 
@@ -33,11 +33,10 @@ The setup script will:
 4. Check for your Anthropic API key
 5. Offer to launch the web app
 
-**Need an API key?** Get one at: https://console.anthropic.com/settings/keys
-
-Then set it:
+**Set your API keys:**
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
+export ANTHROPIC_API_KEY="sk-ant-..."      # https://console.anthropic.com/settings/keys
+export OPENROUTER_API_KEY="sk-or-..."      # https://openrouter.ai/keys (for Auto Mode)
 ```
 
 ## Usage
