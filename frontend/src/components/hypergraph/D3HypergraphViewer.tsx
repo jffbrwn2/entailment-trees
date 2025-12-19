@@ -198,6 +198,8 @@ function D3HypergraphViewer({
     getExclusiveDescendants,
     calculateTreeLayout,
     nodePositionsRef,
+    autoFitPending,
+    clearAutoFit,
   } = useTreeLayout(hypergraph, resetKey)
 
   useD3Graph({
@@ -208,6 +210,8 @@ function D3HypergraphViewer({
     selectedItem,
     collapsedNodes,
     setCollapsedNodes,
+    autoFitPending,
+    clearAutoFit,
     orphanClaims,
     conclusionToPremises,
     isConclusion,

@@ -26,6 +26,8 @@ interface UseTreeLayoutReturn {
   getExclusiveDescendants: (nodeId: string) => string[]
   calculateTreeLayout: (visibleClaims: NodeData[], width: number, height: number) => TreeLayoutResult
   nodePositionsRef: React.MutableRefObject<Map<string, { x: number; y: number }>>
+  autoFitPending: boolean
+  clearAutoFit: () => void
 }
 
 export function useTreeLayout(
@@ -34,6 +36,7 @@ export function useTreeLayout(
 ): UseTreeLayoutReturn {
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
   const [maxDepth, setMaxDepth] = useState<number | null>(null)
+  const [autoFitPending, setAutoFitPending] = useState(false)
   const [maxAvailableDepth, setMaxAvailableDepth] = useState(0)
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('compact')
 
@@ -134,6 +137,8 @@ export function useTreeLayout(
       })
       setCollapsedNodes(newCollapsed)
     }
+    // Request auto-fit after depth change
+    setAutoFitPending(true)
   }, [maxDepth])
 
   const isConclusion = useCallback((nodeId: string) => {
@@ -632,6 +637,8 @@ export function useTreeLayout(
   const premiseToConclusions = useMemo(() => premiseToConclusionsRef.current, [hypergraph])
   const nodeDepths = useMemo(() => nodeDepthsRef.current, [hypergraph])
 
+  const clearAutoFit = useCallback(() => setAutoFitPending(false), [])
+
   return {
     collapsedNodes,
     setCollapsedNodes,
@@ -650,5 +657,7 @@ export function useTreeLayout(
     getExclusiveDescendants,
     calculateTreeLayout,
     nodePositionsRef,
+    autoFitPending,
+    clearAutoFit,
   }
 }

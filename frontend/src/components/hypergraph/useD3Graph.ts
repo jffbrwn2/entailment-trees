@@ -11,6 +11,8 @@ interface UseD3GraphParams {
   selectedItem: SelectedItem | null
   collapsedNodes: Set<string>
   setCollapsedNodes: React.Dispatch<React.SetStateAction<Set<string>>>
+  autoFitPending: boolean
+  clearAutoFit: () => void
   orphanClaims: Set<string>
   conclusionToPremises: Map<string, string[]>
   isConclusion: (nodeId: string) => boolean
@@ -35,6 +37,8 @@ export function useD3Graph({
   selectedItem,
   collapsedNodes,
   setCollapsedNodes,
+  autoFitPending,
+  clearAutoFit,
   orphanClaims,
   conclusionToPremises,
   isConclusion,
@@ -303,8 +307,9 @@ export function useD3Graph({
       }
     })
 
-    // Fit view to visible nodes (excluding orphans)
-    if (zoomRef.current && svgRef.current) {
+    // Fit view to visible nodes when depth selector changes
+    if (autoFitPending && zoomRef.current && svgRef.current) {
+      clearAutoFit()
       const visibleNodes = allNodes.filter(n => {
         // Exclude collapsed claims
         if (n.type === 'claim') {
@@ -497,7 +502,7 @@ export function useD3Graph({
         .attr('stroke-dasharray', isHypothesis ? '8,4' : null)
         .attr('cursor', 'pointer')
 
-      // Text with word wrapping
+      // Text with word wrapping - use character-based wrapping (getComputedTextLength fails at scale(0))
       const text = node.append('text')
         .attr('class', 'node-text')
         .attr('text-anchor', 'middle')
@@ -507,7 +512,7 @@ export function useD3Graph({
         .attr('pointer-events', 'none')
 
       const words = (d.text || '').split(/\s+/)
-      const maxWidth = 145
+      const maxCharsPerLine = 20  // ~145px at 15px font
       const lineHeight = 17
       const maxLines = 10
 
@@ -519,10 +524,9 @@ export function useD3Graph({
 
       for (let i = 0; i < words.length; i++) {
         line.push(words[i])
-        tspan.text(line.join(' '))
+        const lineText = line.join(' ')
 
-        const tspanNode = tspan.node()
-        if (tspanNode && tspanNode.getComputedTextLength() > maxWidth) {
+        if (lineText.length > maxCharsPerLine) {
           if (lineNumber >= maxLines - 1) {
             line.pop()
             tspan.text(line.join(' ') + '...')
@@ -536,6 +540,8 @@ export function useD3Graph({
             .attr('x', 0)
             .attr('dy', lineHeight)
             .text(words[i])
+        } else {
+          tspan.text(lineText)
         }
       }
 
@@ -839,12 +845,12 @@ export function useD3Graph({
       node.select('title')
         .text(`${d.id}\n${claim.text}\nScore: ${claim.score !== null ? `${claim.score}/10` : 'Not evaluated'}`)
 
-      // Update text
+      // Update text - use character-based wrapping (getComputedTextLength fails at scale(0))
       const textElement = node.select<SVGTextElement>('.node-text')
       if (textElement.node()) {
         textElement.selectAll('*').remove()
 
-        const maxWidth = 145
+        const maxCharsPerLine = 20  // ~145px at 15px font
         const lineHeight = 17
         const maxLines = 10
         const words = (claim.text || '').split(/\s+/)
@@ -857,10 +863,9 @@ export function useD3Graph({
 
         for (let i = 0; i < words.length; i++) {
           line.push(words[i])
-          tspan.text(line.join(' '))
+          const lineText = line.join(' ')
 
-          const tspanNode = tspan.node()
-          if (tspanNode && tspanNode.getComputedTextLength() > maxWidth) {
+          if (lineText.length > maxCharsPerLine) {
             if (lineNumber >= maxLines - 1) {
               line.pop()
               tspan.text(line.join(' ') + '...')
@@ -874,6 +879,8 @@ export function useD3Graph({
               .attr('x', 0)
               .attr('dy', lineHeight)
               .text(words[i])
+          } else {
+            tspan.text(lineText)
           }
         }
 
@@ -922,6 +929,8 @@ export function useD3Graph({
     collapsedNodes,
     selectedItem,
     scoreMode,
+    autoFitPending,
+    clearAutoFit,
     onSelect,
     onDelete,
     calculateTreeLayout,
