@@ -15,18 +15,26 @@ interface OpenRouterModel {
   context_length?: number
 }
 
+interface GapMapSource {
+  type: 'gap' | 'capability'
+  name: string
+  sourceGapName?: string
+}
+
 interface Props {
   approaches: Approach[]
   onSelect: (approach: Approach) => void
   onCreate: (name: string, hypothesis: string, enableAutoMode?: boolean, model?: string) => void
   initialMode?: 'choose' | 'create'
   initialHypothesis?: string  // Pre-fill hypothesis from Explore
+  exploreSource?: GapMapSource  // Source from Gap Map explore
   onOpenExplore?: () => void  // Open explore modal
+  onBackToExplore?: () => void  // Go back to ExploreModal
   onClose?: () => void  // For when opened from ApproachSelector
   onBack?: () => void  // Called when user clicks Back from create mode
 }
 
-function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', initialHypothesis, onOpenExplore, onClose, onBack }: Props) {
+function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', initialHypothesis, exploreSource, onOpenExplore, onBackToExplore, onClose, onBack }: Props) {
   const [mode, setMode] = useState<'choose' | 'create'>(initialMode)
   const [newName, setNewName] = useState('')
   const [newHypothesis, setNewHypothesis] = useState(initialHypothesis || '')
@@ -138,6 +146,16 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
         <p className="welcome-subtitle">
           Collaborate with AI to rigorously evaluate ideas through structured reasoning
         </p>
+
+        {mode === 'create' && exploreSource && (
+          <div className="explore-source-badge">
+            <span className="source-type">{exploreSource.type === 'gap' ? 'Research Gap' : 'Capability'}</span>
+            <span className="source-name">{exploreSource.name}</span>
+            {exploreSource.sourceGapName && (
+              <span className="source-gap">via {exploreSource.sourceGapName}</span>
+            )}
+          </div>
+        )}
 
         {mode === 'choose' ? (
           <>
@@ -276,6 +294,9 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
                   if (onClose) {
                     // Close modal entirely when opened from ApproachSelector
                     onClose()
+                  } else if (onBackToExplore) {
+                    // Go back to ExploreModal when coming from there
+                    onBackToExplore()
                   } else {
                     // Go back to choose mode when on welcome screen
                     setMode('choose')
@@ -287,7 +308,7 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
                   setNewHypothesis('')
                 }}
               >
-                {onClose ? 'Cancel' : 'Back'}
+                {onClose ? 'Cancel' : onBackToExplore ? 'Back to Explore' : 'Back'}
               </button>
               <button
                 className="create-button"

@@ -35,15 +35,22 @@ interface Resource {
   types: string[]
 }
 
+export interface GapMapSource {
+  type: 'gap' | 'capability'
+  name: string
+  sourceGapName?: string  // For capabilities reached via a gap
+}
+
 interface Props {
   isOpen: boolean
   onClose: () => void
-  onUseIdea: (hypothesis: string) => void
+  onUseIdea: (hypothesis: string, source: GapMapSource) => void
+  initialSelection?: GapMapSource  // To restore state when coming back
 }
 
 type TopicType = 'gap' | 'capability'
 
-function ExploreModal({ isOpen, onClose, onUseIdea }: Props) {
+function ExploreModal({ isOpen, onClose, onUseIdea, initialSelection }: Props) {
   const [activeTab, setActiveTab] = useState<'gaps' | 'capabilities'>('gaps')
   const [gaps, setGaps] = useState<Gap[]>([])
   const [capabilities, setCapabilities] = useState<Capability[]>([])
@@ -65,20 +72,57 @@ function ExploreModal({ isOpen, onClose, onUseIdea }: Props) {
   // Reset navigation state when modal opens
   useEffect(() => {
     if (isOpen) {
-      // Reset to list view when modal opens
-      setSelectedTopic(null)
+      // Reset state
       setNavigationHistory([])
-      setSourceGap(null)
       setRelatedItems([])
       setSearchQuery('')
       setSelectedField('')
       setGeneratingHypothesis(false)
+
       // Fetch data if not already loaded
       if (gaps.length === 0) {
         fetchData()
       }
+
+      // If coming back with initialSelection, restore that state
+      if (initialSelection && gaps.length > 0) {
+        restoreSelection()
+      } else if (!initialSelection) {
+        // Only reset to list view if not restoring
+        setSelectedTopic(null)
+        setSourceGap(null)
+      }
     }
   }, [isOpen])
+
+  // Restore selection when data is loaded and we have an initialSelection
+  useEffect(() => {
+    if (isOpen && initialSelection && gaps.length > 0 && capabilities.length > 0) {
+      restoreSelection()
+    }
+  }, [gaps.length, capabilities.length])
+
+  const restoreSelection = () => {
+    if (!initialSelection) return
+
+    if (initialSelection.type === 'gap') {
+      const gap = gaps.find(g => g.name === initialSelection.name)
+      if (gap) {
+        setSelectedTopic({ type: 'gap', item: gap })
+        setSourceGap(null)
+      }
+    } else if (initialSelection.type === 'capability') {
+      const cap = capabilities.find(c => c.name === initialSelection.name)
+      if (cap) {
+        setSelectedTopic({ type: 'capability', item: cap })
+        // Restore source gap if we came from one
+        if (initialSelection.sourceGapName) {
+          const gap = gaps.find(g => g.name === initialSelection.sourceGapName)
+          if (gap) setSourceGap(gap)
+        }
+      }
+    }
+  }
 
   // Fetch related items when a topic is selected
   useEffect(() => {
@@ -165,6 +209,13 @@ function ExploreModal({ isOpen, onClose, onUseIdea }: Props) {
   const handleUseIdea = async () => {
     if (!selectedTopic) return
 
+    // Build source info for passing back
+    const source: GapMapSource = {
+      type: selectedTopic.type,
+      name: selectedTopic.item.name,
+      sourceGapName: sourceGap?.name,
+    }
+
     setGeneratingHypothesis(true)
     try {
       let requestBody: Record<string, string>
@@ -188,7 +239,7 @@ function ExploreModal({ isOpen, onClose, onUseIdea }: Props) {
       } else {
         // Capability without source gap - just use name and description
         const item = selectedTopic.item
-        onUseIdea(`${item.name}: ${item.description || ''}`)
+        onUseIdea(`${item.name}: ${item.description || ''}`, source)
         setGeneratingHypothesis(false)
         return
       }
@@ -201,7 +252,7 @@ function ExploreModal({ isOpen, onClose, onUseIdea }: Props) {
 
       if (response.ok) {
         const data = await response.json()
-        onUseIdea(data.hypothesis)
+        onUseIdea(data.hypothesis, source)
         return
       }
     } catch (err) {
@@ -213,9 +264,9 @@ function ExploreModal({ isOpen, onClose, onUseIdea }: Props) {
     // Fallback if API fails
     const item = selectedTopic.item
     if (selectedTopic.type === 'capability' && sourceGap) {
-      onUseIdea(`${item.name} can be used to address ${sourceGap.name}`)
+      onUseIdea(`${item.name} can be used to address ${sourceGap.name}`, source)
     } else {
-      onUseIdea(`${item.name}: ${item.description || ''}`)
+      onUseIdea(`${item.name}: ${item.description || ''}`, source)
     }
   }
 

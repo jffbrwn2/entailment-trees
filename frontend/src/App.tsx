@@ -7,7 +7,7 @@ import SelectedItemDetail from './components/SelectedItemDetail'
 import WelcomeModal from './components/WelcomeModal'
 import TutorialModal from './components/TutorialModal'
 import SettingsModal from './components/SettingsModal'
-import ExploreModal from './components/ExploreModal'
+import ExploreModal, { GapMapSource } from './components/ExploreModal'
 import './App.css'
 
 export interface Approach {
@@ -76,6 +76,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [showExplore, setShowExplore] = useState(false)
   const [exploreHypothesis, setExploreHypothesis] = useState<string | null>(null)
+  const [exploreSource, setExploreSource] = useState<GapMapSource | null>(null)
 
   // Model settings
   const [claudeModel, setClaudeModel] = useState<string>('anthropic/claude-sonnet-4')
@@ -425,28 +426,39 @@ function App() {
             setShowWelcomeModal(false)
             setWelcomeModalMode('choose')
             setExploreHypothesis(null)
+            setExploreSource(null)
           }}
           onCreate={(name, hypothesis, enableAutoMode, model) => {
             handleCreateApproach(name, hypothesis, enableAutoMode, model)
             setShowWelcomeModal(false)
             setWelcomeModalMode('choose')
             setExploreHypothesis(null)
+            setExploreSource(null)
           }}
           initialMode={welcomeModalMode}
           initialHypothesis={exploreHypothesis || undefined}
+          exploreSource={exploreSource || undefined}
           onOpenExplore={() => {
             setShowWelcomeModal(false)
             setShowExplore(true)
           }}
+          onBackToExplore={exploreSource ? () => {
+            // Go back to ExploreModal with the source selection
+            setShowWelcomeModal(false)
+            setWelcomeModalMode('choose')
+            setShowExplore(true)
+          } : undefined}
           onBack={() => {
-            // Reset state when user clicks Back from create mode
+            // Reset state when user clicks Back from create mode (to choose mode)
             setWelcomeModalMode('choose')
             setExploreHypothesis(null)
+            setExploreSource(null)
           }}
           onClose={currentApproach ? () => {
             setShowWelcomeModal(false)
             setWelcomeModalMode('choose')
             setExploreHypothesis(null)
+            setExploreSource(null)
           } : undefined}
         />
       )}
@@ -539,12 +551,14 @@ function App() {
       <ExploreModal
         isOpen={showExplore}
         onClose={() => setShowExplore(false)}
-        onUseIdea={(hypothesis) => {
+        onUseIdea={(hypothesis, source) => {
           setExploreHypothesis(hypothesis)
+          setExploreSource(source)
           setShowExplore(false)
           setWelcomeModalMode('create')
           setShowWelcomeModal(true)
         }}
+        initialSelection={exploreSource || undefined}
       />
 
       <main className="app-main">
