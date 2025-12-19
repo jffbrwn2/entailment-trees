@@ -62,10 +62,20 @@ function ExploreModal({ isOpen, onClose, onUseIdea }: Props) {
   const [loadingRelated, setLoadingRelated] = useState(false)
   const [generatingHypothesis, setGeneratingHypothesis] = useState(false)
 
-  // Fetch data when modal opens
+  // Reset navigation state when modal opens
   useEffect(() => {
-    if (isOpen && gaps.length === 0) {
-      fetchData()
+    if (isOpen) {
+      // Reset to list view when modal opens
+      setSelectedTopic(null)
+      setNavigationHistory([])
+      setSourceGap(null)
+      setRelatedItems([])
+      setSearchQuery('')
+      setSelectedField('')
+      // Fetch data if not already loaded
+      if (gaps.length === 0) {
+        fetchData()
+      }
     }
   }, [isOpen])
 
