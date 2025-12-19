@@ -30,7 +30,7 @@ implications = hypergraph['implications']
 for claim_id in ['c1', 'c2', 'c3']:
     score = claims[claim_id]['score']
     neg_log = -math.log2(score / 10.0)
-    print(f"{claim_id}: score={score} -> propagated_negative_log = -log2({score}/10) = {neg_log:.6f}")
+    print(f"{claim_id}: score={score} -> cost = -log2({score}/10) = {neg_log:.6f}")
 
 print()
 
@@ -66,18 +66,18 @@ shutil.copy(example_file, test_hypergraph_path)
 
 # Create manager and calculate
 manager = HypergraphManager(test_dir)
-propagated_logs = manager.calculate_propagated_negative_logs()
+costs = manager.calculate_costs()
 
-print("Calculated propagated_negative_logs:")
-for claim_id, neg_log in propagated_logs.items():
+print("Calculated costs:")
+for claim_id, neg_log in costs.items():
     score = claims[claim_id]['score']
     print(f"  {claim_id}: {neg_log:.6f} (score={score})")
 
 print()
 
 # Update the hypergraph with propagated logs
-manager.update_propagated_negative_logs()
-print("✓ Updated hypergraph with propagated_negative_log values")
+manager.update_costs()
+print("✓ Updated hypergraph with cost values")
 print(f"✓ Saved to {test_hypergraph_path}")
 print()
 
@@ -88,7 +88,7 @@ with open(test_hypergraph_path, 'r') as f:
 print("Updated claims:")
 print("-" * 70)
 for claim in updated['claims']:
-    print(f"{claim['id']}: score={claim['score']}, propagated_negative_log={claim.get('propagated_negative_log', 'N/A')}")
+    print(f"{claim['id']}: score={claim['score']}, cost={claim.get('cost', 'N/A')}")
 
 print()
 print("=" * 70)

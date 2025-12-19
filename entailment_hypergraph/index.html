@@ -1290,9 +1290,9 @@
         }
 
         function getEffectiveScore(claim) {
-            if (coloringMode === 'propagated' && claim.propagated_negative_log !== undefined) {
-                // Convert propagated_negative_log back to score: 2^(-propagated_negative_log) * 10
-                return Math.pow(2, -claim.propagated_negative_log) * 10;
+            if (coloringMode === 'propagated' && claim.cost !== undefined) {
+                // Convert cost back to score: 2^(-cost) * 10
+                return Math.pow(2, -claim.cost) * 10;
             }
             return claim.score;
         }
@@ -1443,9 +1443,9 @@
                                   class="${getScoreClass(claim.score)}">
                                 Score: ${claim.score}/10
                             </span>
-                            ${claim.propagated_negative_log !== undefined ? `
+                            ${claim.cost !== undefined ? `
                                 <span style="display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 0.5rem; background: rgba(52, 120, 246, 0.15); color: var(--accent);">
-                                    Propagated -log₂: ${claim.propagated_negative_log.toFixed(3)}
+                                    Cost: ${claim.cost.toFixed(3)}
                                 </span>
                             ` : ''}
                         </div>

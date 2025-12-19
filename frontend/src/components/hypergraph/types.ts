@@ -12,7 +12,7 @@ export interface Claim {
   id: string
   text: string
   score: number | null
-  propagated_negative_log?: number | string | null
+  cost?: number | string | null
   reasoning?: string
   evidence?: Evidence[]
   uncertainties?: string[]
@@ -58,7 +58,7 @@ export interface NodeData {
   y: number
   text?: string
   score?: number | null
-  propagated_negative_log?: number | string | null
+  cost?: number | string | null
   evidence?: Evidence[]
   implication?: Implication
   _animX?: number

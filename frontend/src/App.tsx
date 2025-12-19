@@ -23,7 +23,7 @@ interface Claim {
   id: string
   text: string
   score: number | null
-  propagated_negative_log?: number | string
+  cost?: number | string
   reasoning?: string
   evidence?: Evidence[]
   uncertainties?: string[]

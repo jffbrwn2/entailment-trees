@@ -113,19 +113,19 @@ class HypergraphManager:
         # Update last_updated timestamp
         hypergraph['metadata']['last_updated'] = datetime.now().strftime("%Y-%m-%d")
 
-        # Always compute and update propagated negative logs before saving
-        propagated_logs = self.calculate_propagated_negative_logs(hypergraph)
+        # Always compute and update costs before saving
+        costs = self.calculate_costs(hypergraph)
         for claim in hypergraph.get('claims', []):
             claim_id = claim['id']
-            if claim_id in propagated_logs:
-                value = propagated_logs[claim_id]
+            if claim_id in costs:
+                value = costs[claim_id]
                 # Store Infinity as string for valid JSON
                 if value == float('inf'):
-                    claim['propagated_negative_log'] = "Infinity"
+                    claim['cost'] = "Infinity"
                 elif value == float('-inf'):
-                    claim['propagated_negative_log'] = "-Infinity"
+                    claim['cost'] = "-Infinity"
                 else:
-                    claim['propagated_negative_log'] = value
+                    claim['cost'] = value
 
         # Save to history before overwriting
         if self.hypergraph_path.exists():
@@ -603,13 +603,13 @@ python -m http.server 8765
 
         return historical_hypergraph
 
-    def calculate_propagated_negative_logs(self, hypergraph: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
+    def calculate_costs(self, hypergraph: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
         """
-        Calculate propagated negative log scores for all claims.
+        Calculate cost scores for all claims.
 
-        For leaf nodes: propagated_negative_log = -log2(score/10)
-        For AND nodes: propagated_negative_log = sum(children_propagated_negative_log) + entailment_penalty
-        For OR nodes: propagated_negative_log = min(children_propagated_negative_log) + entailment_penalty
+        For leaf nodes: cost = -log2(score/10)
+        For AND nodes: cost = sum(children_cost) + entailment_penalty
+        For OR nodes: cost = min(children_cost) + entailment_penalty
 
         The entailment_penalty is:
         - +Infinity if entailment_status == 'failed' (truth cannot propagate through invalid logic)
@@ -619,7 +619,7 @@ python -m http.server 8765
             hypergraph: Optional hypergraph dict. If None, loads from disk.
 
         Returns:
-            Dict mapping claim_id -> propagated_negative_log value
+            Dict mapping claim_id -> cost value
         """
         import math
 
@@ -642,13 +642,13 @@ python -m http.server 8765
                 'entailment_status': entailment_status
             }
 
-        # Calculate propagated negative logs using topological sort (bottom-up)
-        propagated_logs = {}
+        # Calculate costs using topological sort (bottom-up)
+        costs = {}
         visited = set()
 
         def calculate_node(claim_id):
             if claim_id in visited:
-                return propagated_logs[claim_id]
+                return costs[claim_id]
 
             visited.add(claim_id)
 
@@ -661,7 +661,7 @@ python -m http.server 8765
 
             if not claim:
                 # Claim not found, return default
-                propagated_logs[claim_id] = float('inf')
+                costs[claim_id] = float('inf')
                 return float('inf')
 
             score = claim.get('score')
@@ -674,11 +674,11 @@ python -m http.server 8765
                 effective_score = score if score is not None else 5
                 # Score <= 0 means definitely false = infinite cost
                 if effective_score <= 0:
-                    neg_log = float('inf')
+                    node_cost = float('inf')
                 else:
-                    neg_log = -math.log2(effective_score / 10.0)
-                propagated_logs[claim_id] = neg_log
-                return neg_log
+                    node_cost = -math.log2(effective_score / 10.0)
+                costs[claim_id] = node_cost
+                return node_cost
 
             # Non-leaf node: get children and aggregate
             impl_info = conclusion_to_implication[claim_id]
@@ -687,46 +687,46 @@ python -m http.server 8765
             entailment_status = impl_info['entailment_status']
 
             # Recursively calculate children
-            children_logs = []
+            children_costs = []
             for premise_id in premise_ids:
-                child_log = calculate_node(premise_id)
-                children_logs.append(child_log)
+                child_cost = calculate_node(premise_id)
+                children_costs.append(child_cost)
 
             # Aggregate based on type
             if impl_type == 'AND':
-                # AND: sum of children negative logs
-                propagated_log = sum(children_logs)
+                # AND: sum of children costs
+                node_cost = sum(children_costs)
             elif impl_type == 'OR':
-                # OR: min of children negative logs (best/most likely premise wins)
-                propagated_log = min(children_logs) if children_logs else float('inf')
+                # OR: min of children costs (best/most likely premise wins)
+                node_cost = min(children_costs) if children_costs else float('inf')
             else:
                 # Unknown type, treat as AND
-                propagated_log = sum(children_logs)
+                node_cost = sum(children_costs)
 
             # Apply entailment penalty: if implication is invalid, truth cannot propagate
             if entailment_status == 'failed':
-                propagated_log = float('inf')
+                node_cost = float('inf')
 
-            propagated_logs[claim_id] = propagated_log
-            return propagated_log
+            costs[claim_id] = node_cost
+            return node_cost
 
         # Calculate for all claims
         for claim in claims:
             calculate_node(claim['id'])
 
-        return propagated_logs
+        return costs
 
-    def update_propagated_negative_logs(self) -> None:
+    def update_costs(self) -> None:
         """
-        Calculate and update propagated_negative_log field for all claims.
+        Calculate and update cost field for all claims.
         """
-        propagated_logs = self.calculate_propagated_negative_logs()
+        costs = self.calculate_costs()
         hypergraph = self.load_hypergraph()
 
-        # Update each claim with its propagated negative log
+        # Update each claim with its cost
         for claim in hypergraph['claims']:
             claim_id = claim['id']
-            if claim_id in propagated_logs:
-                claim['propagated_negative_log'] = propagated_logs[claim_id]
+            if claim_id in costs:
+                claim['cost'] = costs[claim_id]
 
         self._save_hypergraph(hypergraph)

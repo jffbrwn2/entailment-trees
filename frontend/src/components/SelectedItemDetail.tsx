@@ -5,7 +5,7 @@ interface Claim {
   id: string
   text: string
   score: number | null
-  propagated_negative_log?: number | string | null
+  cost?: number | string | null
   reasoning?: string
   evidence?: Evidence[]
   uncertainties?: string[]
@@ -69,7 +69,10 @@ function parseEntailmentExplanation(explanation: string): {
 }
 
 function getScoreColor(score: number | null): string {
-  if (score === null) return 'rgb(128, 128, 128)'
+  if (score === null) {
+    const isLightMode = document.documentElement.getAttribute('data-theme') === 'light'
+    return isLightMode ? 'rgb(200, 200, 200)' : 'rgb(128, 128, 128)'
+  }
   const clampedScore = Math.max(0, Math.min(10, score))
   if (clampedScore <= 5) {
     const t = clampedScore / 5
@@ -89,15 +92,15 @@ function getScoreColor(score: number | null): string {
 function getEffectiveScore(claim: Claim, scoreMode: 'score' | 'propagated'): number | null {
   if (scoreMode === 'propagated') {
     // null or "Infinity" means failed entailment or error, show as 0
-    if (claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity") {
+    if (claim.cost === null || claim.cost === "Infinity") {
       return 0
     }
     // "-Infinity" would mean perfect certainty (shouldn't happen in practice)
-    if (claim.propagated_negative_log === "-Infinity") {
+    if (claim.cost === "-Infinity") {
       return 10
     }
-    if (claim.propagated_negative_log !== undefined && typeof claim.propagated_negative_log === 'number') {
-      return Math.pow(2, -claim.propagated_negative_log) * 10
+    if (claim.cost !== undefined && typeof claim.cost === 'number') {
+      return Math.pow(2, -claim.cost) * 10
     }
   }
   return claim.score
@@ -132,11 +135,11 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, onC
             </span>
           ) : (
             <span className="detail-score" style={{ background: `${getScoreColor(getEffectiveScore(claim, scoreMode))}33`, color: getScoreColor(getEffectiveScore(claim, scoreMode)) }}>
-              Cost: {claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity"
+              Cost: {claim.cost === null || claim.cost === "Infinity"
                 ? '∞ (P = 0)'
-                : typeof claim.propagated_negative_log === 'number'
-                  ? `${claim.propagated_negative_log.toFixed(3)} (P = ${Math.pow(2, -claim.propagated_negative_log).toFixed(3)})`
-                  : claim.propagated_negative_log ?? 'Not computed'}
+                : typeof claim.cost === 'number'
+                  ? `${claim.cost.toFixed(3)} (P = ${Math.pow(2, -claim.cost).toFixed(3)})`
+                  : claim.cost ?? 'Not computed'}
             </span>
           )}
         </div>
@@ -152,7 +155,9 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, onC
         {claim.reasoning && (
           <div className="detail-section">
             <div className="detail-section-title">Reasoning</div>
-            <div className="detail-section-content">{claim.reasoning}</div>
+            <div className="detail-section-content">
+              <ReactMarkdown>{claim.reasoning}</ReactMarkdown>
+            </div>
           </div>
         )}
 
@@ -232,7 +237,9 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, onC
 
         <div className="detail-section">
           <div className="detail-section-title">Reasoning</div>
-          <div className="detail-section-content">{impl.reasoning}</div>
+          <div className="detail-section-content">
+            <ReactMarkdown>{impl.reasoning}</ReactMarkdown>
+          </div>
         </div>
 
         {impl.entailment_explanation && (() => {

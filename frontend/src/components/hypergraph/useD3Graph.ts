@@ -839,8 +839,8 @@ export function useD3Graph({
 
       d.text = claim.text
       d.score = claim.score ?? undefined
-      d.propagated_negative_log = typeof claim.propagated_negative_log === 'number'
-        ? claim.propagated_negative_log
+      d.cost = typeof claim.cost === 'number'
+        ? claim.cost
         : undefined
 
       const node = d3.select(this)

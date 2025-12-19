@@ -353,22 +353,22 @@ async def get_hypergraph(folder: str) -> dict:
     with open(hypergraph_path) as f:
         hypergraph = json.load(f)
 
-    # Always compute propagated negative logs before serving
+    # Always compute costs before serving
     from agent_system.hypergraph_manager import HypergraphManager
     import math
     mgr = HypergraphManager(orchestrator.config.approaches_dir / folder)
-    propagated_logs = mgr.calculate_propagated_negative_logs(hypergraph)
+    costs = mgr.calculate_costs(hypergraph)
     for claim in hypergraph.get('claims', []):
         claim_id = claim['id']
-        if claim_id in propagated_logs:
-            value = propagated_logs[claim_id]
+        if claim_id in costs:
+            value = costs[claim_id]
             # Store Infinity as string for valid JSON
             if value == float('inf'):
-                claim['propagated_negative_log'] = "Infinity"
+                claim['cost'] = "Infinity"
             elif value == float('-inf'):
-                claim['propagated_negative_log'] = "-Infinity"
+                claim['cost'] = "-Infinity"
             else:
-                claim['propagated_negative_log'] = value
+                claim['cost'] = value
 
     return hypergraph
 

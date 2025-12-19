@@ -96,16 +96,16 @@ export function getEffectiveScore(
 
   if (scoreMode === 'propagated') {
     // null or "Infinity" means failed entailment or error, show as 0
-    if (claim.propagated_negative_log === null || claim.propagated_negative_log === "Infinity") {
+    if (claim.cost === null || claim.cost === "Infinity") {
       return 0
     }
     // "-Infinity" would mean perfect certainty (shouldn't happen in practice)
-    if (claim.propagated_negative_log === "-Infinity") {
+    if (claim.cost === "-Infinity") {
       return 10
     }
     // undefined means not computed, fall back to raw score
-    if (claim.propagated_negative_log !== undefined && typeof claim.propagated_negative_log === 'number') {
-      return Math.pow(2, -claim.propagated_negative_log) * 10
+    if (claim.cost !== undefined && typeof claim.cost === 'number') {
+      return Math.pow(2, -claim.cost) * 10
     }
   }
   return claim.score
@@ -116,9 +116,10 @@ export function getEffectiveScore(
  * 0 = red, 5 = yellow, 10 = green, null = grey
  */
 export function getScoreColor(score: number | null): string {
-  // Null/unevaluated scores are grey
+  // Null/unevaluated scores are grey (lighter in light mode)
   if (score === null) {
-    return 'rgb(128, 128, 128)'
+    const isLightMode = document.documentElement.getAttribute('data-theme') === 'light'
+    return isLightMode ? 'rgb(200, 200, 200)' : 'rgb(128, 128, 128)'
   }
   const clampedScore = Math.max(0, Math.min(10, score))
   if (clampedScore <= 5) {
