@@ -20,8 +20,8 @@ class RuntimeSettings:
     auto_model: str = "anthropic/claude-3-haiku"  # Model for auto agent (OpenRouter)
 
     # Tool toggles
-    edison_tools_enabled: bool = True
-    gapmap_tools_enabled: bool = True
+    edison_tools_enabled: bool = False 
+    gapmap_tools_enabled: bool = False
 
     def to_dict(self) -> dict:
         """Convert to dictionary for API responses."""

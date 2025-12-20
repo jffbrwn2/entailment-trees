@@ -512,7 +512,7 @@ export function useD3Graph({
       const text = node.append('text')
         .attr('class', 'node-text')
         .attr('text-anchor', 'middle')
-        .attr('fill', '#ffffff')
+        .attr('fill', 'var(--node-text)')
         .attr('font-size', '15px')
         .attr('font-weight', '500')
         .attr('pointer-events', 'none')
