@@ -59,15 +59,16 @@ class AgentConfig:
 
     @classmethod
     def from_env(cls) -> 'AgentConfig':
-        """Load config from environment variables."""
+        """Load config from environment variables (or session keys)."""
         import os
+        from .api_keys import get_api_key
 
         return cls(
-            claude_api_key=os.getenv('ANTHROPIC_API_KEY'),
+            claude_api_key=get_api_key('ANTHROPIC_API_KEY'),
             approaches_dir=Path(os.getenv('APPROACHES_DIR', 'approaches')),
             explorations_dir=Path(os.getenv('EXPLORATIONS_DIR', 'explorations')),
             evaluation_model=os.getenv('EVALUATION_MODEL', 'claude-sonnet-4-5-20250929'),
-            openrouter_api_key=os.getenv('OPENROUTER_API_KEY'),
+            openrouter_api_key=get_api_key('OPENROUTER_API_KEY'),
             openrouter_default_model=os.getenv('OPENROUTER_DEFAULT_MODEL', 'anthropic/claude-3-haiku'),
             auto_mode_max_turns=int(os.getenv('AUTO_MODE_MAX_TURNS', '20')),
         )

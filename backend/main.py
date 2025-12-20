@@ -37,6 +37,7 @@ from agent_system.conversation_logger import list_conversation_logs, load_conver
 from agent_system.openrouter_client import OpenRouterClient
 from agent_system.runtime_settings import get_settings, update_settings
 from agent_system.gapmap_client import GapMapClient
+from agent_system.api_keys import get_api_key, set_api_key
 
 
 # Global orchestrator instance (one per server for now)
@@ -942,11 +943,26 @@ async def list_openrouter_models() -> list[dict]:
 @app.get("/api/config/status")
 async def get_config_status() -> dict:
     """Check if required API keys are configured."""
-    import os
     return {
-        "anthropic_key_set": bool(os.getenv("ANTHROPIC_API_KEY")),
-        "openrouter_key_set": bool(os.getenv("OPENROUTER_API_KEY")),
+        "anthropic_key_set": bool(get_api_key("ANTHROPIC_API_KEY")),
+        "openrouter_key_set": bool(get_api_key("OPENROUTER_API_KEY")),
     }
+
+
+class SetApiKeysRequest(BaseModel):
+    """Request to set API keys for the session."""
+    anthropic_key: Optional[str] = None
+    openrouter_key: Optional[str] = None
+
+
+@app.post("/api/config/keys")
+async def set_session_api_keys(request: SetApiKeysRequest) -> dict:
+    """Set API keys for the current session (stored in memory only)."""
+    if request.anthropic_key:
+        set_api_key("ANTHROPIC_API_KEY", request.anthropic_key)
+    if request.openrouter_key:
+        set_api_key("OPENROUTER_API_KEY", request.openrouter_key)
+    return {"status": "ok"}
 
 
 # =============================================================================

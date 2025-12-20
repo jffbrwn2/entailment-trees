@@ -52,6 +52,13 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
   const [anthropicKeySet, setAnthropicKeySet] = useState<boolean | null>(null)
   const [openrouterKeySet, setOpenrouterKeySet] = useState<boolean | null>(null)
 
+  // API key input state
+  const [showAnthropicInput, setShowAnthropicInput] = useState(false)
+  const [showOpenrouterInput, setShowOpenrouterInput] = useState(false)
+  const [anthropicKeyInput, setAnthropicKeyInput] = useState('')
+  const [openrouterKeyInput, setOpenrouterKeyInput] = useState('')
+  const [savingKeys, setSavingKeys] = useState(false)
+
   // Sync mode with initialMode when it changes (e.g., when opened from ApproachSelector)
   useEffect(() => {
     setMode(initialMode)
@@ -79,6 +86,45 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
       }
     } catch (error) {
       console.error('Failed to fetch config status:', error)
+    }
+  }
+
+  const saveApiKey = async (keyType: 'anthropic' | 'openrouter') => {
+    setSavingKeys(true)
+    try {
+      const body: Record<string, string> = {}
+      if (keyType === 'anthropic' && anthropicKeyInput.trim()) {
+        body.anthropic_key = anthropicKeyInput.trim()
+      }
+      if (keyType === 'openrouter' && openrouterKeyInput.trim()) {
+        body.openrouter_key = openrouterKeyInput.trim()
+      }
+
+      const response = await fetch('/api/config/keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (response.ok) {
+        // Refetch config status to update UI
+        await fetchConfigStatus()
+        // Clear input and hide
+        if (keyType === 'anthropic') {
+          setAnthropicKeyInput('')
+          setShowAnthropicInput(false)
+        } else {
+          setOpenrouterKeyInput('')
+          setShowOpenrouterInput(false)
+        }
+      } else {
+        alert('Failed to save API key')
+      }
+    } catch (error) {
+      console.error('Failed to save API key:', error)
+      alert('Failed to save API key')
+    } finally {
+      setSavingKeys(false)
     }
   }
 
@@ -382,7 +428,12 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
               <button
                 className="create-button"
                 onClick={handleCreate}
-                disabled={!newHypothesis.trim() || isCreating}
+                disabled={
+                  !newHypothesis.trim() ||
+                  isCreating ||
+                  anthropicKeySet === false ||
+                  (autoModeEnabled && openrouterKeySet === false)
+                }
               >
                 {isCreating ? 'Creating...' : 'Start Evaluating'}
               </button>
@@ -391,15 +442,97 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
             {(anthropicKeySet === false || (autoModeEnabled && openrouterKeySet === false)) && (
               <div className="api-key-warnings">
                 {anthropicKeySet === false && (
-                  <div className="warning">
-                    <span className="warning-icon">⚠️</span>
-                    <span>ANTHROPIC_API_KEY not set</span>
+                  <div className="api-key-warning-item">
+                    <div className="warning">
+                      <span>ANTHROPIC_API_KEY not set</span>
+                      {!showAnthropicInput && (
+                        <button
+                          className="enter-key-button"
+                          onClick={() => setShowAnthropicInput(true)}
+                        >
+                          Enter Key
+                        </button>
+                      )}
+                    </div>
+                    {showAnthropicInput && (
+                      <div className="api-key-input-group">
+                        <input
+                          type="password"
+                          className="api-key-input"
+                          placeholder="sk-ant-..."
+                          value={anthropicKeyInput}
+                          onChange={(e) => setAnthropicKeyInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && anthropicKeyInput.trim()) {
+                              saveApiKey('anthropic')
+                            }
+                          }}
+                        />
+                        <button
+                          className="api-key-save-button"
+                          onClick={() => saveApiKey('anthropic')}
+                          disabled={!anthropicKeyInput.trim() || savingKeys}
+                        >
+                          {savingKeys ? '...' : 'Save'}
+                        </button>
+                        <button
+                          className="api-key-cancel-button"
+                          onClick={() => {
+                            setShowAnthropicInput(false)
+                            setAnthropicKeyInput('')
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {autoModeEnabled && openrouterKeySet === false && (
-                  <div className="warning">
-                    <span className="warning-icon">⚠️</span>
-                    <span>OPENROUTER_API_KEY not set (required for Auto Mode)</span>
+                  <div className="api-key-warning-item">
+                    <div className="warning">
+                      <span>OPENROUTER_API_KEY not set (required for Auto Mode)</span>
+                      {!showOpenrouterInput && (
+                        <button
+                          className="enter-key-button"
+                          onClick={() => setShowOpenrouterInput(true)}
+                        >
+                          Enter Key
+                        </button>
+                      )}
+                    </div>
+                    {showOpenrouterInput && (
+                      <div className="api-key-input-group">
+                        <input
+                          type="password"
+                          className="api-key-input"
+                          placeholder="sk-or-..."
+                          value={openrouterKeyInput}
+                          onChange={(e) => setOpenrouterKeyInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && openrouterKeyInput.trim()) {
+                              saveApiKey('openrouter')
+                            }
+                          }}
+                        />
+                        <button
+                          className="api-key-save-button"
+                          onClick={() => saveApiKey('openrouter')}
+                          disabled={!openrouterKeyInput.trim() || savingKeys}
+                        >
+                          {savingKeys ? '...' : 'Save'}
+                        </button>
+                        <button
+                          className="api-key-cancel-button"
+                          onClick={() => {
+                            setShowOpenrouterInput(false)
+                            setOpenrouterKeyInput('')
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -153,9 +153,10 @@ def _evaluate_evidence_with_claude(claim_text: str, evidence_list: list) -> tupl
         Tuple of (score, reasoning)
     """
     # Initialize Anthropic client
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    from .api_keys import get_api_key
+    api_key = get_api_key("ANTHROPIC_API_KEY")
     if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY environment variable not set")
+        raise ValueError("ANTHROPIC_API_KEY not set (via environment variable or session)")
 
     client = Anthropic(api_key=api_key)
 

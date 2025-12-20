@@ -437,6 +437,88 @@
   color: #f59e0b;
 }
 
-.api-key-warnings .warning-icon {
-  font-size: 1rem;
+.api-key-warning-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.enter-key-button {
+  margin-left: auto;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  color: #f59e0b;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.enter-key-button:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.api-key-input-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.api-key-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.api-key-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.api-key-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.api-key-save-button {
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.api-key-save-button:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.api-key-save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.api-key-cancel-button {
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.api-key-cancel-button:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
 }
