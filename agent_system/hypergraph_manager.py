@@ -607,12 +607,9 @@ python -m http.server 8765
         """
         Calculate cost scores for all claims.
 
-        For leaf nodes WITH evidence: cost = -log2(score/10)
-        For leaf nodes WITHOUT evidence: cost = None (not yet evaluated)
+        For leaf nodes: cost = -log2(score/10)
         For AND nodes: cost = sum(children_cost) + entailment_penalty
-                       If any child is None, result is None
         For OR nodes: cost = min(children_cost) + entailment_penalty
-                      Ignores None children; if all are None, result is None
 
         The entailment_penalty is:
         - +Infinity if entailment_status == 'failed' (truth cannot propagate through invalid logic)
@@ -622,7 +619,7 @@ python -m http.server 8765
             hypergraph: Optional hypergraph dict. If None, loads from disk.
 
         Returns:
-            Dict mapping claim_id -> cost value (None for unevaluated claims)
+            Dict mapping claim_id -> cost value
         """
         import math
 
@@ -646,7 +643,6 @@ python -m http.server 8765
             }
 
         # Calculate costs using topological sort (bottom-up)
-        # Values can be: float (computed cost), None (not evaluated), or float('inf') (failed)
         costs = {}
         visited = set()
 
@@ -673,13 +669,8 @@ python -m http.server 8765
 
             # Check if this is a leaf node (not a conclusion of any implication)
             if claim_id not in conclusion_to_implication:
-                # Leaf node: only compute cost if it has evidence
-                if not evidence:
-                    # No evidence = not yet evaluated
-                    costs[claim_id] = None
-                    return None
-
-                # Has evidence: -log2(score/10)
+                # Leaf node: -log2(score/10)
+                # Use actual score if available, otherwise default to 5 (unsure)
                 effective_score = score if score is not None else 5
                 # Score <= 0 means definitely false = infinite cost
                 if effective_score <= 0:
@@ -701,32 +692,19 @@ python -m http.server 8765
                 child_cost = calculate_node(premise_id)
                 children_costs.append(child_cost)
 
-            # Aggregate based on type, handling None (unevaluated) children
+            # Aggregate based on type
             if impl_type == 'AND':
                 # AND: sum of children costs
-                # If any child is None, we can't compute the AND result
-                if any(c is None for c in children_costs):
-                    node_cost = None
-                else:
-                    node_cost = sum(children_costs)
+                node_cost = sum(children_costs)
             elif impl_type == 'OR':
                 # OR: min of children costs (best/most likely premise wins)
-                # Filter out None values - we only need ONE evaluated path
-                evaluated_costs = [c for c in children_costs if c is not None]
-                if not evaluated_costs:
-                    # All children are unevaluated
-                    node_cost = None
-                else:
-                    node_cost = min(evaluated_costs)
+                node_cost = min(children_costs) if children_costs else float('inf')
             else:
                 # Unknown type, treat as AND
-                if any(c is None for c in children_costs):
-                    node_cost = None
-                else:
-                    node_cost = sum(children_costs)
+                node_cost = sum(children_costs)
 
             # Apply entailment penalty: if implication is invalid, truth cannot propagate
-            if entailment_status == 'failed' and node_cost is not None:
+            if entailment_status == 'failed':
                 node_cost = float('inf')
 
             costs[claim_id] = node_cost

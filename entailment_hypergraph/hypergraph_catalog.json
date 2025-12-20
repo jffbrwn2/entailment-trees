@@ -138,11 +138,6 @@
       "category": "approach"
     },
     {
-      "name": "ultrasound-eeg-resolution",
-      "path": "/approaches/ultrasound-eeg-resolution/hypergraph.json",
-      "category": "approach"
-    },
-    {
       "name": "untitled-approach",
       "path": "/approaches/untitled-approach/hypergraph.json",
       "category": "approach"

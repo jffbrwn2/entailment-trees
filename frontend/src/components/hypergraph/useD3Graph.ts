@@ -407,6 +407,12 @@ export function useD3Graph({
       return true
     })
 
+    // Clear any lingering animation properties to prevent stale positions
+    allNodes.forEach(node => {
+      delete node._animX
+      delete node._animY
+    })
+
     const edgeSelection = linksGroup.selectAll<SVGPathElement, LinkData>('.hyperedge')
       .data(visibleLinks, d => `${d.source.id}-${d.target.id}`)
 
