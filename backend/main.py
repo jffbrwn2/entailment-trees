@@ -765,7 +765,7 @@ async def notify_hypergraph_update(folder: str):
 
 class AutoStartRequest(BaseModel):
     """Request to start auto mode."""
-    model: str = "anthropic/claude-3-haiku"
+    model: str = "google/gemini-3-pro-preview"
 
 
 class AutoInterjectRequest(BaseModel):

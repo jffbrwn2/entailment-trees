@@ -158,7 +158,7 @@ function SettingsModal({ isOpen, onClose, settings, onSettingsChange }: Props) {
                   onChange={(e) => handleChange('autoModel', e.target.value)}
                 >
                   {availableModels.length === 0 ? (
-                    <option value="anthropic/claude-3-haiku">anthropic/claude-3-haiku</option>
+                    <option value="google/gemini-3-pro-preview">google/gemini-3-pro-preview</option>
                   ) : (
                     availableModels.map((model) => (
                       <option key={model.id} value={model.id}>

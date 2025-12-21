@@ -48,7 +48,7 @@ class AgentConfig:
 
     # Auto mode settings (OpenRouter)
     openrouter_api_key: Optional[str] = None  # Will be read from environment
-    openrouter_default_model: str = "anthropic/claude-3-haiku"
+    openrouter_default_model: str = "google/gemini-3-pro-preview"
     auto_mode_max_turns: int = 20
 
     def __post_init__(self):
@@ -69,7 +69,7 @@ class AgentConfig:
             explorations_dir=Path(os.getenv('EXPLORATIONS_DIR', 'explorations')),
             evaluation_model=os.getenv('EVALUATION_MODEL', 'claude-sonnet-4-5-20250929'),
             openrouter_api_key=get_api_key('OPENROUTER_API_KEY'),
-            openrouter_default_model=os.getenv('OPENROUTER_DEFAULT_MODEL', 'anthropic/claude-3-haiku'),
+            openrouter_default_model=os.getenv('OPENROUTER_DEFAULT_MODEL', 'google/gemini-3-pro-preview'),
             auto_mode_max_turns=int(os.getenv('AUTO_MODE_MAX_TURNS', '20')),
         )
 

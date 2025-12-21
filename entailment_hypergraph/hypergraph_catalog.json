@@ -33,6 +33,21 @@
       "category": "approach"
     },
     {
+      "name": "aliens-are-friendly",
+      "path": "/approaches/aliens-are-friendly/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "aliens-are-friends",
+      "path": "/approaches/aliens-are-friends/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "aliens-are-real",
+      "path": "/approaches/aliens-are-real/hypergraph.json",
+      "category": "approach"
+    },
+    {
       "name": "atomic-scale-imaging",
       "path": "/approaches/atomic-scale-imaging/hypergraph.json",
       "category": "approach"
@@ -60,6 +75,11 @@
     {
       "name": "extraterrestrial-existence-proof",
       "path": "/approaches/extraterrestrial-existence-proof/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "functional-ultrasound-enhancement",
+      "path": "/approaches/functional-ultrasound-enhancement/hypergraph.json",
       "category": "approach"
     },
     {
@@ -133,8 +153,18 @@
       "category": "approach"
     },
     {
+      "name": "ultrasound-can-increase-the-sp",
+      "path": "/approaches/ultrasound-can-increase-the-sp/hypergraph.json",
+      "category": "approach"
+    },
+    {
       "name": "ultrasound-eeg-enhancement",
       "path": "/approaches/ultrasound-eeg-enhancement/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "ultrasound-eeg-resolution",
+      "path": "/approaches/ultrasound-eeg-resolution/hypergraph.json",
       "category": "approach"
     },
     {

@@ -17,7 +17,7 @@ class RuntimeSettings:
     # Model settings
     chat_model: str = "claude-sonnet-4-5-20250929"  # Model for chat agent (Anthropic API)
     evaluator_model: str = "claude-sonnet-4-5-20250929"  # Model for evaluate_claim and check_entailment
-    auto_model: str = "anthropic/claude-3-haiku"  # Model for auto agent (OpenRouter)
+    auto_model: str = "google/gemini-3-pro-preview"  # Model for auto agent (OpenRouter)
 
     # Tool toggles
     edison_tools_enabled: bool = False 

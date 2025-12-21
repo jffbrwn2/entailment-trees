@@ -172,7 +172,7 @@ async def check_entailment_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     description="Add evidence to a claim in the hypergraph. "
                 "Evidence must follow the schema: "
                 "- simulation: requires 'type', 'source' (file path), 'lines' (e.g. '10-50'), 'code' (extracted code) "
-                "- literature: requires 'type', 'source' (citation/file), 'reference_text' (exact quote) "
+                "- literature: requires 'type', 'source' (citation/file), 'reference_text' (exact quote from source) "
                 "- calculation: requires 'type', 'equations' (LaTeX), 'program' (Python code). "
                 "Validates format and updates last_evidence_modified timestamp. "
                 "Use this BEFORE evaluate_claim to add new evidence.",

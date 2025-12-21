@@ -81,7 +81,7 @@ function App() {
   // Model settings
   const [claudeModel, setClaudeModel] = useState<string>('anthropic/claude-sonnet-4')
   const [evaluatorModel, setEvaluatorModel] = useState<string>('anthropic/claude-sonnet-4')
-  const [autoModel, setAutoModel] = useState<string>('anthropic/claude-3-haiku')
+  const [autoModel, setAutoModel] = useState<string>('google/gemini-3-pro-preview')
 
   // Tool toggles
   const [edisonToolsEnabled, setEdisonToolsEnabled] = useState(true)
@@ -112,7 +112,7 @@ function App() {
         const data = await response.json()
         setClaudeModel(data.chatModel || 'anthropic/claude-sonnet-4')
         setEvaluatorModel(data.evaluatorModel || 'anthropic/claude-sonnet-4')
-        setAutoModel(data.autoModel || 'anthropic/claude-3-haiku')
+        setAutoModel(data.autoModel || 'google/gemini-3-pro-preview')
         setEdisonToolsEnabled(data.edisonToolsEnabled ?? true)
         setGapMapToolsEnabled(data.gapMapToolsEnabled ?? true)
       }

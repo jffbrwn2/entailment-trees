@@ -45,7 +45,7 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
   // Auto mode state
   const [autoModeEnabled, setAutoModeEnabled] = useState(true)
   const [availableModels, setAvailableModels] = useState<OpenRouterModel[]>([])
-  const [selectedModel, setSelectedModel] = useState('anthropic/claude-3-haiku')
+  const [selectedModel, setSelectedModel] = useState('google/gemini-3-pro-preview')
   const [loadingModels, setLoadingModels] = useState(false)
 
   // API key status (null = not yet checked)
@@ -388,7 +388,7 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
                       onChange={(e) => setSelectedModel(e.target.value)}
                     >
                       {availableModels.length === 0 ? (
-                        <option value="anthropic/claude-3-haiku">anthropic/claude-3-haiku</option>
+                        <option value="google/gemini-3-pro-preview">google/gemini-3-pro-preview</option>
                       ) : (
                         availableModels.map((model) => (
                           <option key={model.id} value={model.id}>
