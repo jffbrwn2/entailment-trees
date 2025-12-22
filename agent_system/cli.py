@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from .agent_orchestrator import AgentOrchestrator
+from .orchestrator import AgentOrchestrator
 from .config import AgentConfig
 
 
@@ -408,7 +408,7 @@ class AgentCLI:
 
     def set_evaluation_model(self, command: str):
         """Set the evaluation model used by evaluate_claim and check_entailment."""
-        from .config import DEFAULT_CONFIG
+        from .config.settings import DEFAULT_CONFIG
 
         # Parse model from command
         parts = command.split()

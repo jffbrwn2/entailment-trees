@@ -4,7 +4,7 @@ import json
 
 from fastapi import APIRouter, HTTPException
 
-from agent_system.conversation_logger import list_conversation_logs, load_conversation_log
+from agent_system.utils import list_conversation_logs, load_conversation_log
 
 from backend.models import ResumeSessionRequest
 from backend.services import get_orchestrator

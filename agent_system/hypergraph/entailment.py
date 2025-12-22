@@ -10,9 +10,9 @@ import re
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from anthropic import Anthropic
-from .config import DEFAULT_CONFIG
-from .path_utils import resolve_path
-from .runtime_settings import get_settings
+from ..config.settings import DEFAULT_CONFIG
+from ..utils.paths import resolve_path
+from ..config.runtime import get_settings
 
 
 class EntailmentChecker:

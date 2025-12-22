@@ -102,12 +102,10 @@ Write a single hypothesis statement that proposes how this capability could addr
 Be specific and concise. Output only the hypothesis statement, nothing else."""
 
     try:
-        print(f"[GAPMAP] Calling OpenRouter to generate hypothesis...", flush=True)
         hypothesis = await openrouter_client.chat(
             messages=[{"role": "user", "content": prompt}],
             model="anthropic/claude-opus-4.5",
         )
-        print(f"[GAPMAP] Generated hypothesis: {hypothesis[:100]}...", flush=True)
         return {"hypothesis": hypothesis.strip()}
     except Exception as e:
         print(f"[GAPMAP] OpenRouter chat failed: {e}", flush=True)

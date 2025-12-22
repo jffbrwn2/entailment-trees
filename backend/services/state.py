@@ -13,8 +13,8 @@ from fastapi import WebSocket
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from agent_system import AgentOrchestrator
-    from agent_system.openrouter_client import OpenRouterClient
-    from agent_system.gapmap_client import GapMapClient
+    from agent_system.clients import OpenRouterClient
+    from agent_system.clients import GapMapClient
     from .auto_mode import AutoModeSession
 
 # Global orchestrator instance
@@ -60,7 +60,7 @@ def get_openrouter_client() -> "OpenRouterClient":
     """Get or create the OpenRouter client."""
     global _openrouter_client
     if _openrouter_client is None:
-        from agent_system.openrouter_client import OpenRouterClient
+        from agent_system.clients import OpenRouterClient
         _openrouter_client = OpenRouterClient()
     return _openrouter_client
 
@@ -69,6 +69,6 @@ def get_gapmap_client() -> "GapMapClient":
     """Get or create the Gap Map client."""
     global _gapmap_client
     if _gapmap_client is None:
-        from agent_system.gapmap_client import GapMapClient
+        from agent_system.clients import GapMapClient
         _gapmap_client = GapMapClient()
     return _gapmap_client

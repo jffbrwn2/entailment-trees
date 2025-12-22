@@ -26,12 +26,12 @@ from claude_agent_sdk import (
     HookContext
 )
 
-from .entailment_checker import check_entailment_skill as check_entailment_impl
-from .claim_evaluator import evaluate_claim_skill as evaluate_claim_impl, add_evidence_skill as add_evidence_impl
-from .gapmap_client import GapMapClient
-from .conversation_logger import ConversationLogger
-from .path_utils import set_approach_dir, resolve_path
-from .runtime_settings import get_settings
+from ..hypergraph.entailment import check_entailment_skill as check_entailment_impl
+from ..hypergraph.evaluator import evaluate_claim_skill as evaluate_claim_impl, add_evidence_skill as add_evidence_impl
+from .gapmap import GapMapClient
+from ..utils.logger import ConversationLogger
+from ..utils.paths import set_approach_dir, resolve_path
+from ..config.runtime import get_settings
 
 try:
     from edison_client import EdisonClient, JobNames
@@ -830,7 +830,7 @@ async def post_hypergraph_edit_hook(
     NOTE: Cleanup is NOT automatic - it must be manually invoked by agent or user.
     """
     # Import here to avoid circular imports
-    from .hypergraph_manager import HypergraphManager
+    from ..hypergraph.manager import HypergraphManager
     import hashlib
 
     # Get cwd to check for hypergraph files

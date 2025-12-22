@@ -25,7 +25,7 @@ class OpenRouterClient:
         Args:
             api_key: OpenRouter API key. If not provided, reads from session or OPENROUTER_API_KEY env var.
         """
-        from .api_keys import get_api_key
+        from ..config.api_keys import get_api_key
         self.api_key = api_key or get_api_key("OPENROUTER_API_KEY")
         if not self.api_key:
             raise ValueError("OpenRouter API key required. Set OPENROUTER_API_KEY env var or provide via session.")

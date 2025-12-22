@@ -12,9 +12,9 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 from anthropic import Anthropic
 import os
-from .config import DEFAULT_CONFIG
-from .path_utils import resolve_path
-from .runtime_settings import get_settings
+from ..config.settings import DEFAULT_CONFIG
+from ..utils.paths import resolve_path
+from ..config.runtime import get_settings
 
 
 def _validate_evidence_format(evidence_item: dict) -> tuple[bool, Optional[str]]:
@@ -153,7 +153,7 @@ def _evaluate_evidence_with_claude(claim_text: str, evidence_list: list) -> tupl
         Tuple of (score, reasoning)
     """
     # Initialize Anthropic client
-    from .api_keys import get_api_key
+    from ..config.api_keys import get_api_key
     api_key = get_api_key("ANTHROPIC_API_KEY")
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY not set (via environment variable or session)")

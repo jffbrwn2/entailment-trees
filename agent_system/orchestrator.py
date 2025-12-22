@@ -11,10 +11,10 @@ from typing import Optional, Dict, Any
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .hypergraph_manager import HypergraphManager
+from .hypergraph import HypergraphManager
 from .config import AgentConfig
-from .claude_client import ClaudeCodeClient, ClaudeResponse, ClientMode
-from .conversation_logger import ConversationLogger
+from .clients import ClaudeCodeClient, ClaudeResponse, ClientMode
+from .utils import ConversationLogger
 from .prompts import get_system_prompt_template, get_exploration_prompt
 
 
@@ -131,7 +131,7 @@ class AgentOrchestrator:
         )
         self.claude_client.logger = self.current_logger
         # Update global logger for hooks
-        from . import claude_client as cc
+        from .clients import claude as cc
         cc._current_logger = self.current_logger
 
         # Switch client to approach mode
@@ -193,7 +193,7 @@ class AgentOrchestrator:
         )
         self.claude_client.logger = self.current_logger
         # Update global logger for hooks
-        from . import claude_client as cc
+        from .clients import claude as cc
         cc._current_logger = self.current_logger
 
         # Switch client to approach mode
@@ -244,7 +244,7 @@ class AgentOrchestrator:
             )
             self.claude_client.logger = self.current_logger
             # Update global logger for hooks
-            from . import claude_client as cc
+            from .clients import claude as cc
             cc._current_logger = self.current_logger
 
         # Determine system prompt based on mode

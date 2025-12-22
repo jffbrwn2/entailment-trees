@@ -2,8 +2,8 @@
 
 from fastapi import APIRouter
 
-from agent_system.runtime_settings import get_settings, update_settings
-from agent_system.api_keys import get_api_key, set_api_key
+from agent_system.config import get_settings, update_settings
+from agent_system.config import get_api_key, set_api_key
 
 from backend.models import UpdateSettingsRequest, SetApiKeysRequest
 
