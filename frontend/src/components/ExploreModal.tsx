@@ -237,11 +237,12 @@ function ExploreModal({ isOpen, onClose, onUseIdea, initialSelection }: Props) {
           gap_description: selectedTopic.item.description || '',
         }
       } else {
-        // Capability without source gap - just use name and description
-        const item = selectedTopic.item
-        onUseIdea(`${item.name}: ${item.description || ''}`, source)
-        setGeneratingHypothesis(false)
-        return
+        // Capability without source gap - generate hypothesis for capability alone
+        requestBody = {
+          mode: 'capability_only',
+          capability_name: selectedTopic.item.name,
+          capability_description: selectedTopic.item.description || '',
+        }
       }
 
       const response = await fetch('/api/gapmap/generate-hypothesis', {
