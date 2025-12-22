@@ -41,13 +41,33 @@ export OPENROUTER_API_KEY="sk-or-..."      # https://openrouter.ai/keys (for Aut
 
 ## Usage
 
-Once set up, start the web app anytime with:
+### Web App
+
+Start the web app with:
 
 ```bash
 ./start_web.sh
 ```
 
 Then open http://localhost:5173 in your browser.
+
+### CLI
+
+Run the command-line interface with:
+
+```bash
+python -m agent_system.cli
+```
+
+Commands:
+- `/new` - Start a new approach
+- `/load` - Load an existing approach
+- `/list` - List all approaches
+- `/status` - Show current approach status
+- `/auto` - Start auto mode (AI-driven evaluation)
+- `/auto-stop` - Stop auto mode
+- `/help` - Show all commands
+- `Ctrl+C` - Exit
 
 ### What You Can Do
 
@@ -87,5 +107,3 @@ export EDISON_API_KEY="your-edison-key"
 ## Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System design
-- [CLAUDE.md](CLAUDE.md) - Agent guidelines
-- [entailment_hypergraph/README.md](entailment_hypergraph/README.md) - Hypergraph structure

@@ -689,11 +689,12 @@ class AgentCLI:
                 print()
 
             except KeyboardInterrupt:
-                print("\n\nInterrupted. Type /quit to exit.")
+                print()
+                break
             except EOFError:
                 break
 
-        print("\nGoodbye!")
+        print("Goodbye!")
 
 
 def main():
