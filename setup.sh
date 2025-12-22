@@ -18,13 +18,15 @@ cd "$(dirname "$0")"
 # Step 1: Check for uv
 echo "Step 1: Checking for uv package manager..."
 if ! command -v uv &> /dev/null; then
-    echo "  uv not found. Installing..."
+    echo "  uv not found."
+    echo ""
+    read -p "  Press Enter to install uv (https://astral.sh/uv), or Ctrl+C to cancel..."
     curl -LsSf https://astral.sh/uv/install.sh | sh
     # Source the profile to get uv in path
     export PATH="$HOME/.local/bin:$PATH"
-    echo "  ✓ uv installed"
+    echo "  uv installed"
 else
-    echo "  ✓ uv found"
+    echo "  uv found"
 fi
 
 # Step 2: Check for Node.js (requires 18+)
@@ -48,7 +50,7 @@ load_nvm() {
 }
 
 if check_node_version; then
-    echo "  ✓ Node.js found ($(node -v))"
+    echo "  Node.js found ($(node -v))"
 else
     # Check if nvm is available
     load_nvm
@@ -62,26 +64,25 @@ else
             echo ""
             read -p "  Press Enter to activate Node.js $NVM_VERSIONS via nvm, or Ctrl+C to cancel..."
             nvm use "$NVM_VERSIONS" > /dev/null
-            echo "  ✓ Node.js $(node -v) activated via nvm"
+            echo "  Node.js $(node -v) activated via nvm"
         else
-            echo "  Current Node.js is too old. Installing Node.js 20 via nvm..."
+            echo "  Current Node.js is too old, but nvm is available."
             echo ""
             read -p "  Press Enter to install Node.js 20 via nvm, or Ctrl+C to cancel..."
             nvm install 20
-            nvm use 20
-            echo "  ✓ Node.js $(node -v) installed and activated via nvm"
+            echo "  Node.js $(node -v) installed via nvm"
         fi
     else
         # No nvm, show manual instructions
         if command -v node &> /dev/null; then
-            echo "  ✗ Node.js $(node -v) is too old (requires 18+)"
+            echo "  Node.js $(node -v) is too old (requires 18+)"
         else
-            echo "  ✗ Node.js not found"
+            echo "  Node.js not found"
         fi
         echo ""
         NODE_PATH=$(which node 2>/dev/null)
         if [[ "$NODE_PATH" == *"anaconda"* ]] || [[ "$NODE_PATH" == *"conda"* ]]; then
-            echo "  ⚠️  You have an old Node.js from Anaconda/Conda."
+            echo "  WARNING: You have an old Node.js from Anaconda/Conda."
             echo "     Conda's Node.js is often outdated and causes issues."
             echo ""
         fi
@@ -107,7 +108,7 @@ fi
 echo ""
 echo "Step 3: Installing Python dependencies..."
 uv sync
-echo "  ✓ Python dependencies installed"
+echo "  Python dependencies installed"
 
 # Step 4: Install frontend dependencies
 echo ""
@@ -118,7 +119,7 @@ if [ ! -d "node_modules" ]; then
 else
     echo "  (node_modules exists, skipping npm install)"
 fi
-echo "  ✓ Frontend dependencies installed"
+echo "  Frontend dependencies installed"
 cd ..
 
 # Step 5: Check for API keys
@@ -143,9 +144,9 @@ prompt_for_key() {
 
     echo ""
     if [ "$required" = "required" ]; then
-        echo "✗ $key_name is not set (required)"
+        echo "$key_name is not set (required)"
     else
-        echo "○ $key_name not set (optional - $key_desc)"
+        echo "$key_name not set (optional - $key_desc)"
     fi
     echo "  Get your key: $key_url"
     echo ""
@@ -157,7 +158,7 @@ prompt_for_key() {
         # Add to shell config
         echo "" >> "$SHELL_CONFIG"
         echo "export $key_name=\"$key_value\"" >> "$SHELL_CONFIG"
-        echo "  ✓ $key_name saved to $SHELL_CONFIG"
+        echo "  $key_name saved to $SHELL_CONFIG"
         return 0
     else
         echo "  Skipped"
@@ -173,21 +174,23 @@ if [ -z "$ANTHROPIC_API_KEY" ]; then
     fi
 else
     echo ""
-    echo "✓ ANTHROPIC_API_KEY is set"
+    echo "ANTHROPIC_API_KEY is set"
 fi
 
 # Optional: OpenRouter (for auto mode models)
 if [ -z "$OPENROUTER_API_KEY" ]; then
     prompt_for_key "OPENROUTER_API_KEY" "https://openrouter.ai/keys" "for auto mode"
 else
-    echo "✓ OPENROUTER_API_KEY is set"
+    echo ""
+    echo "OPENROUTER_API_KEY is set"
 fi
 
 # Optional: Edison (for literature search)
 if [ -z "$EDISON_API_KEY" ]; then
     prompt_for_key "EDISON_API_KEY" "https://edison.so" "for literature search"
 else
-    echo "✓ EDISON_API_KEY is set"
+    echo ""
+    echo "EDISON_API_KEY is set"
 fi
 
 echo ""

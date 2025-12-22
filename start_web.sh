@@ -17,19 +17,19 @@ find_port() {
 BACKEND_PORT=${BACKEND_PORT:-$(find_port 8000)}
 FRONTEND_PORT=${FRONTEND_PORT:-$(find_port 5173)}
 
-echo "🚀 Starting Entailment Trees Web Application"
+echo "Starting Entailment Trees Web Application"
 echo "=============================================="
 
 # Check if we're in the project root
 if [ ! -f "pyproject.toml" ]; then
-    echo "❌ Error: Must run from project root directory"
+    echo "Error: Must run from project root directory"
     exit 1
 fi
 
 # Function to cleanup on exit
 cleanup() {
     echo ""
-    echo "🛑 Shutting down..."
+    echo "Shutting down..."
 
     # Kill process groups (catches child processes too)
     kill -- -$BACKEND_PID 2>/dev/null || kill $BACKEND_PID 2>/dev/null || true
@@ -39,7 +39,7 @@ cleanup() {
     lsof -ti:$BACKEND_PORT | xargs kill -9 2>/dev/null || true
     lsof -ti:$FRONTEND_PORT | xargs kill -9 2>/dev/null || true
 
-    echo "✓ Stopped"
+    echo "Stopped"
     exit 0
 }
 
@@ -47,7 +47,7 @@ trap cleanup SIGINT SIGTERM EXIT
 
 # Start backend
 echo ""
-echo "📦 Starting FastAPI backend on http://localhost:$BACKEND_PORT..."
+echo "Starting FastAPI backend on http://localhost:$BACKEND_PORT..."
 cd "$(dirname "$0")"
 uv run python -m uvicorn backend.main:app --host 0.0.0.0 --port $BACKEND_PORT &
 BACKEND_PID=$!
@@ -57,19 +57,19 @@ sleep 2
 
 # Check if backend is running
 if ! kill -0 $BACKEND_PID 2>/dev/null; then
-    echo "❌ Backend failed to start"
+    echo "Backend failed to start"
     exit 1
 fi
-echo "✓ Backend running (PID: $BACKEND_PID)"
+echo "Backend running (PID: $BACKEND_PID)"
 
 # Start frontend
 echo ""
-echo "📦 Starting React frontend on http://localhost:5173..."
+echo "Starting React frontend on http://localhost:$FRONTEND_PORT..."
 cd frontend
 
 # Check if node_modules exists
 if [ ! -d "node_modules" ]; then
-    echo "📥 Installing frontend dependencies..."
+    echo "Installing frontend dependencies..."
     npm install
 fi
 
@@ -82,7 +82,7 @@ sleep 3
 
 echo ""
 echo "=============================================="
-echo "✅ Web application running!"
+echo "Web application running!"
 echo ""
 echo "   Frontend: http://localhost:$FRONTEND_PORT"
 echo "   Backend:  http://localhost:$BACKEND_PORT"
