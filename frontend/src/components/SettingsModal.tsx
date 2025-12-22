@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react'
 import './SettingsModal.css'
 
-interface OpenRouterModel {
+interface AutoModel {
   id: string
   name: string
 }
 
-// Anthropic models for the Evaluator (uses Anthropic API directly, not OpenRouter)
+interface AutoConfig {
+  provider: 'openrouter' | 'anthropic'
+  default_model: string
+  models: AutoModel[]
+}
+
+// Anthropic models for Chat Agent and Evaluator (uses Anthropic API directly)
 const ANTHROPIC_MODELS = [
+  { id: 'claude-opus-4-5-20250514', name: 'Claude Opus 4.5' },
   { id: 'claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5' },
-  { id: 'claude-opus-4-20250514', name: 'Claude Opus 4' },
-  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet' },
-  { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' },
-  { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus' },
+  { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5' },
 ]
 
 interface Settings {
@@ -34,7 +38,7 @@ interface Props {
 
 function SettingsModal({ isOpen, onClose, settings, onSettingsChange }: Props) {
   const [localSettings, setLocalSettings] = useState<Settings>(settings)
-  const [availableModels, setAvailableModels] = useState<OpenRouterModel[]>([])
+  const [autoConfig, setAutoConfig] = useState<AutoConfig | null>(null)
   const [loadingModels, setLoadingModels] = useState(false)
 
   // Sync local settings when props change
@@ -42,26 +46,25 @@ function SettingsModal({ isOpen, onClose, settings, onSettingsChange }: Props) {
     setLocalSettings(settings)
   }, [settings])
 
-  // Fetch available models when modal opens
+  // Fetch auto config when modal opens
   useEffect(() => {
-    if (isOpen && availableModels.length === 0) {
-      fetchModels()
+    if (isOpen && !autoConfig) {
+      fetchAutoConfig()
     }
   }, [isOpen])
 
-  const fetchModels = async () => {
+  const fetchAutoConfig = async () => {
     setLoadingModels(true)
     try {
-      const response = await fetch('/api/openrouter/models')
+      const response = await fetch('/api/auto/config')
       if (response.ok) {
-        const models = await response.json()
-        const sortedModels = models.sort((a: OpenRouterModel, b: OpenRouterModel) =>
-          (a.name || a.id).localeCompare(b.name || b.id)
-        )
-        setAvailableModels(sortedModels)
+        const config: AutoConfig = await response.json()
+        // Sort models by name
+        config.models.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
+        setAutoConfig(config)
       }
     } catch (error) {
-      console.error('Failed to fetch models:', error)
+      console.error('Failed to fetch auto config:', error)
     } finally {
       setLoadingModels(false)
     }
@@ -147,7 +150,10 @@ function SettingsModal({ isOpen, onClose, settings, onSettingsChange }: Props) {
             <div className="settings-row">
               <label htmlFor="auto-model">
                 <span className="label-text">Auto Agent</span>
-                <span className="label-hint">Model for autonomous exploration mode</span>
+                <span className="label-hint">
+                  Model for autonomous exploration mode
+                  {autoConfig && ` (${autoConfig.provider === 'openrouter' ? 'OpenRouter' : 'Anthropic'})`}
+                </span>
               </label>
               {loadingModels ? (
                 <span className="loading-text">Loading...</span>
@@ -157,10 +163,10 @@ function SettingsModal({ isOpen, onClose, settings, onSettingsChange }: Props) {
                   value={localSettings.autoModel}
                   onChange={(e) => handleChange('autoModel', e.target.value)}
                 >
-                  {availableModels.length === 0 ? (
-                    <option value="google/gemini-3-pro-preview">google/gemini-3-pro-preview</option>
+                  {!autoConfig || autoConfig.models.length === 0 ? (
+                    <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
                   ) : (
-                    availableModels.map((model) => (
+                    autoConfig.models.map((model) => (
                       <option key={model.id} value={model.id}>
                         {model.name || model.id}
                       </option>

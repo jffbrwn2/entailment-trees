@@ -9,32 +9,54 @@ from fastapi import APIRouter, HTTPException
 from backend.models import AutoStartRequest, AutoInterjectRequest
 from backend.services import (
     get_orchestrator,
-    get_openrouter_client,
+    get_auto_agent_client,
     auto_mode_sessions,
     notify_auto_event,
     AutoModeSession,
     run_auto_mode_loop,
 )
+from agent_system.clients import get_auto_agent_config
 
 router = APIRouter(prefix="/api", tags=["auto_mode"])
 
 
+@router.get("/auto/config")
+async def get_auto_config() -> dict:
+    """Get auto mode configuration including provider and available models.
+
+    Returns provider info and model list. If using OpenRouter, fetches models
+    dynamically. If using Anthropic fallback, returns static model list.
+    """
+    config = get_auto_agent_config()
+
+    if config.provider == "openrouter":
+        # Fetch models dynamically from OpenRouter
+        try:
+            client = get_auto_agent_client()
+            models = await client.list_models()
+        except Exception as e:
+            # If OpenRouter fails, return empty list (frontend can handle)
+            models = []
+    else:
+        # Use static Anthropic model list
+        models = config.available_models
+
+    return {
+        "provider": config.provider,
+        "default_model": config.default_model,
+        "models": models,
+    }
+
+
 @router.get("/openrouter/models")
 async def list_openrouter_models() -> list[dict]:
-    """List available models from OpenRouter."""
+    """List available models from OpenRouter.
+
+    Deprecated: Use /api/auto/config instead for unified provider support.
+    """
     try:
-        client = get_openrouter_client()
-        models = await client.list_models()
-        # Return simplified model info
-        return [
-            {
-                "id": m.get("id"),
-                "name": m.get("name"),
-                "pricing": m.get("pricing", {}),
-                "context_length": m.get("context_length"),
-            }
-            for m in models
-        ]
+        client = get_auto_agent_client()
+        return await client.list_models()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch models: {str(e)}")
 

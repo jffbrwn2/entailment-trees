@@ -16,9 +16,9 @@ export interface Settings {
 
 const DEFAULT_SETTINGS: Settings = {
   darkMode: true,
-  claudeModel: 'anthropic/claude-sonnet-4',
-  evaluatorModel: 'anthropic/claude-sonnet-4',
-  autoModel: 'google/gemini-3-pro-preview',
+  claudeModel: 'claude-sonnet-4-5-20250929',
+  evaluatorModel: 'claude-sonnet-4-5-20250929',
+  autoModel: 'claude-sonnet-4-5-20250929',  // Will be overridden by backend based on available keys
   edisonToolsEnabled: true,
   gapMapToolsEnabled: true,
 }

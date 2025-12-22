@@ -9,6 +9,8 @@ from .state import (
     auto_mode_sessions,
     get_openrouter_client,
     get_gapmap_client,
+    get_auto_agent_client,
+    clear_auto_agent_client,
 )
 from .file_watcher import HypergraphFileHandler
 from .websocket import notify_hypergraph_update, notify_auto_event
@@ -24,6 +26,8 @@ __all__ = [
     "auto_mode_sessions",
     "get_openrouter_client",
     "get_gapmap_client",
+    "get_auto_agent_client",
+    "clear_auto_agent_client",
     # File watcher
     "HypergraphFileHandler",
     # WebSocket

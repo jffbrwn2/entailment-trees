@@ -8,12 +8,12 @@ from typing import Optional, List
 
 from agent_system import TextEvent, ToolUseEvent, ToolResultEvent, ErrorEvent, DoneEvent
 
-from .state import get_orchestrator, get_openrouter_client, auto_mode_sessions
+from .state import get_orchestrator, get_auto_agent_client, auto_mode_sessions
 from .websocket import notify_auto_event
 
 
 AUTO_AGENT_SYSTEM_PROMPT = """
-You are an Auto Agent rigorously evaluating a hypothesis through an entailment tree.
+You are an Auto Agent brainstorming about a hypothesis through an entailment tree.
 
 Your role: Act as a knowledgeable user who systematically:
 1. Identifies claims needing evidence or scoring
@@ -32,7 +32,7 @@ Guidelines:
 - Give Claude clear, specific instructions
 - When blocked, suggest OR pathways (alternatives)
 - Don't stop until you've either 1) found an entailment tree that assigns the "hypothesis" claim a cost that is low cost (according to the hypergraph) where low cost means -log2(0.8)*number of leaf nodes,  or 2) for every claim that is uncertain, there is a precise experment you propose to eliminate the uncertainty.
-- You are a truth seeking entity first, then a problem solver.
+- You are a relentless, optimistic truth seeking entity and problem solver. Solving hard problems often requires going deeper and further into problems than others are willing to go, getting at the fundamentals of how things work to understand how things can be different.
 
 Generate your next message to Claude:"""
 
@@ -58,8 +58,11 @@ async def get_auto_agent_response(
     hypergraph: dict,
     conversation_history: list[dict]
 ) -> str:
-    """Get next message from the Auto agent via OpenRouter."""
-    client = get_openrouter_client()
+    """Get next message from the Auto agent.
+
+    Uses OpenRouter if available, otherwise falls back to Anthropic.
+    """
+    client = get_auto_agent_client()
     system_prompt = AUTO_AGENT_SYSTEM_PROMPT.format(
         hypothesis=hypothesis,
         hypergraph=json.dumps(hypergraph, indent=2)

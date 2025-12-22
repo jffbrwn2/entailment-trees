@@ -3,11 +3,15 @@ import type { Approach } from '../types/hypergraph'
 import { truncate } from '../utils/formatters'
 import './WelcomeModal.css'
 
-interface OpenRouterModel {
+interface AutoModel {
   id: string
   name: string
-  pricing?: { prompt?: string; completion?: string }
-  context_length?: number
+}
+
+interface AutoConfig {
+  provider: 'openrouter' | 'anthropic'
+  default_model: string
+  models: AutoModel[]
 }
 
 interface GapMapSource {
@@ -39,8 +43,8 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
 
   // Auto mode state
   const [autoModeEnabled, setAutoModeEnabled] = useState(true)
-  const [availableModels, setAvailableModels] = useState<OpenRouterModel[]>([])
-  const [selectedModel, setSelectedModel] = useState('google/gemini-3-pro-preview')
+  const [autoConfig, setAutoConfig] = useState<AutoConfig | null>(null)
+  const [selectedModel, setSelectedModel] = useState('claude-sonnet-4-5-20250929')
   const [loadingModels, setLoadingModels] = useState(false)
 
   // API key status (null = not yet checked)
@@ -111,6 +115,9 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
         } else {
           setOpenrouterKeyInput('')
           setShowOpenrouterInput(false)
+          // Refresh auto config to pick up new provider and models
+          setAutoConfig(null)
+          fetchAutoConfig()
         }
       } else {
         alert('Failed to save API key')
@@ -125,25 +132,24 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
 
   // Fetch available models when auto mode is enabled
   useEffect(() => {
-    if (autoModeEnabled && availableModels.length === 0) {
-      fetchModels()
+    if (autoModeEnabled && !autoConfig) {
+      fetchAutoConfig()
     }
   }, [autoModeEnabled])
 
-  const fetchModels = async () => {
+  const fetchAutoConfig = async () => {
     setLoadingModels(true)
     try {
-      const response = await fetch('/api/openrouter/models')
+      const response = await fetch('/api/auto/config')
       if (response.ok) {
-        const models = await response.json()
-        // Sort by name and filter to popular/useful models
-        const sortedModels = models.sort((a: OpenRouterModel, b: OpenRouterModel) =>
-          (a.name || a.id).localeCompare(b.name || b.id)
-        )
-        setAvailableModels(sortedModels)
+        const config: AutoConfig = await response.json()
+        // Sort models by name
+        config.models.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
+        setAutoConfig(config)
+        setSelectedModel(config.default_model)
       }
     } catch (error) {
-      console.error('Failed to fetch models:', error)
+      console.error('Failed to fetch auto config:', error)
     } finally {
       setLoadingModels(false)
     }
@@ -373,7 +379,10 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
 
               {autoModeEnabled && (
                 <div className="model-selector">
-                  <label htmlFor="auto-model">Auto agent model:</label>
+                  <label htmlFor="auto-model">
+                    Auto agent model
+                    {autoConfig && <span className="provider-hint">({autoConfig.provider === 'openrouter' ? 'OpenRouter' : 'Anthropic'})</span>}:
+                  </label>
                   {loadingModels ? (
                     <span className="loading-models">Loading models...</span>
                   ) : (
@@ -382,10 +391,10 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
                       value={selectedModel}
                       onChange={(e) => setSelectedModel(e.target.value)}
                     >
-                      {availableModels.length === 0 ? (
-                        <option value="google/gemini-3-pro-preview">google/gemini-3-pro-preview</option>
+                      {!autoConfig || autoConfig.models.length === 0 ? (
+                        <option value="claude-sonnet-4-5-20250929">Claude Sonnet 4.5</option>
                       ) : (
-                        availableModels.map((model) => (
+                        autoConfig.models.map((model) => (
                           <option key={model.id} value={model.id}>
                             {model.name || model.id}
                           </option>
@@ -426,8 +435,7 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
                 disabled={
                   !newHypothesis.trim() ||
                   isCreating ||
-                  anthropicKeySet === false ||
-                  (autoModeEnabled && openrouterKeySet === false)
+                  anthropicKeySet === false
                 }
               >
                 {isCreating ? 'Creating...' : 'Start Evaluating'}
@@ -485,8 +493,8 @@ function WelcomeModal({ approaches, onSelect, onCreate, initialMode = 'choose', 
                 )}
                 {autoModeEnabled && openrouterKeySet === false && (
                   <div className="api-key-warning-item">
-                    <div className="warning">
-                      <span>OPENROUTER_API_KEY not set (required for Auto Mode)</span>
+                    <div className="warning info">
+                      <span>OPENROUTER_API_KEY not set (will use Anthropic for Auto Mode)</span>
                       {!showOpenrouterInput && (
                         <button
                           className="enter-key-button"

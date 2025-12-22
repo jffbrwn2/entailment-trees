@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from agent_system.config import get_settings, update_settings
 from agent_system.config import get_api_key, set_api_key
+from backend.services import clear_auto_agent_client
 
 from backend.models import UpdateSettingsRequest, SetApiKeysRequest
 
@@ -26,6 +27,8 @@ async def set_session_api_keys(request: SetApiKeysRequest) -> dict:
         set_api_key("ANTHROPIC_API_KEY", request.anthropic_key)
     if request.openrouter_key:
         set_api_key("OPENROUTER_API_KEY", request.openrouter_key)
+        # Clear cached auto agent client so it picks up the new key
+        clear_auto_agent_client()
     return {"status": "ok"}
 
 

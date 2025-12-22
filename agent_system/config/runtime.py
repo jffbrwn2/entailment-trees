@@ -10,6 +10,14 @@ from typing import Optional
 import threading
 
 
+def _get_default_auto_model() -> str:
+    """Get default auto model based on available API keys."""
+    from .api_keys import get_api_key
+    if get_api_key("OPENROUTER_API_KEY"):
+        return "google/gemini-3-pro-preview"
+    return "claude-sonnet-4-5-20250929"
+
+
 @dataclass
 class RuntimeSettings:
     """Runtime-configurable settings."""
@@ -17,7 +25,7 @@ class RuntimeSettings:
     # Model settings
     chat_model: str = "claude-sonnet-4-5-20250929"  # Model for chat agent (Anthropic API)
     evaluator_model: str = "claude-sonnet-4-5-20250929"  # Model for evaluate_claim and check_entailment
-    auto_model: str = "google/gemini-3-pro-preview"  # Model for auto agent (OpenRouter)
+    auto_model: str = field(default_factory=_get_default_auto_model)  # Model for auto agent
 
     # Tool toggles
     edison_tools_enabled: bool = False 
