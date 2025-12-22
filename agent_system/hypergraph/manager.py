@@ -5,7 +5,6 @@ Handles creating, reading, updating, and validating hypergraph JSON files.
 """
 
 import json
-import subprocess
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
 from datetime import datetime
@@ -139,7 +138,7 @@ class HypergraphManager:
                 json.dump(current, f, indent=2)
 
         # Run validation before saving
-        from typecheck_hypergraph import HypergraphTypeChecker
+        from .typecheck import HypergraphTypeChecker
         checker = HypergraphTypeChecker(base_path=self.approach_dir)
         errors, warnings = checker.check_hypergraph(hypergraph)
 
@@ -342,33 +341,14 @@ class HypergraphManager:
 
     def validate(self) -> Tuple[List[str], List[str]]:
         """
-        Validate hypergraph using typecheck_hypergraph.py.
+        Validate hypergraph structure and types.
 
         Returns:
             Tuple of (errors, warnings)
         """
         try:
-            result = subprocess.run(
-                ['python', 'typecheck_hypergraph.py', str(self.hypergraph_path)],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
-
-            # Parse output for errors and warnings
-            errors = []
-            warnings = []
-
-            for line in result.stdout.split('\n'):
-                if 'ERROR:' in line:
-                    errors.append(line.strip())
-                elif 'WARNING:' in line:
-                    warnings.append(line.strip())
-
-            return errors, warnings
-
-        except subprocess.TimeoutExpired:
-            return ["Validation timed out"], []
+            from .typecheck import typecheck_hypergraph
+            return typecheck_hypergraph(str(self.hypergraph_path))
         except Exception as e:
             return [f"Validation failed: {str(e)}"], []
 
@@ -430,18 +410,10 @@ python -m http.server 8765
 
     def _update_catalog(self, name: str) -> None:
         """Regenerate catalog by scanning filesystem."""
-        # Run the update_catalog.py script to auto-generate from filesystem
-        update_script = Path(__file__).parent.parent / "update_catalog.py"
-
         try:
-            subprocess.run(
-                ['python', str(update_script)],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=True
-            )
-        except Exception as e:
+            from .catalog import update_catalog
+            update_catalog()
+        except Exception:
             # Non-critical - catalog will be updated on next manual run
             pass
 

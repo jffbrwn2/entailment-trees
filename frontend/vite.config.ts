@@ -16,7 +16,7 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
-      '/entailment_hypergraph': {
+      '/static': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },

@@ -104,9 +104,9 @@ app.include_router(settings_router)
 app.include_router(gapmap_router)
 app.include_router(websocket_router)
 
-# Mount static files for visualization (must be after API routes)
+# Mount static files (must be after API routes)
 PROJECT_ROOT = Path(__file__).parent.parent
-app.mount("/entailment_hypergraph", StaticFiles(directory=PROJECT_ROOT / "entailment_hypergraph", html=True), name="entailment_hypergraph")
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 app.mount("/approaches", StaticFiles(directory=PROJECT_ROOT / "approaches"), name="approaches")
 
 

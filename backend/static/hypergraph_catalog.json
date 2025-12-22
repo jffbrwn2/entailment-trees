@@ -1,21 +1,4 @@
 {
-  "examples": [
-    {
-      "name": "Water Boiling (Simple)",
-      "path": "/entailment_hypergraph/water_boiling_example.json",
-      "category": "example"
-    },
-    {
-      "name": "Steam Engine Feasibility (Complex)",
-      "path": "/entailment_hypergraph/steam_engine_example.json",
-      "category": "example"
-    },
-    {
-      "name": "Ultrasound EEG Enhancement (Real Project)",
-      "path": "/entailment_hypergraph/ultrasound_eeg_enhancement.json",
-      "category": "example"
-    }
-  ],
   "approaches": [
     {
       "name": "2d-sem-scaling",
@@ -25,6 +8,11 @@
     {
       "name": "2d-semiconductor-scaling",
       "path": "/approaches/2d-semiconductor-scaling/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "2d-tmd-transistors",
+      "path": "/approaches/2d-tmd-transistors/hypergraph.json",
       "category": "approach"
     },
     {
@@ -88,6 +76,11 @@
       "category": "approach"
     },
     {
+      "name": "drug-target-mapping",
+      "path": "/approaches/drug-target-mapping/hypergraph.json",
+      "category": "approach"
+    },
+    {
       "name": "entailment-tree",
       "path": "/approaches/entailment-tree/hypergraph.json",
       "category": "approach"
@@ -110,6 +103,11 @@
     {
       "name": "human-flight-potential",
       "path": "/approaches/human-flight-potential/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "life-beauty-analysis",
+      "path": "/approaches/life-beauty-analysis/hypergraph.json",
       "category": "approach"
     },
     {
@@ -170,6 +168,11 @@
     {
       "name": "novel-limbs",
       "path": "/approaches/novel-limbs/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "open-source-atoms",
+      "path": "/approaches/open-source-atoms/hypergraph.json",
       "category": "approach"
     },
     {

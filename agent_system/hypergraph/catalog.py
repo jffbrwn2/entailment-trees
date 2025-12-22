@@ -2,37 +2,14 @@
 """
 Auto-generate hypergraph catalog from filesystem.
 
-Scans for:
-- Example files in entailment_hypergraph/
-- Approach folders in approaches/
-
-Run this manually or as a pre-commit hook to keep catalog synced.
+Scans approach folders in approaches/ and generates a catalog JSON file.
 """
 
 import json
 from pathlib import Path
 
-# Project root
-ROOT = Path(__file__).parent
-
-# Fixed example files
-EXAMPLE_FILES = [
-    {
-        "name": "Water Boiling (Simple)",
-        "path": "/entailment_hypergraph/water_boiling_example.json",
-        "category": "example"
-    },
-    {
-        "name": "Steam Engine Feasibility (Complex)",
-        "path": "/entailment_hypergraph/steam_engine_example.json",
-        "category": "example"
-    },
-    {
-        "name": "Ultrasound EEG Enhancement (Real Project)",
-        "path": "/entailment_hypergraph/ultrasound_eeg_enhancement.json",
-        "category": "example"
-    }
-]
+# Project root (3 levels up from agent_system/hypergraph/catalog.py)
+ROOT = Path(__file__).parent.parent.parent
 
 
 def scan_approaches():
@@ -72,24 +49,20 @@ def scan_approaches():
 
 def update_catalog():
     """Update catalog with current filesystem state."""
-    catalog_path = ROOT / "entailment_hypergraph" / "hypergraph_catalog.json"
+    catalog_path = ROOT / "backend" / "static" / "hypergraph_catalog.json"
 
     # Build catalog
     catalog = {
-        "examples": EXAMPLE_FILES,
         "approaches": scan_approaches()
     }
 
     # Write catalog
+    catalog_path.parent.mkdir(parents=True, exist_ok=True)
     with open(catalog_path, 'w') as f:
         json.dump(catalog, f, indent=2)
 
     print(f"✓ Updated {catalog_path}")
-    print(f"  Examples: {len(catalog['examples'])}")
     print(f"  Approaches: {len(catalog['approaches'])}")
-
-    for approach in catalog['approaches']:
-        print(f"    - {approach['name']}")
 
 
 if __name__ == "__main__":

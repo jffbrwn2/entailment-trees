@@ -40,7 +40,7 @@ class TestHypergraphCreation:
         assert (test_approach_dir / "simulations").exists()
 
         # Check catalog updated
-        catalog_path = Path(__file__).parent.parent / "entailment_hypergraph" / "hypergraph_catalog.json"
+        catalog_path = Path(__file__).parent.parent / "backend" / "static" / "hypergraph_catalog.json"
         if catalog_path.exists():
             with open(catalog_path) as f:
                 catalog = json.load(f)
