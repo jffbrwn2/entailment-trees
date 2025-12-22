@@ -359,7 +359,7 @@ class HypergraphManager:
         claims = hypergraph['claims']
         implications = hypergraph['implications']
 
-        scores = [c.get('score', 0) for c in claims]
+        scores = [c.get('score', 0) for c in claims if c.get('score') is not None]
 
         return {
             "num_claims": len(claims),

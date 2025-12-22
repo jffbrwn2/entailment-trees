@@ -1,16 +1,35 @@
+#!/usr/bin/env python3
 """
 Agent CLI - Command-line interface for hypergraph collaboration.
 
-This is a simple REPL-style interface for working with the agent system.
-In the future, this will integrate with Headless Claude Code.
+Run with: python agent_system/cli.py
 """
 
+import asyncio
+import json
 import sys
 from pathlib import Path
-from typing import Optional
 
-from .orchestrator import AgentOrchestrator
-from .config import AgentConfig
+# Add parent directory to path for direct script execution
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from agent_system.orchestrator import AgentOrchestrator
+from agent_system.config import AgentConfig
+from agent_system.clients.openrouter import OpenRouterClient
+from agent_system import TextEvent, ToolUseEvent, ToolResultEvent, ErrorEvent
+from backend.services.auto_mode import AUTO_AGENT_SYSTEM_PROMPT
+
+
+class AutoModeState:
+    """Tracks auto mode state."""
+    def __init__(self):
+        self.active = False
+        self.paused = False
+        self.turn_count = 0
+        self.max_turns = 20
+        self.model = "google/gemini-3-pro-preview"
+        self.conversation_history: list[dict] = []
+        self.hypothesis = ""
 
 
 class AgentCLI:
@@ -19,6 +38,8 @@ class AgentCLI:
     def __init__(self):
         self.orchestrator = AgentOrchestrator(AgentConfig.from_env())
         self.running = True
+        self.auto_state = AutoModeState()
+        self.openrouter_client: OpenRouterClient | None = None
 
     def print_banner(self):
         """Print welcome banner."""
@@ -33,12 +54,7 @@ class AgentCLI:
         print("  /load      - Load an existing approach")
         print("  /new       - Start a new approach")
         print("  /status    - Show current approach status")
-        print("  /set-model - Set evaluation model for scoring")
-        print("  /validate  - Validate current hypergraph")
-        print("  /cleanup   - Remove unreachable nodes from hypergraph")
-        print("  /history   - View hypergraph version history")
-        print("  /restore   - Restore a previous hypergraph version")
-        print("  /viz       - Instructions for viewing hypergraph")
+        print("  /auto      - Start auto mode (AI-driven evaluation)")
         print("  /quit      - Exit")
         print()
 
@@ -46,23 +62,26 @@ class AgentCLI:
         """Print help message."""
         print()
         print("Available Commands:")
-        print("  /help      - Show this help message")
-        print("  /list      - List all existing approaches")
-        print("  /load      - Load an existing approach")
-        print("  /new       - Start a new approach")
-        print("  /status    - Show current approach status and stats")
-        print("  /set-model - Set evaluation model (evaluate_claim, check_entailment)")
-        print("  /validate  - Run type checker on hypergraph")
-        print("  /cleanup   - Remove unreachable nodes from hypergraph")
-        print("  /history   - View hypergraph version history")
-        print("  /restore   - Restore a previous hypergraph version")
-        print("  /viz       - Show how to visualize the hypergraph")
-        print("  /quit      - Exit the CLI")
+        print("  /help        - Show this help message")
+        print("  /list        - List all existing approaches")
+        print("  /load        - Load an existing approach")
+        print("  /new         - Start a new approach")
+        print("  /status      - Show current approach status and stats")
         print()
-        print("When you have an active approach, you can:")
-        print("  - Describe what you want to investigate")
-        print("  - Ask questions about the current hypergraph")
-        print("  - Request simulations to test claims")
+        print("Auto Mode (AI-driven evaluation):")
+        print("  /auto        - Start auto mode")
+        print("  /auto-stop   - Stop auto mode")
+        print("  /auto-pause  - Pause auto mode")
+        print("  /auto-resume - Resume auto mode")
+        print("  /auto-model  - Set auto mode model")
+        print()
+        print("Hypergraph Tools:")
+        print("  /validate    - Run type checker on hypergraph")
+        print("  /cleanup     - Remove unreachable nodes from hypergraph")
+        print("  /history     - View hypergraph version history")
+        print("  /restore     - Restore a previous hypergraph version")
+        print()
+        print("  /quit        - Exit the CLI")
         print()
 
     def start_new_approach(self):
@@ -99,17 +118,6 @@ class AgentCLI:
             print()
             print("Initial hypergraph created with your hypothesis.")
             print()
-            print("Next steps:")
-            print("  1. Read the current hypergraph")
-            print("  2. Break down the hypothesis into testable claims")
-            print("  3. Write simulations to evaluate key assumptions")
-            print("  4. Update the hypergraph with evidence")
-            print()
-            print("System prompt for agent:")
-            print("-" * 70)
-            print(result['system_prompt'][:500] + "...")
-            print("-" * 70)
-            print()
         except Exception as e:
             print(f"Error creating approach: {e}")
 
@@ -129,7 +137,6 @@ class AgentCLI:
             hypergraph_file = approach_dir / "hypergraph.json"
             if hypergraph_file.exists():
                 try:
-                    import json
                     with open(hypergraph_file) as f:
                         data = json.load(f)
                         name = data.get("metadata", {}).get("name", approach_dir.name)
@@ -202,13 +209,12 @@ class AgentCLI:
 
             selected = sorted(approaches, key=lambda d: d.name)[idx]
 
-            # Load the approach (this won't overwrite the existing hypergraph)
+            # Load the approach
             result = self.orchestrator.load_approach(selected)
 
             print()
             print(f"✓ Loaded approach: {result['session']['name']}")
             print(f"  Folder: {result['session']['folder']}")
-            print(f"  Path: {result['session']['path']}")
             print()
 
             # Show current stats
@@ -250,6 +256,13 @@ class AgentCLI:
         print(f"  Critical blockers: {stats['critical_blockers']}")
         print()
 
+        if self.auto_state.active:
+            print("Auto Mode: ACTIVE")
+            print(f"  Model: {self.auto_state.model}")
+            print(f"  Turn: {self.auto_state.turn_count}/{self.auto_state.max_turns}")
+            print(f"  Status: {'PAUSED' if self.auto_state.paused else 'RUNNING'}")
+            print()
+
     def validate_hypergraph(self):
         """Validate current hypergraph."""
         status = self.orchestrator.get_status()
@@ -290,7 +303,6 @@ class AgentCLI:
                 print(f"✓ Removed {len(unreachable)} unreachable node(s):")
                 for node_id in unreachable:
                     print(f"  - {node_id}")
-                print("\n💡 Refresh your browser to see updated visualization")
             else:
                 print("✓ No unreachable nodes found. Hypergraph is clean!")
         except Exception as e:
@@ -312,7 +324,7 @@ class AgentCLI:
             versions = self.orchestrator.hypergraph_mgr.get_history()
 
             if not versions:
-                print("No history found. History is saved every time the hypergraph changes.")
+                print("No history found.")
                 print()
                 return
 
@@ -359,20 +371,15 @@ class AgentCLI:
                 print("Invalid selection.")
                 return
 
-            # Get the selected version (reverse index)
             selected = list(reversed(versions))[idx]
 
-            # Confirm
             confirm = input(f"Restore version from {selected['timestamp']}? (y/n): ").strip().lower()
             if confirm != 'y':
                 print("Cancelled.")
                 return
 
-            # Restore
             self.orchestrator.hypergraph_mgr.restore_version(selected['filename'])
-
             print(f"\n✓ Restored hypergraph to version from {selected['timestamp']}")
-            print("💡 Refresh your browser to see restored visualization")
 
         except ValueError:
             print("Invalid number.")
@@ -381,111 +388,258 @@ class AgentCLI:
 
         print()
 
-    def show_viz_instructions(self):
-        """Show how to visualize hypergraph."""
+    # --- Auto Mode ---
+
+    def _ensure_openrouter_client(self) -> bool:
+        """Ensure OpenRouter client is initialized."""
+        if self.openrouter_client is None:
+            try:
+                self.openrouter_client = OpenRouterClient()
+                return True
+            except Exception as e:
+                print(f"Error initializing OpenRouter client: {e}")
+                print("Make sure OPENROUTER_API_KEY is set.")
+                return False
+        return True
+
+    def set_auto_model(self, command: str):
+        """Set the model for auto mode."""
+        parts = command.split(maxsplit=1)
+        if len(parts) < 2:
+            print()
+            print(f"Current auto mode model: {self.auto_state.model}")
+            print()
+            print("Usage: /auto-model <model-id>")
+            print("Example: /auto-model google/gemini-2.5-pro-preview")
+            print("Example: /auto-model anthropic/claude-sonnet-4")
+            print()
+            return
+
+        self.auto_state.model = parts[1].strip()
+        print(f"\n✓ Auto mode model set to: {self.auto_state.model}\n")
+
+    async def _get_auto_agent_response(self, hypergraph: dict) -> str:
+        """Get next message from the Auto agent."""
+        system_prompt = AUTO_AGENT_SYSTEM_PROMPT.format(
+            hypothesis=self.auto_state.hypothesis,
+            hypergraph=json.dumps(hypergraph, indent=2)
+        )
+
+        messages = [{"role": "system", "content": system_prompt}] + self.auto_state.conversation_history
+        return await self.openrouter_client.chat(messages, self.auto_state.model)
+
+    async def _run_auto_turn(self) -> bool:
+        """Run a single auto mode turn. Returns False if should stop."""
+        if not self.auto_state.active or self.auto_state.paused:
+            return False
+
+        if self.auto_state.turn_count >= self.auto_state.max_turns:
+            print(f"\n[AUTO] Reached max turns ({self.auto_state.max_turns})")
+            return False
+
         status = self.orchestrator.get_status()
         if not status['active']:
-            print("\nNo active approach to visualize.")
+            print("\n[AUTO] No active approach")
+            return False
+
+        # Load current hypergraph
+        hypergraph_path = Path(status['folder']) / "hypergraph.json"
+        with open(hypergraph_path) as f:
+            hypergraph = json.load(f)
+
+        # Get Auto agent's next message
+        self.auto_state.turn_count += 1
+        print(f"\n{'='*70}")
+        print(f"[AUTO TURN {self.auto_state.turn_count}/{self.auto_state.max_turns}]")
+        print(f"{'='*70}")
+
+        try:
+            auto_message = await self._get_auto_agent_response(hypergraph)
+        except Exception as e:
+            print(f"\n[AUTO] Error getting auto agent response: {e}")
+            return False
+
+        print(f"\n[AUTO AGENT → CLAUDE]:")
+        print("-" * 40)
+        print(auto_message)
+        print("-" * 40)
+
+        # Add to history
+        self.auto_state.conversation_history.append({"role": "assistant", "content": auto_message})
+
+        # Check if still active
+        if not self.auto_state.active or self.auto_state.paused:
+            return False
+
+        # Send to Claude
+        print(f"\n[CLAUDE RESPONSE]:")
+        print("-" * 40)
+
+        claude_response = ""
+        system_prompt = self.orchestrator.get_system_prompt()
+
+        async for event in self.orchestrator.claude_client.query_stream(
+            auto_message,
+            system_prompt=system_prompt
+        ):
+            if isinstance(event, TextEvent):
+                claude_response += event.text
+                print(event.text, end="", flush=True)
+            elif isinstance(event, ToolUseEvent):
+                print(f"\n[TOOL: {event.tool_name}]", flush=True)
+            elif isinstance(event, ToolResultEvent):
+                result_preview = str(event.result)[:200]
+                print(f"[RESULT: {result_preview}...]", flush=True)
+            elif isinstance(event, ErrorEvent):
+                print(f"\n[ERROR: {event.error}]", flush=True)
+
+        print()
+        print("-" * 40)
+
+        # Add Claude's response to history
+        self.auto_state.conversation_history.append({"role": "user", "content": claude_response})
+
+        return True
+
+    async def run_auto_mode(self):
+        """Run auto mode loop."""
+        status = self.orchestrator.get_status()
+        if not status['active']:
+            print("\nNo active approach. Use /load or /new first.")
             return
 
-        folder = status['folder']
-        approach_name = Path(folder).name
-
-        print()
-        print("To visualize your hypergraph:")
-        print()
-        print("1. Start a web server from the project root:")
-        print("   python -m http.server 8765")
-        print()
-        print("2. Open in browser:")
-        print(f"   http://localhost:8765/entailment_hypergraph/?graph=approaches/{approach_name}/hypergraph.json")
-        print()
-        print("You'll see an interactive graph where you can:")
-        print("  - Click nodes to see claims and evidence")
-        print("  - Expand/collapse to view at different levels")
-        print("  - See color-coded scores (green=good, red=bad)")
-        print()
-
-    def set_evaluation_model(self, command: str):
-        """Set the evaluation model used by evaluate_claim and check_entailment."""
-        from .config.settings import DEFAULT_CONFIG
-
-        # Parse model from command
-        parts = command.split()
-        if len(parts) < 2:
-            # Show current model
-            print()
-            print(f"Current evaluation model: {DEFAULT_CONFIG.evaluation_model}")
-            print()
-            print("Available models:")
-            print("  - claude-sonnet-4-5-20250929 (default, balanced)")
-            print("  - claude-opus-4-20250514 (most capable)")
-            print("  - claude-sonnet-4-20250514 (faster)")
-            print("  - claude-haiku-4-20250514 (fastest, cheapest)")
-            print()
-            print("Usage: /set-model <model-name>")
-            print("Example: /set-model claude-opus-4-20250514")
-            print()
+        if not self._ensure_openrouter_client():
             return
 
-        model_name = parts[1]
+        # Get hypothesis from hypergraph
+        hypergraph_path = Path(status['folder']) / "hypergraph.json"
+        with open(hypergraph_path) as f:
+            hypergraph = json.load(f)
 
-        # Validate model name (basic check)
-        valid_models = [
-            "claude-sonnet-4-5-20250929",
-            "claude-opus-4-20250514",
-            "claude-sonnet-4-20250514",
-            "claude-haiku-4-20250514"
-        ]
+        self.auto_state.hypothesis = hypergraph.get("metadata", {}).get("hypothesis", "")
+        if not self.auto_state.hypothesis:
+            claims = hypergraph.get("claims", [])
+            root_claims = [c for c in claims if c.get("id") == "hypothesis"]
+            if root_claims:
+                self.auto_state.hypothesis = root_claims[0].get("text", "")
 
-        if model_name not in valid_models:
-            print(f"\n⚠️  Warning: '{model_name}' not in known models list")
-            print("Continuing anyway (will fail if model doesn't exist)")
+        if not self.auto_state.hypothesis:
+            print("\nCouldn't find hypothesis in hypergraph.")
+            return
 
-        # Update config
-        DEFAULT_CONFIG.evaluation_model = model_name
+        # Reset state
+        self.auto_state.active = True
+        self.auto_state.paused = False
+        self.auto_state.turn_count = 0
+        self.auto_state.conversation_history = []
 
         print()
-        print(f"✓ Evaluation model set to: {model_name}")
+        print("=" * 70)
+        print("  AUTO MODE STARTED")
+        print("=" * 70)
+        print(f"Model: {self.auto_state.model}")
+        print(f"Max turns: {self.auto_state.max_turns}")
+        print(f"Hypothesis: {self.auto_state.hypothesis[:100]}...")
         print()
-        print("This affects:")
-        print("  - evaluate_claim (autonomous scoring from evidence)")
-        print("  - check_entailment (logical validation)")
-        print()
+        print("Press Ctrl+C to pause. Use /auto-stop to stop.")
+        print("=" * 70)
+
+        try:
+            while await self._run_auto_turn():
+                # Brief delay between turns
+                await asyncio.sleep(1)
+        except KeyboardInterrupt:
+            self.auto_state.paused = True
+            print("\n\n[AUTO] Paused. Use /auto-resume to continue or /auto-stop to stop.")
+
+        if not self.auto_state.paused:
+            self.auto_state.active = False
+            print(f"\n[AUTO] Completed after {self.auto_state.turn_count} turns.")
+
+    def start_auto_mode(self):
+        """Start auto mode."""
+        asyncio.run(self.run_auto_mode())
+
+    def stop_auto_mode(self):
+        """Stop auto mode."""
+        if not self.auto_state.active:
+            print("\nAuto mode is not running.")
+            return
+
+        self.auto_state.active = False
+        self.auto_state.paused = False
+        print(f"\n✓ Auto mode stopped after {self.auto_state.turn_count} turns.")
+
+    def pause_auto_mode(self):
+        """Pause auto mode."""
+        if not self.auto_state.active:
+            print("\nAuto mode is not running.")
+            return
+
+        self.auto_state.paused = True
+        print("\n✓ Auto mode paused. Use /auto-resume to continue.")
+
+    def resume_auto_mode(self):
+        """Resume auto mode."""
+        if not self.auto_state.active:
+            print("\nAuto mode is not active. Use /auto to start.")
+            return
+
+        if not self.auto_state.paused:
+            print("\nAuto mode is already running.")
+            return
+
+        self.auto_state.paused = False
+        print("\nResuming auto mode...")
+        asyncio.run(self._continue_auto_mode())
+
+    async def _continue_auto_mode(self):
+        """Continue auto mode after resume."""
+        try:
+            while await self._run_auto_turn():
+                await asyncio.sleep(1)
+        except KeyboardInterrupt:
+            self.auto_state.paused = True
+            print("\n\n[AUTO] Paused. Use /auto-resume to continue or /auto-stop to stop.")
+
+        if not self.auto_state.paused:
+            self.auto_state.active = False
+            print(f"\n[AUTO] Completed after {self.auto_state.turn_count} turns.")
 
     def handle_command(self, command: str) -> bool:
-        """
-        Handle slash commands.
+        """Handle slash commands. Returns True to continue, False to quit."""
+        cmd = command.lower().strip()
 
-        Returns:
-            True to continue, False to quit
-        """
-        command = command.lower().strip()
-
-        if command == "/quit" or command == "/exit":
+        if cmd == "/quit" or cmd == "/exit":
             return False
-        elif command == "/help":
+        elif cmd == "/help":
             self.print_help()
-        elif command == "/list":
+        elif cmd == "/list":
             self.list_approaches()
-        elif command == "/load":
+        elif cmd == "/load":
             self.load_approach()
-        elif command == "/new":
+        elif cmd == "/new":
             self.start_new_approach()
-        elif command == "/status":
+        elif cmd == "/status":
             self.show_status()
-        elif command == "/validate":
+        elif cmd == "/validate":
             self.validate_hypergraph()
-        elif command == "/cleanup":
+        elif cmd == "/cleanup":
             self.cleanup_hypergraph()
-        elif command == "/history":
+        elif cmd == "/history":
             self.show_history()
-        elif command == "/restore":
+        elif cmd == "/restore":
             self.restore_version()
-        elif command == "/viz":
-            self.show_viz_instructions()
-        elif command.startswith("/set-model"):
-            self.set_evaluation_model(command)
+        elif cmd == "/auto":
+            self.start_auto_mode()
+        elif cmd == "/auto-stop":
+            self.stop_auto_mode()
+        elif cmd == "/auto-pause":
+            self.pause_auto_mode()
+        elif cmd == "/auto-resume":
+            self.resume_auto_mode()
+        elif cmd.startswith("/auto-model"):
+            self.set_auto_model(command)
         else:
             print(f"Unknown command: {command}")
             print("Type /help for available commands")
@@ -495,11 +649,6 @@ class AgentCLI:
     def run(self):
         """Run the CLI REPL."""
         self.print_banner()
-
-        # Check if user wants to start immediately
-        start = input("Start a new approach? (y/n): ").strip().lower()
-        if start == 'y':
-            self.start_new_approach()
 
         print("\nType /help for commands, or describe what you'd like to do.")
         print()
@@ -517,31 +666,25 @@ class AgentCLI:
                         break
                     continue
 
-                # Process input with Claude Code agent
+                # Process input with Claude
                 status = self.orchestrator.get_status()
 
-                # Allow exploration mode without active approach
-                # But warn about limitations
                 if not status['active']:
-                    print("\n💡 Exploration mode: Working in explorations/ directory")
-                    print("   You can use research tools (GAP-map, Edison, web search) and create notes.")
-                    print("   To work on a specific project with simulations/hypergraphs, use /new to start an approach.\n")
+                    print("\nNo active approach. Use /new or /load first.")
+                    print()
+                    continue
 
                 print()
-                print("Agent: ", end="", flush=True)
+                print("Claude: ", end="", flush=True)
 
                 try:
                     response = self.orchestrator.process_user_input(user_input)
-                    # Content already streamed during query, don't print again
 
-                    # Show cost if available
                     if response.cost_usd:
-                        print(f"(Cost: ${response.cost_usd:.4f})")
+                        print(f"\n(Cost: ${response.cost_usd:.4f})")
 
                 except Exception as e:
                     print(f"\nError: {e}")
-                    if not status['active']:
-                        print("\nNote: Some operations require an active approach (/new)")
 
                 print()
 
