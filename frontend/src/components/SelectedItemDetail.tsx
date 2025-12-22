@@ -1,41 +1,6 @@
 import ReactMarkdown from 'react-markdown'
+import type { Claim, Implication, SelectedItem } from '../types/hypergraph'
 import './SelectedItemDetail.css'
-
-interface Claim {
-  id: string
-  text: string
-  score: number | null
-  cost?: number | string | null
-  reasoning?: string
-  evidence?: Evidence[]
-  uncertainties?: string[]
-  tags?: string[]
-}
-
-interface Evidence {
-  type: 'simulation' | 'literature' | 'calculation'
-  source?: string
-  lines?: string
-  code?: string
-  reference_text?: string
-  equations?: string
-  program?: string
-}
-
-interface Implication {
-  id: string
-  premises: string[]
-  conclusion: string
-  type?: 'AND' | 'OR'
-  reasoning: string
-  entailment_status?: 'passed' | 'failed'
-  entailment_explanation?: string
-}
-
-interface SelectedItem {
-  type: 'claim' | 'implication'
-  id: string
-}
 
 interface Props {
   selectedItem: SelectedItem | null

@@ -8,7 +8,7 @@ Environment Variables:
                     (default: "claude-sonnet-4-5-20250929")
 - OPENROUTER_API_KEY: API key for OpenRouter (required for Auto mode)
 - OPENROUTER_DEFAULT_MODEL: Default model for Auto agent
-                            (default: "anthropic/claude-3-haiku")
+                            (default: "google/gemini-3-pro-preview")
 - AUTO_MODE_MAX_TURNS: Max turns for Auto mode (default: 20)
 
 Example:

@@ -7,14 +7,13 @@ Wraps the existing agent_system to expose HTTP/SSE/WebSocket endpoints.
 import asyncio
 import json
 import sys
-import threading
 from pathlib import Path
 from typing import Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler, FileModifiedEvent
+from watchdog.events import FileSystemEventHandler
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -82,7 +81,8 @@ openrouter_client: Optional[OpenRouterClient] = None
 gapmap_client: Optional[GapMapClient] = None
 
 
-AUTO_AGENT_SYSTEM_PROMPT = """You are an Auto Agent rigorously evaluating a hypothesis through an entailment tree.
+AUTO_AGENT_SYSTEM_PROMPT = """
+You are an Auto Agent rigorously evaluating a hypothesis through an entailment tree.
 
 Your role: Act as a knowledgeable user who systematically:
 1. Identifies claims needing evidence or scoring
@@ -100,7 +100,8 @@ Guidelines:
 - Prioritize high-impact claims
 - Give Claude clear, specific instructions
 - When blocked, suggest OR pathways (alternatives)
-- Stop when hypothesis is clearly supported or refuted
+- Don't stop until you've either 1) found an entailment tree that assigns the "hypothesis" claim a cost that is low cost (according to the hypergraph) where low cost means -log2(0.8)*number of leaf nodes,  or 2) for every claim that is uncertain, there is a precise experment you propose to eliminate the uncertainty.
+- You are a truth seeking entity first, then a problem solver. 
 
 Generate your next message to Claude:"""
 
@@ -356,7 +357,6 @@ async def get_hypergraph(folder: str) -> dict:
 
     # Always compute costs before serving
     from agent_system.hypergraph_manager import HypergraphManager
-    import math
     mgr = HypergraphManager(orchestrator.config.approaches_dir / folder)
     costs = mgr.calculate_costs(hypergraph)
     for claim in hypergraph.get('claims', []):

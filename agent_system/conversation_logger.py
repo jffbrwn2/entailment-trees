@@ -374,35 +374,3 @@ def print_log_summary(log_file: Path):
 
     except Exception as e:
         print(f"Error reading log: {e}")
-
-
-if __name__ == "__main__":
-    # Test the logger
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        logs_dir = Path(tmpdir) / "logs"
-
-        # Create logger
-        logger = ConversationLogger(
-            logs_dir=logs_dir,
-            working_dir=Path.cwd()
-        )
-
-        # Simulate a conversation
-        logger.log_turn_start("What is the capital of France?")
-        logger.log_tool_call("WebSearch", {"query": "capital of France"}, result="Paris")
-        logger.log_turn_end("The capital of France is Paris.", cost_usd=0.001)
-
-        logger.log_turn_start("Tell me more about it")
-        logger.log_tool_call("WebSearch", {"query": "Paris France facts"}, result="...")
-        logger.log_turn_end("Paris is a beautiful city...", cost_usd=0.002)
-
-        logger.end_session()
-
-        print(logger.get_summary())
-        print("\n" + "="*50)
-        print("Log file contents:")
-        print("="*50)
-        with open(logger.log_file) as f:
-            print(f.read())

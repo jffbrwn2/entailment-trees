@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import type { Approach } from '../App'
+import type { Approach } from '../types/hypergraph'
+import { truncate } from '../utils/formatters'
 import './ApproachSelector.css'
 
 interface Props {
@@ -7,12 +8,6 @@ interface Props {
   currentApproach: Approach | null
   onSelect: (approach: Approach) => void
   onRequestCreate: () => void
-}
-
-// Truncate text to a max length with ellipsis
-function truncate(text: string, maxLength: number): string {
-  if (!text || text.length <= maxLength) return text
-  return text.slice(0, maxLength - 1) + '…'
 }
 
 function ApproachSelector({ approaches, currentApproach, onSelect, onRequestCreate }: Props) {

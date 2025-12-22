@@ -957,6 +957,58 @@ class ClaudeCodeClient:
             return asyncio.create_task(coro)
         return loop.run_until_complete(coro)
 
+    def _build_mcp_config(self) -> tuple[List[str], Dict[str, Any]]:
+        """
+        Build MCP servers config and allowed tools list.
+
+        This centralizes the configuration logic used by both _query_async
+        and _query_stream_async to avoid code duplication.
+
+        Returns:
+            Tuple of (allowed_tools, mcp_servers_dict)
+        """
+        # Set approach directory for path resolution in tools
+        set_approach_dir(self.mode.working_dir)
+
+        # Also set for Edison tools if available
+        if EDISON_AVAILABLE:
+            global _approach_dir
+            _approach_dir = self.mode.working_dir
+
+        # Get runtime settings for tool toggles
+        runtime_settings = get_settings()
+
+        # Build allowed tools list (include built-in tools + MCP tools)
+        allowed = self.allowed_tools.copy() if self.allowed_tools else []
+        allowed.append("mcp__entailment__check_entailment")
+        allowed.append("mcp__entailment__add_evidence")
+        allowed.append("mcp__entailment__evaluate_claim")
+
+        # Build MCP servers dict (always include entailment)
+        mcp_servers_dict = {
+            "entailment": entailment_server,
+        }
+
+        # Add Edison tools if available AND enabled in settings
+        if EDISON_AVAILABLE and edison_server and runtime_settings.edison_tools_enabled:
+            allowed.append("mcp__edison__literature_search")
+            allowed.append("mcp__edison__precedent_search")
+            allowed.append("mcp__edison__check_edison_task")
+            mcp_servers_dict["edison"] = edison_server
+
+        # Add GAP-map tools if enabled in settings
+        if runtime_settings.gapmap_tools_enabled:
+            allowed.append("mcp__gapmap__list_fields")
+            allowed.append("mcp__gapmap__list_gaps")
+            allowed.append("mcp__gapmap__search_gaps")
+            allowed.append("mcp__gapmap__list_capabilities")
+            allowed.append("mcp__gapmap__get_capabilities")
+            allowed.append("mcp__gapmap__list_resources")
+            allowed.append("mcp__gapmap__get_resources")
+            mcp_servers_dict["gapmap"] = gapmap_server
+
+        return allowed, mcp_servers_dict
+
     async def _query_async(
         self,
         prompt: str,
@@ -984,45 +1036,7 @@ class ClaudeCodeClient:
         )
 
         if should_recreate:
-            # Set approach directory for path resolution in tools
-            set_approach_dir(self.mode.working_dir)
-
-            # Also set for Edison tools if available
-            if EDISON_AVAILABLE:
-                global _approach_dir
-                _approach_dir = self.mode.working_dir
-
-            # Get runtime settings for tool toggles
-            runtime_settings = get_settings()
-
-            # Build allowed tools list (include built-in tools + MCP tools)
-            allowed = self.allowed_tools.copy() if self.allowed_tools else []
-            allowed.append("mcp__entailment__check_entailment")
-            allowed.append("mcp__entailment__add_evidence")
-            allowed.append("mcp__entailment__evaluate_claim")
-
-            # Build MCP servers dict (always include entailment)
-            mcp_servers_dict = {
-                "entailment": entailment_server,
-            }
-
-            # Add Edison tools if available AND enabled in settings
-            if EDISON_AVAILABLE and edison_server and runtime_settings.edison_tools_enabled:
-                allowed.append("mcp__edison__literature_search")
-                allowed.append("mcp__edison__precedent_search")
-                allowed.append("mcp__edison__check_edison_task")
-                mcp_servers_dict["edison"] = edison_server
-
-            # Add GAP-map tools if enabled in settings
-            if runtime_settings.gapmap_tools_enabled:
-                allowed.append("mcp__gapmap__list_fields")
-                allowed.append("mcp__gapmap__list_gaps")
-                allowed.append("mcp__gapmap__search_gaps")
-                allowed.append("mcp__gapmap__list_capabilities")
-                allowed.append("mcp__gapmap__get_capabilities")
-                allowed.append("mcp__gapmap__list_resources")
-                allowed.append("mcp__gapmap__get_resources")
-                mcp_servers_dict["gapmap"] = gapmap_server
+            allowed, mcp_servers_dict = self._build_mcp_config()
 
             options = ClaudeAgentOptions(
                 system_prompt=system_prompt or "claude_code",
@@ -1127,69 +1141,30 @@ class ClaudeCodeClient:
         # Always create a fresh SDK client for streaming requests.
         # The SDK client cannot be reused across different HTTP requests (different async tasks)
         # because anyio cancel scopes must be entered/exited in the same task.
-        if True:  # Always recreate for streaming
-            # Set approach directory for path resolution in tools
-            set_approach_dir(self.mode.working_dir)
+        allowed, mcp_servers_dict = self._build_mcp_config()
 
-            # Also set for Edison tools if available
-            if EDISON_AVAILABLE:
-                global _approach_dir
-                _approach_dir = self.mode.working_dir
-
-            # Get runtime settings for tool toggles
-            runtime_settings = get_settings()
-
-            # Build allowed tools list (include built-in tools + MCP tools)
-            allowed = self.allowed_tools.copy() if self.allowed_tools else []
-            allowed.append("mcp__entailment__check_entailment")
-            allowed.append("mcp__entailment__add_evidence")
-            allowed.append("mcp__entailment__evaluate_claim")
-
-            # Build MCP servers dict (always include entailment)
-            mcp_servers_dict = {
-                "entailment": entailment_server,
+        options = ClaudeAgentOptions(
+            system_prompt=system_prompt or "claude_code",
+            allowed_tools=allowed if allowed else None,
+            cwd=str(self.mode.working_dir),
+            mcp_servers=mcp_servers_dict,
+            resume=self.session_id,  # Resume previous session if set
+            hooks={
+                "PostToolUse": [
+                    HookMatcher(hooks=[tool_logging_hook])
+                ],
+                "Stop": [
+                    HookMatcher(hooks=[post_hypergraph_edit_hook])
+                ]
             }
+        )
 
-            # Add Edison tools if available AND enabled in settings
-            if EDISON_AVAILABLE and edison_server and runtime_settings.edison_tools_enabled:
-                allowed.append("mcp__edison__literature_search")
-                allowed.append("mcp__edison__precedent_search")
-                allowed.append("mcp__edison__check_edison_task")
-                mcp_servers_dict["edison"] = edison_server
+        # Don't try to close existing client - anyio cancel scopes must be exited
+        # in the same task they were entered. Just abandon and create fresh.
 
-            # Add GAP-map tools if enabled in settings
-            if runtime_settings.gapmap_tools_enabled:
-                allowed.append("mcp__gapmap__list_fields")
-                allowed.append("mcp__gapmap__list_gaps")
-                allowed.append("mcp__gapmap__search_gaps")
-                allowed.append("mcp__gapmap__list_capabilities")
-                allowed.append("mcp__gapmap__get_capabilities")
-                allowed.append("mcp__gapmap__list_resources")
-                allowed.append("mcp__gapmap__get_resources")
-                mcp_servers_dict["gapmap"] = gapmap_server
-
-            options = ClaudeAgentOptions(
-                system_prompt=system_prompt or "claude_code",
-                allowed_tools=allowed if allowed else None,
-                cwd=str(self.mode.working_dir),
-                mcp_servers=mcp_servers_dict,
-                resume=self.session_id,  # Resume previous session if set
-                hooks={
-                    "PostToolUse": [
-                        HookMatcher(hooks=[tool_logging_hook])
-                    ],
-                    "Stop": [
-                        HookMatcher(hooks=[post_hypergraph_edit_hook])
-                    ]
-                }
-            )
-
-            # Don't try to close existing client - anyio cancel scopes must be exited
-            # in the same task they were entered. Just abandon and create fresh.
-
-            self.sdk_client = ClaudeSDKClient(options=options)
-            await self.sdk_client.__aenter__()
-            self.current_system_prompt = system_prompt
+        self.sdk_client = ClaudeSDKClient(options=options)
+        await self.sdk_client.__aenter__()
+        self.current_system_prompt = system_prompt
 
         # Send query and stream responses
         try:
@@ -1365,11 +1340,6 @@ class ClaudeCodeClient:
         # End any current logging session
         if self.logger:
             self.logger.end_session()
-
-    def __del__(self):
-        """Cleanup when object is destroyed."""
-        # Don't try to close SDK client in __del__ - it's unsafe in async contexts
-        pass
 
 
 class ClaudeCodeError(Exception):

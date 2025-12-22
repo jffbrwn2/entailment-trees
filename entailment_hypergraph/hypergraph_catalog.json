@@ -18,6 +18,16 @@
   ],
   "approaches": [
     {
+      "name": "2d-sem-scaling",
+      "path": "/approaches/2d-sem-scaling/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "2d-semiconductor-scaling",
+      "path": "/approaches/2d-semiconductor-scaling/hypergraph.json",
+      "category": "approach"
+    },
+    {
       "name": "acousto-optic-neuro",
       "path": "/approaches/acousto-optic-neuro/hypergraph.json",
       "category": "approach"
@@ -25,6 +35,11 @@
     {
       "name": "adam-eisen",
       "path": "/approaches/adam-eisen/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "ai-driven-antimicrobials",
+      "path": "/approaches/ai-driven-antimicrobials/hypergraph.json",
       "category": "approach"
     },
     {
@@ -48,8 +63,18 @@
       "category": "approach"
     },
     {
+      "name": "anomalous-energy-mapping",
+      "path": "/approaches/anomalous-energy-mapping/hypergraph.json",
+      "category": "approach"
+    },
+    {
       "name": "atomic-scale-imaging",
       "path": "/approaches/atomic-scale-imaging/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "brain-wide-connectomics",
+      "path": "/approaches/brain-wide-connectomics/hypergraph.json",
       "category": "approach"
     },
     {
@@ -93,6 +118,11 @@
       "category": "approach"
     },
     {
+      "name": "living-brain-mapping",
+      "path": "/approaches/living-brain-mapping/hypergraph.json",
+      "category": "approach"
+    },
+    {
       "name": "magic-food-hypothesis",
       "path": "/approaches/magic-food-hypothesis/hypergraph.json",
       "category": "approach"
@@ -110,6 +140,11 @@
     {
       "name": "mind-pattern-transfer",
       "path": "/approaches/mind-pattern-transfer/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "neural-circuit-mapping",
+      "path": "/approaches/neural-circuit-mapping/hypergraph.json",
       "category": "approach"
     },
     {
@@ -153,6 +188,11 @@
       "category": "approach"
     },
     {
+      "name": "two-dim-semiconductors",
+      "path": "/approaches/two-dim-semiconductors/hypergraph.json",
+      "category": "approach"
+    },
+    {
       "name": "ultrasound-can-increase-the-sp",
       "path": "/approaches/ultrasound-can-increase-the-sp/hypergraph.json",
       "category": "approach"
@@ -165,11 +205,6 @@
     {
       "name": "ultrasound-eeg-resolution",
       "path": "/approaches/ultrasound-eeg-resolution/hypergraph.json",
-      "category": "approach"
-    },
-    {
-      "name": "untitled-approach",
-      "path": "/approaches/untitled-approach/hypergraph.json",
       "category": "approach"
     }
   ]

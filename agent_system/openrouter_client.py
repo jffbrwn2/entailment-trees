@@ -44,13 +44,13 @@ class OpenRouterClient:
     async def chat(
         self,
         messages: list[dict],
-        model: str = "anthropic/claude-3-haiku",
+        model: str = "google/gemini-3-pro-preview",
     ) -> str:
         """Send a chat completion request.
 
         Args:
             messages: List of message dicts with 'role' and 'content'
-            model: Model identifier (e.g., "anthropic/claude-3-haiku")
+            model: Model identifier (e.g., "google/gemini-3-pro-preview")
 
         Returns:
             The assistant's response text
@@ -72,7 +72,7 @@ class OpenRouterClient:
     async def stream_chat(
         self,
         messages: list[dict],
-        model: str = "anthropic/claude-3-haiku",
+        model: str = "google/gemini-3-pro-preview",
     ) -> AsyncIterator[str]:
         """Stream a chat completion response.
 

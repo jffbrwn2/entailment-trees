@@ -8,57 +8,12 @@ import WelcomeModal from './components/WelcomeModal'
 import TutorialModal from './components/TutorialModal'
 import SettingsModal from './components/SettingsModal'
 import ExploreModal, { GapMapSource } from './components/ExploreModal'
+import { useSettings, useAutoMode } from './hooks'
+import type { Approach, Hypergraph, SelectedItem } from './types/hypergraph'
 import './App.css'
 
-export interface Approach {
-  name: string
-  folder: string
-  description: string
-  last_updated: string
-  num_claims: number
-  num_implications: number
-}
-
-interface Claim {
-  id: string
-  text: string
-  score: number | null
-  cost?: number | string
-  reasoning?: string
-  evidence?: Evidence[]
-  uncertainties?: string[]
-  tags?: string[]
-}
-
-interface Evidence {
-  type: 'simulation' | 'literature' | 'calculation'
-  source?: string
-  lines?: string
-  code?: string
-  reference_text?: string
-  equations?: string
-  program?: string
-}
-
-interface Implication {
-  id: string
-  premises: string[]
-  conclusion: string
-  type?: 'AND' | 'OR'
-  reasoning: string
-  entailment_status?: 'passed' | 'failed'
-  entailment_explanation?: string
-}
-
-interface Hypergraph {
-  claims: Claim[]
-  implications: Implication[]
-}
-
-interface SelectedItem {
-  type: 'claim' | 'implication'
-  id: string
-}
+// Re-export Approach for backward compatibility with components that import from App
+export type { Approach } from './types/hypergraph'
 
 function App() {
   const [approaches, setApproaches] = useState<Approach[]>([])
@@ -66,7 +21,6 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [hypergraph, setHypergraph] = useState<Hypergraph | null>(null)
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null)
-  const [darkMode, setDarkMode] = useState(true)
   const [scoreMode, setScoreMode] = useState<'score' | 'propagated'>('propagated')
   const [resetKey, setResetKey] = useState(0)
   const [showTutorial, setShowTutorial] = useState(false)
@@ -78,75 +32,18 @@ function App() {
   const [exploreHypothesis, setExploreHypothesis] = useState<string | null>(null)
   const [exploreSource, setExploreSource] = useState<GapMapSource | null>(null)
 
-  // Model settings
-  const [claudeModel, setClaudeModel] = useState<string>('anthropic/claude-sonnet-4')
-  const [evaluatorModel, setEvaluatorModel] = useState<string>('anthropic/claude-sonnet-4')
-  const [autoModel, setAutoModel] = useState<string>('google/gemini-3-pro-preview')
+  // Use custom hooks for settings and auto mode
+  const { settings, updateSettings } = useSettings()
+  const autoMode = useAutoMode({
+    folder: currentApproach?.folder || null,
+    model: settings.autoModel,
+    onModelUpdate: (model) => updateSettings({ autoModel: model }),
+  })
 
-  // Tool toggles
-  const [edisonToolsEnabled, setEdisonToolsEnabled] = useState(true)
-  const [gapMapToolsEnabled, setGapMapToolsEnabled] = useState(true)
-
-  // Auto mode state
-  const [autoModeActive, setAutoModeActive] = useState(false)
-  const [autoModePaused, setAutoModePaused] = useState(false)
-  const [autoTurnCount, setAutoTurnCount] = useState(0)
-  const [autoMaxTurns, setAutoMaxTurns] = useState(20)
-
-  // Apply dark/light mode
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
-  }, [darkMode])
-
-  // Fetch approaches and settings on mount
+  // Fetch approaches on mount
   useEffect(() => {
     fetchApproaches()
-    fetchSettings()
   }, [])
-
-  // Fetch settings from backend
-  const fetchSettings = async () => {
-    try {
-      const response = await fetch('/api/settings')
-      if (response.ok) {
-        const data = await response.json()
-        setClaudeModel(data.chatModel || 'anthropic/claude-sonnet-4')
-        setEvaluatorModel(data.evaluatorModel || 'anthropic/claude-sonnet-4')
-        setAutoModel(data.autoModel || 'google/gemini-3-pro-preview')
-        setEdisonToolsEnabled(data.edisonToolsEnabled ?? true)
-        setGapMapToolsEnabled(data.gapMapToolsEnabled ?? true)
-      }
-    } catch (error) {
-      console.error('Failed to fetch settings:', error)
-    }
-  }
-
-  // Update settings on backend
-  const updateSettings = async (newSettings: {
-    claudeModel?: string
-    evaluatorModel?: string
-    autoModel?: string
-    edisonToolsEnabled?: boolean
-    gapMapToolsEnabled?: boolean
-  }) => {
-    try {
-      // Map frontend names to backend API names
-      const data: Record<string, unknown> = {}
-      if (newSettings.claudeModel !== undefined) data.chatModel = newSettings.claudeModel
-      if (newSettings.evaluatorModel !== undefined) data.evaluatorModel = newSettings.evaluatorModel
-      if (newSettings.autoModel !== undefined) data.autoModel = newSettings.autoModel
-      if (newSettings.edisonToolsEnabled !== undefined) data.edisonToolsEnabled = newSettings.edisonToolsEnabled
-      if (newSettings.gapMapToolsEnabled !== undefined) data.gapMapToolsEnabled = newSettings.gapMapToolsEnabled
-
-      await fetch('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-    } catch (error) {
-      console.error('Failed to update settings:', error)
-    }
-  }
 
   // Show tutorial automatically when there are no approaches
   useEffect(() => {
@@ -154,34 +51,6 @@ function App() {
       setShowTutorial(true)
     }
   }, [loading, approaches.length])
-
-  // Fetch auto mode status when approach changes
-  useEffect(() => {
-    if (currentApproach) {
-      fetchAutoModeStatus(currentApproach.folder)
-    } else {
-      // Reset auto mode state when no approach selected
-      setAutoModeActive(false)
-      setAutoModePaused(false)
-      setAutoTurnCount(0)
-    }
-  }, [currentApproach])
-
-  const fetchAutoModeStatus = async (folder: string) => {
-    try {
-      const response = await fetch(`/api/approaches/${folder}/auto/status`)
-      if (response.ok) {
-        const status = await response.json()
-        setAutoModeActive(status.active)
-        setAutoModePaused(status.paused)
-        setAutoTurnCount(status.turn_count)
-        if (status.max_turns) setAutoMaxTurns(status.max_turns)
-        if (status.model) setAutoModel(status.model)
-      }
-    } catch (error) {
-      console.error('Failed to fetch auto mode status:', error)
-    }
-  }
 
   // Fetch hypergraph when approach changes
   useEffect(() => {
@@ -290,68 +159,16 @@ function App() {
 
           // Start auto mode if enabled
           if (enableAutoMode && model) {
-            setAutoModel(model)
+            updateSettings({ autoModel: model })
             // Start auto mode after a brief delay to let the approach load
             setTimeout(() => {
-              handleAutoStart(data.folder, model)
+              autoMode.start(data.folder)
             }, 500)
           }
         }
       }
     } catch (error) {
       console.error('Failed to create approach:', error)
-    }
-  }
-
-  // Auto mode control functions
-  const handleAutoStart = async (folder: string, model: string) => {
-    try {
-      const response = await fetch(`/api/approaches/${folder}/auto/start`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model }),
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setAutoModeActive(true)
-        setAutoModePaused(false)
-        setAutoTurnCount(0)
-        setAutoMaxTurns(data.max_turns)
-      }
-    } catch (error) {
-      console.error('Failed to start auto mode:', error)
-    }
-  }
-
-  const handleAutoStop = async () => {
-    if (!currentApproach) return
-    try {
-      await fetch(`/api/approaches/${currentApproach.folder}/auto/stop`, { method: 'POST' })
-      setAutoModeActive(false)
-      setAutoModePaused(false)
-    } catch (error) {
-      console.error('Failed to stop auto mode:', error)
-    }
-  }
-
-  const handleAutoPause = async () => {
-    if (!currentApproach) return
-    try {
-      await fetch(`/api/approaches/${currentApproach.folder}/auto/pause`, { method: 'POST' })
-      setAutoModePaused(true)
-    } catch (error) {
-      console.error('Failed to pause auto mode:', error)
-    }
-  }
-
-  const handleAutoResume = async () => {
-    if (!currentApproach) return
-    try {
-      await fetch(`/api/approaches/${currentApproach.folder}/auto/resume`, { method: 'POST' })
-      setAutoModePaused(false)
-      setAutoModeActive(true)
-    } catch (error) {
-      console.error('Failed to resume auto mode:', error)
     }
   }
 
@@ -520,32 +337,8 @@ function App() {
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
-        settings={{
-          darkMode,
-          claudeModel,
-          evaluatorModel,
-          autoModel,
-          edisonToolsEnabled,
-          gapMapToolsEnabled,
-        }}
-        onSettingsChange={(newSettings) => {
-          // Update local state
-          setDarkMode(newSettings.darkMode)
-          setClaudeModel(newSettings.claudeModel)
-          setEvaluatorModel(newSettings.evaluatorModel)
-          setAutoModel(newSettings.autoModel)
-          setEdisonToolsEnabled(newSettings.edisonToolsEnabled)
-          setGapMapToolsEnabled(newSettings.gapMapToolsEnabled)
-
-          // Sync non-UI settings with backend
-          updateSettings({
-            claudeModel: newSettings.claudeModel,
-            evaluatorModel: newSettings.evaluatorModel,
-            autoModel: newSettings.autoModel,
-            edisonToolsEnabled: newSettings.edisonToolsEnabled,
-            gapMapToolsEnabled: newSettings.gapMapToolsEnabled,
-          })
-        }}
+        settings={settings}
+        onSettingsChange={updateSettings}
       />
 
       <ExploreModal
@@ -613,15 +406,15 @@ function App() {
                   approachName={currentApproach?.description || currentApproach?.name || null}
                   pendingMessage={pendingMessage}
                   onPendingMessageHandled={() => setPendingMessage(null)}
-                  autoModeActive={autoModeActive}
-                  autoModePaused={autoModePaused}
-                  autoTurnCount={autoTurnCount}
-                  autoMaxTurns={autoMaxTurns}
-                  onAutoStart={() => currentApproach && handleAutoStart(currentApproach.folder, autoModel)}
-                  onAutoPause={handleAutoPause}
-                  onAutoResume={handleAutoResume}
-                  onAutoStop={handleAutoStop}
-                  onAutoTurnUpdate={setAutoTurnCount}
+                  autoModeActive={autoMode.active}
+                  autoModePaused={autoMode.paused}
+                  autoTurnCount={autoMode.turnCount}
+                  autoMaxTurns={autoMode.maxTurns}
+                  onAutoStart={() => currentApproach && autoMode.start()}
+                  onAutoPause={autoMode.pause}
+                  onAutoResume={autoMode.resume}
+                  onAutoStop={autoMode.stop}
+                  onAutoTurnUpdate={autoMode.setTurnCount}
                 />
               </div>
             </Split>

@@ -1,12 +1,7 @@
 import { useState, useEffect } from 'react'
-import type { Approach } from '../App'
+import type { Approach } from '../types/hypergraph'
+import { truncate } from '../utils/formatters'
 import './WelcomeModal.css'
-
-// Truncate text to a max length with ellipsis
-function truncate(text: string, maxLength: number): string {
-  if (!text || text.length <= maxLength) return text
-  return text.slice(0, maxLength - 1) + '…'
-}
 
 interface OpenRouterModel {
   id: string

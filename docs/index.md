@@ -13,7 +13,7 @@ As AI systems become more intelligent, it ought to be possible to use them to bo
 
 To address this, we explore the framework of **entailment trees**.
 
-Entailment trees formalize a simple idea: to understand a big idea, break it down into simpler parts. In these trees, we break claims into premises that, if true, imply the claim. This kind of relationship is called "entailment." 
+Entailment trees formalize a simple idea: to understand a big idea, break it down into simpler parts. In these trees, we break claims into premises that, if true, imply the claim. This kind of relationship is called "entailment." For example, if the idea is " 
 
 More formally, in an entailment tree, there are **claim nodes** that represent claims that can be evaluated as true or false with varying degrees of certainty, and logical **AND** and **OR** nodes. Multiple claim nodes can point to a single logical node:
 

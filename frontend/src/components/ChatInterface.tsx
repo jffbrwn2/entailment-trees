@@ -1,13 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import AutoControls from './AutoControls'
+import { truncate } from '../utils/formatters'
 import './ChatInterface.css'
-
-// Truncate text to a max length with ellipsis
-function truncate(text: string, maxLength: number): string {
-  if (!text || text.length <= maxLength) return text
-  return text.slice(0, maxLength - 1) + '…'
-}
 
 interface ToolUse {
   name: string
