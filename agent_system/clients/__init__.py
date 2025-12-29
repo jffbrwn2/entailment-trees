@@ -1,7 +1,7 @@
 """LLM and external API clients."""
 
 from .claude import ClaudeCodeClient, ClaudeResponse, ClientMode, TextEvent, ToolUseEvent, ToolResultEvent, ErrorEvent, DoneEvent
-from .openrouter import OpenRouterClient
+from .openrouter import OpenRouterClient, OpenRouterError
 from .gapmap import GapMapClient
 from .auto_agent import AutoAgentClient, AutoAgentConfig, get_auto_agent_config, get_auto_agent_provider
 
@@ -15,6 +15,7 @@ __all__ = [
     "ErrorEvent",
     "DoneEvent",
     "OpenRouterClient",
+    "OpenRouterError",
     "GapMapClient",
     "AutoAgentClient",
     "AutoAgentConfig",

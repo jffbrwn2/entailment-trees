@@ -227,6 +227,43 @@
   margin: 0;
 }
 
+.evidence-code-actions {
+  margin-top: 0.5rem;
+}
+
+.view-code-button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.view-code-button:hover:not(:disabled) {
+  background: var(--accent-hover, #4a9eff);
+}
+
+.view-code-button:disabled {
+  background: var(--text-secondary);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.evidence-loading {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.evidence-error {
+  color: var(--danger);
+  font-size: 0.8rem;
+}
+
 .evidence-equations {
   font-family: 'SF Mono', Monaco, monospace;
   font-size: 0.85rem;

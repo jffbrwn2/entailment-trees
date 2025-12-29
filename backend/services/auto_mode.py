@@ -50,6 +50,8 @@ class AutoModeSession:
     hypothesis: str = ""
     conversation_history: List[dict] = field(default_factory=list)
     task: Optional[asyncio.Task] = None
+    consecutive_errors: int = 0
+    max_consecutive_errors: int = 3
 
 
 async def get_auto_agent_response(
@@ -156,6 +158,8 @@ async def run_auto_mode_loop(folder: str, session: AutoModeSession) -> None:
             # Add Claude's response to history (for Auto agent's context)
             session.conversation_history.append({"role": "user", "content": claude_response})
 
+            # Reset error counter on successful turn
+            session.consecutive_errors = 0
             session.turn_count += 1
             await notify_auto_event(folder, {
                 "type": "auto_turn",
@@ -167,9 +171,29 @@ async def run_auto_mode_loop(folder: str, session: AutoModeSession) -> None:
             await asyncio.sleep(1)
 
         except Exception as e:
-            print(f"[AUTO MODE] Error in loop: {e}", flush=True)
-            await notify_auto_event(folder, {"type": "error", "error": str(e)})
-            break
+            error_msg = str(e)
+            # Check if this is an OpenRouter-specific error
+            if "OpenRouter" in error_msg:
+                session.consecutive_errors += 1
+                print(f"[AUTO MODE] OpenRouter error ({session.consecutive_errors}/{session.max_consecutive_errors}): {error_msg}", flush=True)
+
+                if session.consecutive_errors >= session.max_consecutive_errors:
+                    await notify_auto_event(folder, {
+                        "type": "error",
+                        "error": f"OpenRouter failed {session.max_consecutive_errors} times in a row: {error_msg}. Stopping auto mode."
+                    })
+                    break
+                else:
+                    await notify_auto_event(folder, {
+                        "type": "warning",
+                        "warning": f"OpenRouter issue ({session.consecutive_errors}/{session.max_consecutive_errors}): {error_msg}. Retrying in 5s..."
+                    })
+                    await asyncio.sleep(5)
+                    continue
+            else:
+                print(f"[AUTO MODE] Error in loop: {e}", flush=True)
+                await notify_auto_event(folder, {"type": "error", "error": error_msg})
+                break
 
     # Clean up
     session.active = False

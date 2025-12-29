@@ -190,6 +190,31 @@
   border-bottom-left-radius: 4px;
 }
 
+.message.system {
+  align-self: center;
+  position: relative;
+  max-width: 90%;
+}
+
+.system-label {
+  position: absolute;
+  top: -1.25rem;
+  left: 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #e6a700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.message.system .message-content {
+  background: rgba(230, 167, 0, 0.15);
+  color: var(--text-primary);
+  border: 1px solid rgba(230, 167, 0, 0.3);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
 /* Markdown styles for assistant and auto messages */
 .message.assistant .message-content p,
 .message.auto .message-content p {

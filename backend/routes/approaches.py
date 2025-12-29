@@ -2,11 +2,13 @@
 
 import json
 import re
+from pathlib import Path
 
 import anthropic
 from fastapi import APIRouter, HTTPException
 
 from agent_system import HypergraphManager
+from agent_system.hypergraph.typecheck import read_source_lines
 
 from backend.models import CreateApproachRequest, ApproachInfo, GenerateNameRequest
 from backend.services import get_orchestrator, notify_hypergraph_update
@@ -232,3 +234,46 @@ async def delete_claim(folder: str, claim_id: str) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/approaches/{folder}/source-code")
+async def get_source_code(folder: str, source: str, lines: str) -> dict:
+    """
+    Fetch source code from a file within an approach directory.
+
+    Args:
+        folder: The approach folder name
+        source: Relative path to the source file within the approach
+        lines: Line specification (e.g., "3-18" or "56-64, 152-156")
+
+    Returns:
+        {"code": "..."} or error
+    """
+    orchestrator = get_orchestrator()
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    approach_dir = orchestrator.config.approaches_dir / folder
+    if not approach_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
+
+    # Resolve the source file path relative to the approach directory
+    source_path = approach_dir / source
+
+    # Security: ensure path is within approach directory
+    try:
+        source_path = source_path.resolve()
+        approach_dir_resolved = approach_dir.resolve()
+        if not str(source_path).startswith(str(approach_dir_resolved)):
+            raise HTTPException(status_code=400, detail="Invalid source path")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid source path")
+
+    if not source_path.exists():
+        raise HTTPException(status_code=404, detail=f"Source file not found: {source}")
+
+    code = read_source_lines(source_path, lines)
+    if code is None:
+        raise HTTPException(status_code=400, detail=f"Could not read lines {lines} from {source}")
+
+    return {"code": code}

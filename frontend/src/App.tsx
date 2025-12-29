@@ -396,6 +396,7 @@ function App() {
                     claims={hypergraph.claims}
                     implications={hypergraph.implications}
                     scoreMode={scoreMode}
+                    folder={currentApproach?.folder || null}
                     onClose={handleCloseDetail}
                   />
                 )}

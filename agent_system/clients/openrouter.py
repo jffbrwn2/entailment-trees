@@ -16,6 +16,11 @@ from typing import AsyncIterator, Optional
 BASE_URL = "https://openrouter.ai/api/v1"
 
 
+class OpenRouterError(Exception):
+    """Raised when OpenRouter API returns an error or unexpected response."""
+    pass
+
+
 class OpenRouterClient:
     """Async client for OpenRouter API."""
 
@@ -54,20 +59,57 @@ class OpenRouterClient:
 
         Returns:
             The assistant's response text
+
+        Raises:
+            OpenRouterError: If the API returns an error or empty response
         """
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{BASE_URL}/chat/completions",
-                headers=self._headers(),
-                json={
-                    "model": model,
-                    "messages": messages,
-                },
-                timeout=120.0,
-            )
-            response.raise_for_status()
+            try:
+                response = await client.post(
+                    f"{BASE_URL}/chat/completions",
+                    headers=self._headers(),
+                    json={
+                        "model": model,
+                        "messages": messages,
+                    },
+                    timeout=120.0,
+                )
+                response.raise_for_status()
+            except httpx.HTTPStatusError as e:
+                error_detail = ""
+                try:
+                    error_data = e.response.json()
+                    error_detail = f": {error_data.get('error', {}).get('message', str(error_data))}"
+                except Exception:
+                    error_detail = f": {e.response.text[:200]}" if e.response.text else ""
+                raise OpenRouterError(
+                    f"OpenRouter API error (HTTP {e.response.status_code}){error_detail}"
+                ) from e
+            except httpx.TimeoutException as e:
+                raise OpenRouterError(f"OpenRouter request timed out after 120s") from e
+            except httpx.RequestError as e:
+                raise OpenRouterError(f"OpenRouter request failed: {e}") from e
+
             data = response.json()
-            return data["choices"][0]["message"]["content"]
+
+            # Check for API-level errors in response
+            if "error" in data:
+                error_msg = data["error"].get("message", str(data["error"]))
+                raise OpenRouterError(f"OpenRouter API error: {error_msg}")
+
+            # Extract content with validation
+            choices = data.get("choices", [])
+            if not choices:
+                raise OpenRouterError(f"OpenRouter returned no choices for model {model}")
+
+            content = choices[0].get("message", {}).get("content")
+            if content is None:
+                raise OpenRouterError(f"OpenRouter returned null content for model {model}")
+
+            if not content.strip():
+                raise OpenRouterError(f"OpenRouter returned empty/whitespace response for model {model}")
+
+            return content
 
     async def stream_chat(
         self,

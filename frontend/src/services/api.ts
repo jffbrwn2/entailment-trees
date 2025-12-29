@@ -87,6 +87,11 @@ export const api = {
       fetch(`${API_BASE}/approaches/${folder}/claims/${claimId}`, {
         method: 'DELETE',
       }),
+
+    getSourceCode: (folder: string, source: string, lines: string) =>
+      fetchJson<{ code: string }>(
+        `${API_BASE}/approaches/${folder}/source-code?source=${encodeURIComponent(source)}&lines=${encodeURIComponent(lines)}`
+      ),
   },
 
   // Conversations

@@ -39,7 +39,7 @@ def _validate_evidence_format(evidence_item: dict) -> tuple[bool, Optional[str]]
 
     # Type-specific validation
     if evidence_type == 'simulation':
-        required = ['source', 'lines', 'code']
+        required = ['source', 'lines']  # code is loaded on-demand from source:lines
         for field in required:
             if field not in evidence_item:
                 return False, f"Simulation evidence missing required field '{field}'"
@@ -118,7 +118,7 @@ def add_evidence_skill(
             if not is_valid:
                 return f"❌ Evidence item {i}: {error}"
 
-        # Add evidence to claim
+        # Add evidence to claim (code is loaded on-demand during evaluation)
         if 'evidence' not in claim:
             claim['evidence'] = []
 
@@ -141,13 +141,14 @@ def add_evidence_skill(
         return f"❌ Error adding evidence: {e}"
 
 
-def _evaluate_evidence_with_claude(claim_text: str, evidence_list: list) -> tuple[float, str]:
+def _evaluate_evidence_with_claude(claim_text: str, evidence_list: list, base_path: Optional[Path] = None) -> tuple[float, str]:
     """
     Use Claude to evaluate evidence and determine claim score.
 
     Args:
         claim_text: The claim being evaluated
         evidence_list: List of evidence items
+        base_path: Base path for validating file references in evidence
 
     Returns:
         Tuple of (score, reasoning)
@@ -160,8 +161,41 @@ def _evaluate_evidence_with_claude(claim_text: str, evidence_list: list) -> tupl
 
     client = Anthropic(api_key=api_key)
 
+    # Validate evidence using typechecker
+    from .typecheck import HypergraphTypeChecker, read_source_lines
+    checker = HypergraphTypeChecker(base_path=base_path)
+    checker.check_evidence("evidence", evidence_list)
+
+    validation_section = ""
+    if checker.errors or checker.warnings:
+        validation_section = "\n\nEvidence Validation Results:"
+        if checker.errors:
+            validation_section += "\nERRORS (evidence may be invalid):\n" + "\n".join(f"  - {e}" for e in checker.errors)
+        if checker.warnings:
+            validation_section += "\n⚡ Warnings:\n" + "\n".join(f"  - {w}" for w in checker.warnings)
+        validation_section += "\n"
+
+    # Enrich evidence with actual file content where possible
+    enriched_evidence = []
+    for item in evidence_list:
+        enriched_item = item.copy()
+        evidence_type = item.get('type')
+        source = item.get('source')
+        lines_spec = item.get('lines')
+
+        # Read actual content from file for simulation evidence
+        if evidence_type == 'simulation' and base_path and source and lines_spec and not lines_spec.startswith('TODO'):
+            source_file = base_path / source
+            if source_file.exists():
+                actual_content = read_source_lines(source_file, lines_spec)
+                if actual_content:
+                    enriched_item['code'] = actual_content
+                    enriched_item['_source_verified'] = True
+
+        enriched_evidence.append(enriched_item)
+
     # Format evidence for Claude
-    evidence_text = json.dumps(evidence_list, indent=2)
+    evidence_text = json.dumps(enriched_evidence, indent=2)
 
     # Prompt for Claude
     prompt = f"""Evaluate the following claim based on the provided evidence.
@@ -169,19 +203,25 @@ def _evaluate_evidence_with_claude(claim_text: str, evidence_list: list) -> tupl
 Claim: "{claim_text}"
 
 Evidence:
-{evidence_text}
+{evidence_text}{validation_section}
 
 Your task:
 1. Analyze the evidence carefully
-2. Determine how well the evidence supports the claim
-3. Assign a score from 0-10 where:
+2. Consider any validation errors - evidence with errors (e.g., file not found, content mismatch) should be treated as less reliable or invalid
+3. Determine how well the evidence supports the claim
+4. Assign a score from 0-10 where:
    - 0 = Evidence disproves the claim or shows it's clearly false
    - 1-3 = Evidence strongly suggests the claim is unlikely
    - 4-6 = Evidence is mixed or inconclusive
    - 7-8 = Evidence supports the claim but with some limitations
    - 9-10 = Evidence strongly supports the claim
+5a. Criteria for simulation evidence to be informative:
+    - The code that is actual code used to run the simulation.
+    - The parameters used in the simulation are precise (related to the topic), realistic and have literature evidence to support them.
+5b. Criteria for literature evidence to be informative:
+    - The literature evidence is a direct quote from a paper or source that is relevant to the claim.
 
-4. Provide clear reasoning for your score
+5. Provide clear reasoning for your score, including any issues with evidence validity
 
 Respond in this exact format:
 SCORE: [number 0-10]
@@ -273,10 +313,12 @@ def evaluate_claim_skill(
             reasoning = "No evidence provided for this claim. Use add_evidence to add evidence first."
         else:
             # Use Claude to evaluate the evidence and determine score
+            # Pass base_path for file validation (directory containing hypergraph.json)
             try:
                 score, reasoning = _evaluate_evidence_with_claude(
                     claim_text=claim['text'],
-                    evidence_list=evidence_list
+                    evidence_list=evidence_list,
+                    base_path=path.parent
                 )
             except Exception as e:
                 return f"❌ Error evaluating evidence with Claude: {e}"

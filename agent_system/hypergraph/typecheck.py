@@ -27,8 +27,8 @@ EVIDENCE_SCHEMAS = {
         'optional': []
     },
     'simulation': {
-        'required': ['source', 'lines', 'code'],
-        'optional': []
+        'required': ['source', 'lines'],
+        'optional': []  # code is loaded on-demand from source:lines
     },
     'calculation': {
         'required': ['equations', 'program'],
@@ -212,15 +212,14 @@ class HypergraphTypeChecker:
                                     f"reference_text does not match source {source}:{lines_spec}"
                                 )
                         elif evidence_type == 'simulation':
-                            # Verify code matches source
+                            # Just verify the source file exists and lines are readable
                             lines_spec = item.get('lines')
                             if lines_spec and not lines_spec.startswith('TODO'):
-                                expected = read_source_lines(source_file, lines_spec)
-                                actual = item.get('code', '').strip()
-                                if expected and actual != expected:
-                                    self.error(
+                                content = read_source_lines(source_file, lines_spec)
+                                if content is None:
+                                    self.warning(
                                         item_path,
-                                        f"code does not match source {source}:{lines_spec}"
+                                        f"Could not read lines {lines_spec} from {source}"
                                     )
 
     def check_claim(self, claim: Dict[str, Any], index: int) -> None:

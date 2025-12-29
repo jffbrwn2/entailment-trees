@@ -17,7 +17,7 @@ interface MessagePart {
 
 interface Message {
   id: string
-  role: 'user' | 'assistant' | 'auto'
+  role: 'user' | 'assistant' | 'auto' | 'system'
   parts: MessagePart[]  // interleaved text and tool uses
 }
 
@@ -249,6 +249,16 @@ function ChatInterface({
                 )
               )
             }
+            break
+
+          case 'warning':
+            // Display warning as a system message
+            const warningMessage: Message = {
+              id: `warning-${Date.now()}`,
+              role: 'system',
+              parts: [{ type: 'text', content: data.warning }],
+            }
+            setMessages((prev) => [...prev, warningMessage])
             break
         }
       } catch (e) {
@@ -688,8 +698,9 @@ function ChatInterface({
         {messages.map((message) => (
           <div key={message.id} className={`message ${message.role}`}>
             {message.role === 'auto' && <span className="auto-label">Auto</span>}
+            {message.role === 'system' && <span className="system-label">System</span>}
             <div className="message-content">
-              {message.role === 'assistant' || message.role === 'auto' ? (
+              {message.role === 'assistant' || message.role === 'auto' || message.role === 'system' ? (
                 message.parts.length > 0 ? (
                   message.parts.map((part, index) => (
                     part.type === 'text' ? (
