@@ -24,11 +24,12 @@ class RuntimeSettings:
 
     # Model settings
     chat_model: str = "claude-sonnet-4-5-20250929"  # Model for chat agent (Anthropic API)
-    evaluator_model: str = "claude-sonnet-4-5-20250929"  # Model for evaluate_claim and check_entailment
+    evaluator_model: str = "claude-sonnet-4-5-20250929"  # Model for evaluate_claim skill
+    entailment_model: str = "claude-sonnet-4-5-20250929"  # Model for check_entailment skill
     auto_model: str = field(default_factory=_get_default_auto_model)  # Model for auto agent
 
     # Tool toggles
-    edison_tools_enabled: bool = False 
+    edison_tools_enabled: bool = False
     gapmap_tools_enabled: bool = False
 
     def to_dict(self) -> dict:
@@ -36,6 +37,7 @@ class RuntimeSettings:
         return {
             "chatModel": self.chat_model,
             "evaluatorModel": self.evaluator_model,
+            "entailmentModel": self.entailment_model,
             "autoModel": self.auto_model,
             "edisonToolsEnabled": self.edison_tools_enabled,
             "gapMapToolsEnabled": self.gapmap_tools_enabled,
@@ -47,6 +49,8 @@ class RuntimeSettings:
             self.chat_model = data["chatModel"]
         if "evaluatorModel" in data:
             self.evaluator_model = data["evaluatorModel"]
+        if "entailmentModel" in data:
+            self.entailment_model = data["entailmentModel"]
         if "autoModel" in data:
             self.auto_model = data["autoModel"]
         if "edisonToolsEnabled" in data:

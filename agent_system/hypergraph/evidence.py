@@ -24,22 +24,19 @@ def parse_simulation_evidence(
         description: Optional description of what this evidence shows
 
     Returns:
-        Evidence dict in hypergraph format
+        Evidence dict in hypergraph format (code is loaded on-demand)
     """
-    # Read the specified lines from the simulation
-    code = read_lines_from_file(sim_path, lines)
-
     # Try to make path relative to cwd, otherwise use absolute
     try:
         source_path = str(sim_path.relative_to(Path.cwd()))
     except ValueError:
         source_path = str(sim_path)
 
+    # Code is loaded on-demand from source:lines during evaluation
     evidence = {
         "type": "simulation",
         "source": source_path,
         "lines": lines,
-        "code": code
     }
 
     if description:

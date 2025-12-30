@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 from agent_system import TextEvent, ToolUseEvent, ToolResultEvent, ErrorEvent, DoneEvent
 
 from backend.models import ChatRequest
-from backend.services import get_orchestrator, notify_hypergraph_update
+from backend.services import get_orchestrator, notify_hypergraph_update, auto_mode_sessions
 
 router = APIRouter(prefix="/api", tags=["chat"])
 
@@ -86,6 +86,17 @@ async def chat_stream(request: ChatRequest):
                         # Only send update if content changed
                         if hypergraph_after != hypergraph_before:
                             await notify_hypergraph_update(folder)
+
+                        # Sync Claude's response to auto mode conversation history
+                        # This ensures the auto agent has context when it resumes
+                        if folder in auto_mode_sessions:
+                            session = auto_mode_sessions[folder]
+                            if session.active or session.paused:
+                                # Add Claude's response as "user" from auto agent's perspective
+                                session.conversation_history.append({
+                                    "role": "user",
+                                    "content": event.full_response
+                                })
 
                     # Save session_id to conversation log for per-conversation resumption
                     if orchestrator.claude_client.session_id and orchestrator.claude_client.logger:

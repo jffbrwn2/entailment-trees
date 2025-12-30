@@ -4,6 +4,21 @@
       "name": "acousto-optic-neuro",
       "path": "/approaches/acousto-optic-neuro/hypergraph.json",
       "category": "approach"
+    },
+    {
+      "name": "all-systems-go",
+      "path": "/approaches/all-systems-go/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "mitochondrial-protein-export",
+      "path": "/approaches/mitochondrial-protein-export/hypergraph.json",
+      "category": "approach"
+    },
+    {
+      "name": "neural-network-mapping",
+      "path": "/approaches/neural-network-mapping/hypergraph.json",
+      "category": "approach"
     }
   ]
 }

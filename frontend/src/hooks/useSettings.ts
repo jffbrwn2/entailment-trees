@@ -9,6 +9,7 @@ export interface Settings {
   darkMode: boolean
   claudeModel: string
   evaluatorModel: string
+  entailmentModel: string
   autoModel: string
   edisonToolsEnabled: boolean
   gapMapToolsEnabled: boolean
@@ -18,6 +19,7 @@ const DEFAULT_SETTINGS: Settings = {
   darkMode: true,
   claudeModel: 'claude-sonnet-4-5-20250929',
   evaluatorModel: 'claude-sonnet-4-5-20250929',
+  entailmentModel: 'claude-sonnet-4-5-20250929',
   autoModel: 'claude-sonnet-4-5-20250929',  // Will be overridden by backend based on available keys
   edisonToolsEnabled: true,
   gapMapToolsEnabled: true,
@@ -37,6 +39,7 @@ export function useSettings() {
             ...prev,
             claudeModel: data.chatModel || DEFAULT_SETTINGS.claudeModel,
             evaluatorModel: data.evaluatorModel || DEFAULT_SETTINGS.evaluatorModel,
+            entailmentModel: data.entailmentModel || DEFAULT_SETTINGS.entailmentModel,
             autoModel: data.autoModel || DEFAULT_SETTINGS.autoModel,
             edisonToolsEnabled: data.edisonToolsEnabled ?? DEFAULT_SETTINGS.edisonToolsEnabled,
             gapMapToolsEnabled: data.gapMapToolsEnabled ?? DEFAULT_SETTINGS.gapMapToolsEnabled,
@@ -63,6 +66,7 @@ export function useSettings() {
     const backendSettings: Record<string, unknown> = {}
     if (newSettings.claudeModel !== undefined) backendSettings.chatModel = newSettings.claudeModel
     if (newSettings.evaluatorModel !== undefined) backendSettings.evaluatorModel = newSettings.evaluatorModel
+    if (newSettings.entailmentModel !== undefined) backendSettings.entailmentModel = newSettings.entailmentModel
     if (newSettings.autoModel !== undefined) backendSettings.autoModel = newSettings.autoModel
     if (newSettings.edisonToolsEnabled !== undefined) backendSettings.edisonToolsEnabled = newSettings.edisonToolsEnabled
     if (newSettings.gapMapToolsEnabled !== undefined) backendSettings.gapMapToolsEnabled = newSettings.gapMapToolsEnabled

@@ -66,6 +66,21 @@ const suggestions: SuggestionButton[] = [
   },
 ]
 
+type MentionTarget = 'auto' | 'core' | null
+
+function parseMention(message: string): { target: MentionTarget; cleanMessage: string } {
+  const trimmed = message.trim()
+  if (trimmed.toLowerCase().startsWith('@auto')) {
+    const clean = trimmed.slice(5).trim()
+    return { target: 'auto', cleanMessage: clean || trimmed }
+  }
+  if (trimmed.toLowerCase().startsWith('@core')) {
+    const clean = trimmed.slice(5).trim()
+    return { target: 'core', cleanMessage: clean || trimmed }
+  }
+  return { target: null, cleanMessage: trimmed }
+}
+
 function ChatInterface({
   approachFolder,
   approachName,
@@ -236,7 +251,16 @@ function ChatInterface({
             break
 
           case 'auto_status':
-            // Status updates are handled by parent component via polling
+            // Propagate status changes to parent
+            if (data.status === 'started') {
+              onAutoStart?.()
+            } else if (data.status === 'resumed') {
+              onAutoResume?.()
+            } else if (data.status === 'paused') {
+              onAutoPause?.()
+            } else if (data.status === 'stopped') {
+              onAutoStop?.()
+            }
             break
 
           case 'error':
@@ -404,10 +428,17 @@ function ChatInterface({
     e.preventDefault()
     if (!input.trim() || isStreaming) return
 
+    const messageText = input.trim()
+
+    // Parse @mention - @auto works anytime, @core only during auto mode
+    const { target: parsedTarget, cleanMessage } = parseMention(messageText)
+    // Only use @core if auto mode is active, but @auto works anytime
+    const target = parsedTarget === 'auto' ? 'auto' : (autoModeActive ? parsedTarget : null)
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      parts: [{ type: 'text', content: input.trim() }],
+      parts: [{ type: 'text', content: messageText }], // Keep original with @mention for display
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -417,7 +448,109 @@ function ChatInterface({
     // Create abort controller for this request
     abortControllerRef.current = new AbortController()
 
-    // Create assistant message placeholder
+    // Handle @mentions (@auto works anytime, @core only during auto mode)
+    if (target) {
+      try {
+        // Call the interject endpoint with target parameter
+        const interjectResponse = await fetch(`/api/approaches/${approachFolder}/auto/interject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: cleanMessage,
+            target: target,
+          }),
+          signal: abortControllerRef.current.signal,
+        })
+
+        if (!interjectResponse.ok) {
+          throw new Error(`Interject failed: ${interjectResponse.status}`)
+        }
+
+        if (target === 'core') {
+          // @core: Auto mode stays paused, call /api/chat for Claude's response
+          const assistantMessageId = (Date.now() + 1).toString()
+          setMessages((prev) => [
+            ...prev,
+            { id: assistantMessageId, role: 'assistant', parts: [] },
+          ])
+
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: cleanMessage,
+              approach_name: approachFolder,
+            }),
+            signal: abortControllerRef.current.signal,
+          })
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+          }
+
+          const reader = response.body?.getReader()
+          const decoder = new TextDecoder()
+
+          if (!reader) throw new Error('No response body')
+
+          let buffer = ''
+          while (true) {
+            const { done, value } = await reader.read()
+            if (done) break
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n\n')
+            buffer = lines.pop() || ''
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6))
+                  handleStreamEvent(data, assistantMessageId)
+                } catch (e) {
+                  console.error('Failed to parse SSE data:', e)
+                }
+              }
+            }
+          }
+
+          // Mark any running tools as done
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    parts: m.parts.map((part) =>
+                      part.type === 'tool' && part.tool?.status === 'running'
+                        ? { ...part, tool: { ...part.tool, status: 'done' as const } }
+                        : part
+                    ),
+                  }
+                : m
+            )
+          )
+        }
+        // @auto: Response comes via WebSocket, no additional action needed
+        // The backend resumes the loop and auto agent responds
+
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          // User cancelled
+        } else {
+          console.error('Mention interject error:', error)
+          const errorMessage: Message = {
+            id: `error-${Date.now()}`,
+            role: 'system',
+            parts: [{ type: 'text', content: `Error: ${error}` }],
+          }
+          setMessages((prev) => [...prev, errorMessage])
+        }
+      } finally {
+        setIsStreaming(false)
+        abortControllerRef.current = null
+      }
+      return // Exit early - don't fall through to regular chat
+    }
+
+    // Regular chat flow (non-auto mode or no mention)
     const assistantMessageId = (Date.now() + 1).toString()
     setMessages((prev) => [
       ...prev,
@@ -429,7 +562,7 @@ function ChatInterface({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: userMessage.parts[0]?.content,
+          message: cleanMessage,
           approach_name: approachFolder,
         }),
         signal: abortControllerRef.current.signal,
@@ -735,7 +868,9 @@ function ChatInterface({
             onKeyDown={handleKeyDown}
             placeholder={
               approachFolder
-                ? 'Ask about your hypothesis...'
+                ? autoModeActive
+                  ? '@auto to continue, @core for Claude...'
+                  : 'Ask a question or @auto to start auto mode...'
                 : 'Select an approach first'
             }
             disabled={!approachFolder || isStreaming}

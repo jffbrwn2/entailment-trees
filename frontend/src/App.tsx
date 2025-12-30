@@ -411,10 +411,10 @@ function App() {
                   autoModePaused={autoMode.paused}
                   autoTurnCount={autoMode.turnCount}
                   autoMaxTurns={autoMode.maxTurns}
-                  onAutoStart={() => currentApproach && autoMode.start()}
-                  onAutoPause={autoMode.pause}
-                  onAutoResume={autoMode.resume}
-                  onAutoStop={autoMode.stop}
+                  onAutoStart={autoMode.setStarted}
+                  onAutoPause={autoMode.setPaused}
+                  onAutoResume={autoMode.setResumed}
+                  onAutoStop={autoMode.setStopped}
                   onAutoTurnUpdate={autoMode.setTurnCount}
                 />
               </div>

@@ -7,6 +7,7 @@ https://openrouter.ai/
 Used by Auto mode to drive hypothesis evaluation.
 """
 
+import asyncio
 import os
 import json
 import httpx
@@ -110,6 +111,25 @@ class OpenRouterClient:
                 raise OpenRouterError(f"OpenRouter returned empty/whitespace response for model {model}")
 
             return content
+
+    def chat_sync(
+        self,
+        messages: list[dict],
+        model: str = "google/gemini-3-pro-preview",
+    ) -> str:
+        """Synchronous version of chat() for use in non-async contexts.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content'
+            model: Model identifier (e.g., "google/gemini-3-pro-preview")
+
+        Returns:
+            The assistant's response text
+
+        Raises:
+            OpenRouterError: If the API returns an error or empty response
+        """
+        return asyncio.run(self.chat(messages, model))
 
     async def stream_chat(
         self,

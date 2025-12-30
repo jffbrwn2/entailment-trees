@@ -121,6 +121,23 @@ export function useAutoMode({ folder, model, onModelUpdate }: UseAutoModeOptions
     setState(prev => ({ ...prev, turnCount: count }))
   }, [])
 
+  // State-only setters for WebSocket-triggered updates (no API calls)
+  const setStarted = useCallback(() => {
+    setState(prev => ({ ...prev, active: true, paused: false }))
+  }, [])
+
+  const setStopped = useCallback(() => {
+    setState(prev => ({ ...prev, active: false, paused: false }))
+  }, [])
+
+  const setPaused = useCallback(() => {
+    setState(prev => ({ ...prev, paused: true }))
+  }, [])
+
+  const setResumed = useCallback(() => {
+    setState(prev => ({ ...prev, active: true, paused: false }))
+  }, [])
+
   return {
     ...state,
     start,
@@ -128,5 +145,10 @@ export function useAutoMode({ folder, model, onModelUpdate }: UseAutoModeOptions
     pause,
     resume,
     setTurnCount,
+    // State-only setters for WebSocket events
+    setStarted,
+    setStopped,
+    setPaused,
+    setResumed,
   }
 }

@@ -45,12 +45,14 @@ class AutoStartRequest(BaseModel):
 class AutoInterjectRequest(BaseModel):
     """Request for user to interject during auto mode."""
     message: str
+    target: Optional[str] = None  # 'auto' | 'core' | None
 
 
 class UpdateSettingsRequest(BaseModel):
     """Request to update runtime settings."""
     chatModel: Optional[str] = None
     evaluatorModel: Optional[str] = None
+    entailmentModel: Optional[str] = None
     autoModel: Optional[str] = None
     edisonToolsEnabled: Optional[bool] = None
     gapMapToolsEnabled: Optional[bool] = None

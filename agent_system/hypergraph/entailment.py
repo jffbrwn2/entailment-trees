@@ -6,6 +6,7 @@ for each implication in the hypergraph.
 """
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Dict, List, Any, Tuple, Optional
@@ -14,12 +15,20 @@ from ..config.settings import DEFAULT_CONFIG
 from ..utils.paths import resolve_path
 from ..config.runtime import get_settings
 
+logger = logging.getLogger(__name__)
+
+
+def _is_openrouter_model(model: str) -> bool:
+    """Check if model ID is an OpenRouter model (contains provider prefix)."""
+    return "/" in model
+
 
 class EntailmentChecker:
     """
     Checks logical entailment for implications in hypergraphs.
 
-    Uses Claude to evaluate whether premises logically entail conclusions.
+    Uses an LLM (Anthropic or via OpenRouter) to evaluate whether premises
+    logically entail conclusions.
     """
 
     def __init__(self, model: Optional[str] = None):
@@ -27,16 +36,23 @@ class EntailmentChecker:
         Initialize entailment checker.
 
         Args:
-            model: Claude model to use for entailment checking
-                   (defaults to runtime settings evaluator_model)
+            model: Model to use for entailment checking
+                   (defaults to runtime settings entailment_model)
         """
-        self.client = Anthropic()
         # Get model from: explicit argument > runtime settings > default config
         if model:
             self.model = model
         else:
             settings = get_settings()
-            self.model = settings.evaluator_model or DEFAULT_CONFIG.evaluation_model
+            self.model = settings.entailment_model or DEFAULT_CONFIG.evaluation_model
+
+        # Initialize appropriate client based on model
+        self.use_openrouter = _is_openrouter_model(self.model)
+        if self.use_openrouter:
+            from ..clients.openrouter import OpenRouterClient
+            self.client = OpenRouterClient()
+        else:
+            self.client = Anthropic()
 
     def check_implication(
         self,
@@ -121,15 +137,33 @@ Respond using these XML tags:
 <degenerate_premises>comma-separated premise IDs, or None</degenerate_premises>
 <suggestions>If invalid, what could fix it? Otherwise None</suggestions>"""
 
-        # Query Claude
+        # Query LLM
         try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=1000,
-                messages=[{"role": "user", "content": prompt}]
-            )
+            logger.debug(f"Checking entailment with model={self.model}, premises={[p['id'] for p in premises]}, conclusion={conclusion['id']}")
 
-            response_text = response.content[0].text
+            if self.use_openrouter:
+                response_text = self.client.chat_sync(
+                    messages=[{"role": "user", "content": prompt}],
+                    model=self.model
+                )
+            else:
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=1000,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+
+                # Check for empty response
+                if not response.content:
+                    error_msg = (
+                        f"API returned empty response for entailment check. "
+                        f"Model: {self.model}, Stop reason: {response.stop_reason}, "
+                        f"Premises: {[p['id'] for p in premises]}, Conclusion: {conclusion['id']}"
+                    )
+                    logger.error(error_msg)
+                    return False, f"Entailment check failed: {error_msg}", []
+
+                response_text = response.content[0].text
 
             # Parse XML tags from response
             def extract_tag(text: str, tag: str) -> str:
@@ -161,7 +195,13 @@ Respond using these XML tags:
             return is_valid, response_text, all_problematic
 
         except Exception as e:
-            return False, f"Entailment check failed: {str(e)}", []
+            error_msg = (
+                f"Entailment check failed: {type(e).__name__}: {str(e)}. "
+                f"Model: {self.model}, Premises: {[p['id'] for p in premises]}, "
+                f"Conclusion: {conclusion['id']}"
+            )
+            logger.exception(error_msg)  # Logs full stack trace
+            return False, error_msg, []
 
     def check_hypergraph(
         self,
@@ -302,6 +342,7 @@ Respond using these XML tags:
                     impl['last_checked'] = timestamp
                     impl['entailment_status'] = check_results[impl_id]['status']
                     impl['entailment_explanation'] = check_results[impl_id]['explanation']
+                    impl['checked_by'] = self.model
 
             # Save updated hypergraph
             try:

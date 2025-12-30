@@ -23,6 +23,7 @@ interface Settings {
   darkMode: boolean
   claudeModel: string
   evaluatorModel: string
+  entailmentModel: string
   autoModel: string
   // Tool toggles
   edisonToolsEnabled: boolean
@@ -131,19 +132,65 @@ function SettingsModal({ isOpen, onClose, settings, onSettingsChange }: Props) {
 
             <div className="settings-row">
               <label htmlFor="evaluator-model">
-                <span className="label-text">Evaluator</span>
-                <span className="label-hint">Model for evaluating claims and entailments (Anthropic API)</span>
+                <span className="label-text">Evidence Evaluator</span>
+                <span className="label-hint">
+                  Model for evaluating claims based on evidence
+                  {autoConfig?.provider === 'openrouter' && ' (OpenRouter available)'}
+                </span>
               </label>
               <select
                 id="evaluator-model"
                 value={localSettings.evaluatorModel}
                 onChange={(e) => handleChange('evaluatorModel', e.target.value)}
               >
-                {ANTHROPIC_MODELS.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                  </option>
-                ))}
+                <optgroup label="Anthropic (Direct)">
+                  {ANTHROPIC_MODELS.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
+                </optgroup>
+                {autoConfig?.provider === 'openrouter' && autoConfig.models.length > 0 && (
+                  <optgroup label="OpenRouter">
+                    {autoConfig.models.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name || model.id}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </div>
+
+            <div className="settings-row">
+              <label htmlFor="entailment-model">
+                <span className="label-text">Entailment Checker</span>
+                <span className="label-hint">
+                  Model for checking logical entailment between claims
+                  {autoConfig?.provider === 'openrouter' && ' (OpenRouter available)'}
+                </span>
+              </label>
+              <select
+                id="entailment-model"
+                value={localSettings.entailmentModel}
+                onChange={(e) => handleChange('entailmentModel', e.target.value)}
+              >
+                <optgroup label="Anthropic (Direct)">
+                  {ANTHROPIC_MODELS.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
+                </optgroup>
+                {autoConfig?.provider === 'openrouter' && autoConfig.models.length > 0 && (
+                  <optgroup label="OpenRouter">
+                    {autoConfig.models.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name || model.id}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
 
