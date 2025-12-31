@@ -143,18 +143,7 @@ async def get_hypergraph(folder: str) -> dict:
 
     # Always compute costs before serving
     mgr = HypergraphManager(orchestrator.config.approaches_dir / folder)
-    costs = mgr.calculate_costs(hypergraph)
-    for claim in hypergraph.get('claims', []):
-        claim_id = claim['id']
-        if claim_id in costs:
-            value = costs[claim_id]
-            # Store Infinity as string for valid JSON
-            if value == float('inf'):
-                claim['cost'] = "Infinity"
-            elif value == float('-inf'):
-                claim['cost'] = "-Infinity"
-            else:
-                claim['cost'] = value
+    mgr.apply_costs_to_claims(hypergraph)
 
     return hypergraph
 

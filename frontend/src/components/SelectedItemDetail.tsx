@@ -159,13 +159,31 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, fol
               Score: {claim.score !== null ? `${claim.score.toFixed(1)}/10` : 'Not evaluated'}
             </span>
           ) : (
-            <span className="detail-score" style={{ background: `${getScoreColor(getEffectiveScore(claim, scoreMode))}33`, color: getScoreColor(getEffectiveScore(claim, scoreMode)) }}>
-              Cost: {claim.cost === null || claim.cost === "Infinity"
-                ? '∞ (P = 0)'
-                : typeof claim.cost === 'number'
-                  ? `${claim.cost.toFixed(3)} (P = ${Math.pow(2, -claim.cost).toFixed(3)})`
-                  : claim.cost ?? 'Not computed'}
-            </span>
+            <>
+              <span className="detail-score" style={{ background: `${getScoreColor(getEffectiveScore(claim, scoreMode))}33`, color: getScoreColor(getEffectiveScore(claim, scoreMode)) }}>
+                Cost: {claim.cost === null || claim.cost === "Infinity"
+                  ? '∞ (P = 0)'
+                  : typeof claim.cost === 'number'
+                    ? `${claim.cost.toFixed(3)} (P = ${Math.pow(2, -claim.cost).toFixed(3)})`
+                    : claim.cost ?? 'Not computed'}
+              </span>
+              <div className="detail-cost-breakdown">
+                <span className="cost-component">
+                  Evidence: {claim.evidence_epistemic_cost === null || claim.evidence_epistemic_cost === "Infinity"
+                    ? '∞'
+                    : typeof claim.evidence_epistemic_cost === 'number'
+                      ? claim.evidence_epistemic_cost.toFixed(3)
+                      : '—'}
+                </span>
+                <span className="cost-component">
+                  Experimental: {claim.experimental_epistemic_cost === null || claim.experimental_epistemic_cost === "Infinity"
+                    ? '∞'
+                    : typeof claim.experimental_epistemic_cost === 'number'
+                      ? claim.experimental_epistemic_cost.toFixed(3)
+                      : '—'}
+                </span>
+              </div>
+            </>
           )}
         </div>
 

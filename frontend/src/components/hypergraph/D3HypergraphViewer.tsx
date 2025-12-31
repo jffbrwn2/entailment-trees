@@ -32,21 +32,29 @@ function parseErrorReference(error: string, hypergraph: Hypergraph): { type: 'cl
   return null
 }
 
-// Compute warnings for failed entailments and leaf nodes without evidence
+// Compute warnings for failed entailments and leaf nodes without evidence/testability
 function computeWarnings(hypergraph: Hypergraph): Warning[] {
   const warnings: Warning[] = []
 
   // Find claims that are conclusions of implications
   const conclusions = new Set(hypergraph.implications.map(impl => impl.conclusion))
 
-  // Check for leaf nodes without evidence
+  // Check for leaf nodes without evidence or testability
   for (const claim of hypergraph.claims) {
     const isLeaf = !conclusions.has(claim.id)
-    if (isLeaf && (!claim.evidence || claim.evidence.length === 0)) {
-      warnings.push({
-        message: `${claim.id}: Leaf node without evidence`,
-        ref: { type: 'claim', id: claim.id }
-      })
+    if (isLeaf) {
+      if (!claim.evidence || claim.evidence.length === 0) {
+        warnings.push({
+          message: `${claim.id}: Leaf node without evidence`,
+          ref: { type: 'claim', id: claim.id }
+        })
+      } else if (claim.testability === undefined || claim.testability === null) {
+        // Has evidence but testability not evaluated
+        warnings.push({
+          message: `${claim.id}: Testability not evaluated`,
+          ref: { type: 'claim', id: claim.id }
+        })
+      }
     }
   }
 

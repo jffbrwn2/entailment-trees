@@ -58,8 +58,8 @@
 
 .detail-scores {
   display: flex;
+  flex-direction: column;
   gap: 0.5rem;
-  flex-wrap: wrap;
   margin-bottom: 0.75rem;
 }
 
@@ -69,6 +69,16 @@
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 600;
+  align-self: flex-start;
+}
+
+.detail-cost-breakdown {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.7rem;
+  font-family: 'SF Mono', Monaco, monospace;
+  color: var(--text-secondary);
+  padding-left: 0.25rem;
 }
 
 

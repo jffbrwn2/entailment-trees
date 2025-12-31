@@ -27,7 +27,11 @@ from claude_agent_sdk import (
 )
 
 from ..hypergraph.entailment import check_entailment_skill as check_entailment_impl
-from ..hypergraph.evaluator import evaluate_claim_skill as evaluate_claim_impl, add_evidence_skill as add_evidence_impl
+from ..hypergraph.evaluator import (
+    evaluate_claim_skill as evaluate_claim_impl,
+    add_evidence_skill as add_evidence_impl,
+    evaluate_testability_skill as evaluate_testability_impl
+)
 from .gapmap import GapMapClient
 from ..utils.logger import ConversationLogger
 from ..utils.paths import set_approach_dir, resolve_path
@@ -234,6 +238,45 @@ async def evaluate_claim_tool(args: Dict[str, Any]) -> Dict[str, Any]:
         Tool response with calculated score, reasoning, or error
     """
     result = evaluate_claim_impl(
+        args.get("hypergraph_path", ""),
+        args.get("claim_id", "")
+    )
+
+    return {
+        "content": [{"type": "text", "text": result}]
+    }
+
+
+# Define testability evaluator as SDK tool
+@tool(
+    name="evaluate_testability",
+    description="Evaluate whether a claim is testable with a single experiment. "
+                "A claim is TESTABLE (score=1) if there exists ONE concrete experiment "
+                "(simulation, measurement, literature search, or calculation) that could "
+                "definitively resolve the claim's truth value (send score to 0 or 10). "
+                "A claim is NOT TESTABLE (score=0) if it needs decomposition into sub-claims. "
+                "Use this to distinguish between: "
+                "1) Claims needing more breakdown (not testable as a unit) "
+                "2) Fundamental uncertainties waiting for evidence (testable). "
+                "The testability affects epistemic cost: testability=0 adds infinite cost.",
+    input_schema={
+        "hypergraph_path": str,
+        "claim_id": str
+    }
+)
+async def evaluate_testability_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for evaluating whether a claim is testable with a single experiment.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+            - claim_id: ID of claim to evaluate (e.g., "c1")
+
+    Returns:
+        Tool response with testability result, proposed experiment, or error
+    """
+    result = evaluate_testability_impl(
         args.get("hypergraph_path", ""),
         args.get("claim_id", "")
     )
@@ -1297,6 +1340,7 @@ entailment_server = create_sdk_mcp_server(
         check_entailment_tool,
         add_evidence_tool,
         evaluate_claim_tool,
+        evaluate_testability_tool,
         read_tree_summary_tool,
         read_full_tree_tool,
         read_claim_evidence_tool,
@@ -1530,6 +1574,7 @@ class ClaudeCodeClient:
         allowed.append("mcp__entailment__check_entailment")
         allowed.append("mcp__entailment__add_evidence")
         allowed.append("mcp__entailment__evaluate_claim")
+        allowed.append("mcp__entailment__evaluate_testability")
         allowed.append("mcp__entailment__read_tree_summary")
         allowed.append("mcp__entailment__read_full_tree")
         allowed.append("mcp__entailment__read_claim_evidence")
