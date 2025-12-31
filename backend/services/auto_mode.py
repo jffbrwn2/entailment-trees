@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Optional, List
 
 from agent_system import TextEvent, ToolUseEvent, ToolResultEvent, ErrorEvent, DoneEvent
+from agent_system.hypergraph.manager import HypergraphManager
 
 from .state import get_orchestrator, get_auto_agent_client, auto_mode_sessions
 from .websocket import notify_auto_event
@@ -23,7 +24,7 @@ Your role: Act as a knowledgeable user who systematically:
 
 Current hypothesis: {hypothesis}
 
-Current entailment tree (full hypergraph.json):
+Current entailment tree (summary - use read_claim_evidence tool for evidence details):
 {hypergraph}
 
 Guidelines:
@@ -81,14 +82,15 @@ async def run_auto_mode_loop(folder: str, session: AutoModeSession) -> None:
 
     while session.active and not session.paused and session.turn_count < session.max_turns:
         try:
-            # Load current hypergraph state
-            hypergraph_path = orchestrator.config.approaches_dir / folder / "hypergraph.json"
+            # Load current hypergraph state (summary view to reduce context size)
+            approach_path = orchestrator.config.approaches_dir / folder
+            hypergraph_path = approach_path / "hypergraph.json"
             if not hypergraph_path.exists():
                 print(f"[AUTO MODE] Hypergraph not found for {folder}", flush=True)
                 break
 
-            with open(hypergraph_path) as f:
-                hypergraph = json.load(f)
+            manager = HypergraphManager(approach_path)
+            hypergraph = manager.get_summary_view()
 
             # Get Auto agent's next message
             print(f"[AUTO MODE] Turn {session.turn_count + 1}: Getting Auto agent response", flush=True)

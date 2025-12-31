@@ -175,7 +175,8 @@ async def check_entailment_tool(args: Dict[str, Any]) -> Dict[str, Any]:
                 "- literature: requires 'type', 'source' (citation/file), 'reference_text' (exact quote from source) "
                 "- calculation: requires 'type', 'equations' (LaTeX), 'program' (Python code). "
                 "Validates format and updates last_evidence_modified timestamp. "
-                "Use this BEFORE evaluate_claim to add new evidence.",
+                "Use this BEFORE evaluate_claim to add new evidence."
+                "Only add the evidence (a direct quote) for the source, do not add your own analysis or interpretation.",
     input_schema={
         "hypergraph_path": str,
         "claim_id": str,
@@ -240,6 +241,540 @@ async def evaluate_claim_tool(args: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "content": [{"type": "text", "text": result}]
     }
+
+
+# Define read_tree_summary as SDK tool
+@tool(
+    name="read_tree_summary",
+    description="Read the hypergraph structure with truncated claims (no evidence details). "
+                "USE THIS BY DEFAULT to understand the tree structure. "
+                "Returns: metadata, claims (id, text, cost, reasoning only), and implications. "
+                "For evidence details, use read_claim_evidence. "
+                "For the full hypergraph, use read_full_tree.",
+    input_schema={
+        "hypergraph_path": str
+    }
+)
+async def read_tree_summary_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for reading hypergraph summary without evidence details.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+
+    Returns:
+        Tool response with truncated hypergraph (no evidence)
+    """
+    from ..hypergraph.manager import HypergraphManager
+
+    hypergraph_path = args.get("hypergraph_path", "")
+    resolved_path = resolve_path(hypergraph_path)
+
+    if not resolved_path or not Path(resolved_path).exists():
+        return {
+            "content": [{"type": "text", "text": f"Error: Hypergraph not found at {hypergraph_path}"}]
+        }
+
+    try:
+        manager = HypergraphManager(Path(resolved_path).parent)
+        summary = manager.get_summary_view()
+        return {
+            "content": [{"type": "text", "text": json.dumps(summary, indent=2)}]
+        }
+    except Exception as e:
+        return {
+            "content": [{"type": "text", "text": f"Error reading hypergraph: {str(e)}"}]
+        }
+
+
+# Define read_full_tree as SDK tool
+@tool(
+    name="read_full_tree",
+    description="Read the ENTIRE hypergraph including all evidence details. "
+                "WARNING: This can be very large for complex trees. "
+                "Use read_tree_summary for navigation, and read_claim_evidence for specific claims. "
+                "Only use this when you need to see everything at once.",
+    input_schema={
+        "hypergraph_path": str
+    }
+)
+async def read_full_tree_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for reading the entire hypergraph with all details.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+
+    Returns:
+        Tool response with full hypergraph content
+    """
+    from ..hypergraph.manager import HypergraphManager
+
+    hypergraph_path = args.get("hypergraph_path", "")
+    resolved_path = resolve_path(hypergraph_path)
+
+    if not resolved_path or not Path(resolved_path).exists():
+        return {
+            "content": [{"type": "text", "text": f"Error: Hypergraph not found at {hypergraph_path}"}]
+        }
+
+    try:
+        manager = HypergraphManager(Path(resolved_path).parent)
+        hypergraph = manager.load_hypergraph()
+        return {
+            "content": [{"type": "text", "text": json.dumps(hypergraph, indent=2)}]
+        }
+    except Exception as e:
+        return {
+            "content": [{"type": "text", "text": f"Error reading hypergraph: {str(e)}"}]
+        }
+
+
+# Define read_claim_evidence as SDK tool
+@tool(
+    name="read_claim_evidence",
+    description="Read all evidence for a specific claim. "
+                "ALWAYS call this BEFORE adding evidence to a claim to see what's already there. "
+                "This prevents adding duplicate evidence. "
+                "Returns: claim id, text, and full evidence array.",
+    input_schema={
+        "hypergraph_path": str,
+        "claim_id": str
+    }
+)
+async def read_claim_evidence_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for reading evidence details for a specific claim.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+            - claim_id: ID of claim (e.g., "c1", "hypothesis")
+
+    Returns:
+        Tool response with claim evidence details
+    """
+    from ..hypergraph.manager import HypergraphManager
+
+    hypergraph_path = args.get("hypergraph_path", "")
+    claim_id = args.get("claim_id", "")
+    resolved_path = resolve_path(hypergraph_path)
+
+    if not resolved_path or not Path(resolved_path).exists():
+        return {
+            "content": [{"type": "text", "text": f"Error: Hypergraph not found at {hypergraph_path}"}]
+        }
+
+    if not claim_id:
+        return {
+            "content": [{"type": "text", "text": "Error: claim_id is required"}]
+        }
+
+    try:
+        manager = HypergraphManager(Path(resolved_path).parent)
+        result = manager.get_claim_evidence(claim_id)
+
+        if result is None:
+            return {
+                "content": [{"type": "text", "text": f"Error: Claim '{claim_id}' not found"}]
+            }
+
+        return {
+            "content": [{"type": "text", "text": json.dumps(result, indent=2)}]
+        }
+    except Exception as e:
+        return {
+            "content": [{"type": "text", "text": f"Error reading claim evidence: {str(e)}"}]
+        }
+
+
+# Define add_claim as SDK tool
+@tool(
+    name="add_claim",
+    description="Add a new claim to the hypergraph. "
+                "Claims are atomic statements that can be evaluated as true/false. "
+                "Returns the claim ID and any validation errors/warnings. "
+                "After adding, use add_evidence and evaluate_claim to score it.",
+    input_schema={
+        "hypergraph_path": str,
+        "claim_id": str,
+        "text": str,
+        "reasoning": {"type": "string", "default": ""}
+    }
+)
+async def add_claim_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for adding a new claim to the hypergraph.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+            - claim_id: Unique ID for the claim (e.g., "c1", "c2")
+            - text: The claim statement
+            - reasoning: Optional initial reasoning
+
+    Returns:
+        Tool response with claim ID and validation results
+    """
+    from ..hypergraph.manager import HypergraphManager, Claim
+
+    hypergraph_path = args.get("hypergraph_path", "")
+    claim_id = args.get("claim_id", "")
+    text = args.get("text", "")
+    reasoning = args.get("reasoning", "")
+
+    resolved_path = resolve_path(hypergraph_path)
+
+    if not resolved_path or not Path(resolved_path).exists():
+        return {
+            "content": [{"type": "text", "text": f"Error: Hypergraph not found at {hypergraph_path}"}]
+        }
+
+    if not claim_id or not text:
+        return {
+            "content": [{"type": "text", "text": "Error: claim_id and text are required"}]
+        }
+
+    try:
+        manager = HypergraphManager(Path(resolved_path).parent)
+        claim = Claim(
+            id=claim_id,
+            text=text,
+            score=0.0,  # Start with 0, will be set by evaluate_claim
+            reasoning=reasoning or "Awaiting evidence and evaluation"
+        )
+        result = manager.add_claim(claim)
+
+        response = f"Added claim '{claim_id}': {text}\n"
+        if result['validation']['errors']:
+            response += f"Validation errors: {result['validation']['errors']}\n"
+        if result['validation']['warnings']:
+            response += f"Validation warnings: {result['validation']['warnings']}\n"
+
+        return {
+            "content": [{"type": "text", "text": response}]
+        }
+    except Exception as e:
+        return {
+            "content": [{"type": "text", "text": f"Error adding claim: {str(e)}"}]
+        }
+
+
+# Define update_claim as SDK tool
+@tool(
+    name="update_claim",
+    description="Update an existing claim's text, uncertainties, or tags. "
+                "CANNOT update reasoning or score (those are set by evaluate_claim). "
+                "If text is changed, all connected implications are marked as unevaluated.",
+    input_schema={
+        "hypergraph_path": str,
+        "claim_id": str,
+        "text": {"type": "string", "default": None},
+        "uncertainties": {"type": "string", "default": None},  # JSON array
+        "tags": {"type": "string", "default": None}  # JSON array
+    }
+)
+async def update_claim_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for updating an existing claim.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+            - claim_id: ID of claim to update
+            - text: New claim text (optional)
+            - uncertainties: JSON array of uncertainties (optional)
+            - tags: JSON array of tags (optional)
+
+    Returns:
+        Tool response with update results
+    """
+    from ..hypergraph.manager import HypergraphManager
+
+    hypergraph_path = args.get("hypergraph_path", "")
+    claim_id = args.get("claim_id", "")
+    text = args.get("text")
+    uncertainties_json = args.get("uncertainties")
+    tags_json = args.get("tags")
+
+    resolved_path = resolve_path(hypergraph_path)
+
+    if not resolved_path or not Path(resolved_path).exists():
+        return {
+            "content": [{"type": "text", "text": f"Error: Hypergraph not found at {hypergraph_path}"}]
+        }
+
+    if not claim_id:
+        return {
+            "content": [{"type": "text", "text": "Error: claim_id is required"}]
+        }
+
+    # Build updates dict
+    updates = {}
+    if text is not None:
+        updates['text'] = text
+
+    if uncertainties_json is not None:
+        try:
+            uncertainties = json.loads(uncertainties_json) if isinstance(uncertainties_json, str) else uncertainties_json
+            updates['uncertainties'] = uncertainties
+        except json.JSONDecodeError as e:
+            return {
+                "content": [{"type": "text", "text": f"Error parsing uncertainties JSON: {str(e)}"}]
+            }
+
+    if tags_json is not None:
+        try:
+            tags = json.loads(tags_json) if isinstance(tags_json, str) else tags_json
+            updates['tags'] = tags
+        except json.JSONDecodeError as e:
+            return {
+                "content": [{"type": "text", "text": f"Error parsing tags JSON: {str(e)}"}]
+            }
+
+    if not updates:
+        return {
+            "content": [{"type": "text", "text": "Error: No fields to update (provide text, uncertainties, or tags)"}]
+        }
+
+    try:
+        manager = HypergraphManager(Path(resolved_path).parent)
+        result = manager.update_claim(claim_id, **updates)
+
+        response = f"Updated claim '{claim_id}'\n"
+        if 'text' in updates:
+            response += f"New text: {updates['text']}\n"
+        if result.get('invalidated_implications'):
+            response += f"Implications marked unevaluated: {result['invalidated_implications']}\n"
+        if result['validation']['errors']:
+            response += f"Validation errors: {result['validation']['errors']}\n"
+
+        return {
+            "content": [{"type": "text", "text": response}]
+        }
+    except Exception as e:
+        return {
+            "content": [{"type": "text", "text": f"Error updating claim: {str(e)}"}]
+        }
+
+
+# Define add_implication as SDK tool
+@tool(
+    name="add_implication",
+    description="Add a logical implication connecting claims in the hypergraph. "
+                "An implication states: if premises are true, then conclusion is true. "
+                "Type 'AND' means ALL premises must be true. "
+                "Type 'OR' means ANY premise being true is sufficient. "
+                "All referenced claim IDs must already exist.",
+    input_schema={
+        "hypergraph_path": str,
+        "implication_id": str,
+        "premises": str,  # JSON array of claim IDs
+        "conclusion": str,
+        "implication_type": str,  # "AND" or "OR"
+        "reasoning": str
+    }
+)
+async def add_implication_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for adding a logical implication to the hypergraph.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+            - implication_id: Unique ID (e.g., "i1", "i2")
+            - premises: JSON array of premise claim IDs (e.g., '["c1", "c2"]')
+            - conclusion: Conclusion claim ID
+            - implication_type: "AND" or "OR"
+            - reasoning: Explanation of the logical relationship
+
+    Returns:
+        Tool response with implication ID and validation results
+    """
+    from ..hypergraph.manager import HypergraphManager, Implication
+
+    hypergraph_path = args.get("hypergraph_path", "")
+    implication_id = args.get("implication_id", "")
+    premises_json = args.get("premises", "[]")
+    conclusion = args.get("conclusion", "")
+    implication_type = args.get("implication_type", "AND")
+    reasoning = args.get("reasoning", "")
+
+    resolved_path = resolve_path(hypergraph_path)
+
+    if not resolved_path or not Path(resolved_path).exists():
+        return {
+            "content": [{"type": "text", "text": f"Error: Hypergraph not found at {hypergraph_path}"}]
+        }
+
+    # Parse premises JSON
+    try:
+        premises = json.loads(premises_json) if isinstance(premises_json, str) else premises_json
+        if not isinstance(premises, list):
+            return {
+                "content": [{"type": "text", "text": "Error: premises must be a JSON array of claim IDs"}]
+            }
+    except json.JSONDecodeError as e:
+        return {
+            "content": [{"type": "text", "text": f"Error parsing premises JSON: {str(e)}"}]
+        }
+
+    if not implication_id or not premises or not conclusion:
+        return {
+            "content": [{"type": "text", "text": "Error: implication_id, premises, and conclusion are required"}]
+        }
+
+    if implication_type not in ["AND", "OR"]:
+        return {
+            "content": [{"type": "text", "text": "Error: implication_type must be 'AND' or 'OR'"}]
+        }
+
+    try:
+        manager = HypergraphManager(Path(resolved_path).parent)
+        implication = Implication(
+            id=implication_id,
+            premises=premises,
+            conclusion=conclusion,
+            type=implication_type,
+            reasoning=reasoning
+        )
+        result = manager.add_implication(implication)
+
+        response = f"Added implication '{implication_id}': {premises} -> {conclusion} ({implication_type})\n"
+        if result['validation']['errors']:
+            response += f"Validation errors: {result['validation']['errors']}\n"
+        if result['validation']['warnings']:
+            response += f"Validation warnings: {result['validation']['warnings']}\n"
+
+        return {
+            "content": [{"type": "text", "text": response}]
+        }
+    except Exception as e:
+        return {
+            "content": [{"type": "text", "text": f"Error adding implication: {str(e)}"}]
+        }
+
+
+# Define remove_claim as SDK tool
+@tool(
+    name="remove_claim",
+    description="Remove a claim from the hypergraph. "
+                "If the claim is a CONCLUSION of an implication, that implication is deleted. "
+                "If the claim is a PREMISE of an implication, it's removed from premises and the implication is marked unevaluated. "
+                "Cannot remove the hypothesis node.",
+    input_schema={
+        "hypergraph_path": str,
+        "claim_id": str
+    }
+)
+async def remove_claim_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for removing a claim from the hypergraph.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+            - claim_id: ID of claim to remove
+
+    Returns:
+        Tool response with deletion results
+    """
+    from ..hypergraph.manager import HypergraphManager
+
+    hypergraph_path = args.get("hypergraph_path", "")
+    claim_id = args.get("claim_id", "")
+
+    resolved_path = resolve_path(hypergraph_path)
+
+    if not resolved_path or not Path(resolved_path).exists():
+        return {
+            "content": [{"type": "text", "text": f"Error: Hypergraph not found at {hypergraph_path}"}]
+        }
+
+    if not claim_id:
+        return {
+            "content": [{"type": "text", "text": "Error: claim_id is required"}]
+        }
+
+    try:
+        manager = HypergraphManager(Path(resolved_path).parent)
+        result = manager.delete_claim(claim_id)
+
+        response = f"Removed claim '{claim_id}'\n"
+        if result['deleted_implications']:
+            impl_ids = [i['id'] for i in result['deleted_implications']]
+            response += f"Deleted implications (claim was conclusion): {impl_ids}\n"
+        if result['updated_implications']:
+            response += f"Updated implications (removed from premises): {result['updated_implications']}\n"
+        if result['validation']['errors']:
+            response += f"Validation errors: {result['validation']['errors']}\n"
+
+        return {
+            "content": [{"type": "text", "text": response}]
+        }
+    except Exception as e:
+        return {
+            "content": [{"type": "text", "text": f"Error removing claim: {str(e)}"}]
+        }
+
+
+# Define remove_implication as SDK tool
+@tool(
+    name="remove_implication",
+    description="Remove an implication from the hypergraph. "
+                "This only removes the logical connection, not the claims themselves.",
+    input_schema={
+        "hypergraph_path": str,
+        "implication_id": str
+    }
+)
+async def remove_implication_tool(args: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Tool for removing an implication from the hypergraph.
+
+    Args:
+        args: Dictionary with keys:
+            - hypergraph_path: Path to hypergraph.json
+            - implication_id: ID of implication to remove
+
+    Returns:
+        Tool response with deletion results
+    """
+    from ..hypergraph.manager import HypergraphManager
+
+    hypergraph_path = args.get("hypergraph_path", "")
+    implication_id = args.get("implication_id", "")
+
+    resolved_path = resolve_path(hypergraph_path)
+
+    if not resolved_path or not Path(resolved_path).exists():
+        return {
+            "content": [{"type": "text", "text": f"Error: Hypergraph not found at {hypergraph_path}"}]
+        }
+
+    if not implication_id:
+        return {
+            "content": [{"type": "text", "text": "Error: implication_id is required"}]
+        }
+
+    try:
+        manager = HypergraphManager(Path(resolved_path).parent)
+        result = manager.delete_implication(implication_id)
+
+        deleted = result['deleted_implication']
+        response = f"Removed implication '{implication_id}': {deleted['premises']} -> {deleted['conclusion']}\n"
+        if result['validation']['errors']:
+            response += f"Validation errors: {result['validation']['errors']}\n"
+
+        return {
+            "content": [{"type": "text", "text": response}]
+        }
+    except Exception as e:
+        return {
+            "content": [{"type": "text", "text": f"Error removing implication: {str(e)}"}]
+        }
 
 
 # Edison Scientific tools (only if edison-client is available)
@@ -758,7 +1293,19 @@ gapmap_server = create_sdk_mcp_server(
 entailment_server = create_sdk_mcp_server(
     name="entailment",
     version="1.0.0",
-    tools=[check_entailment_tool, add_evidence_tool, evaluate_claim_tool]
+    tools=[
+        check_entailment_tool,
+        add_evidence_tool,
+        evaluate_claim_tool,
+        read_tree_summary_tool,
+        read_full_tree_tool,
+        read_claim_evidence_tool,
+        add_claim_tool,
+        update_claim_tool,
+        add_implication_tool,
+        remove_claim_tool,
+        remove_implication_tool
+    ]
 )
 
 
@@ -983,6 +1530,14 @@ class ClaudeCodeClient:
         allowed.append("mcp__entailment__check_entailment")
         allowed.append("mcp__entailment__add_evidence")
         allowed.append("mcp__entailment__evaluate_claim")
+        allowed.append("mcp__entailment__read_tree_summary")
+        allowed.append("mcp__entailment__read_full_tree")
+        allowed.append("mcp__entailment__read_claim_evidence")
+        allowed.append("mcp__entailment__add_claim")
+        allowed.append("mcp__entailment__update_claim")
+        allowed.append("mcp__entailment__add_implication")
+        allowed.append("mcp__entailment__remove_claim")
+        allowed.append("mcp__entailment__remove_implication")
 
         # Build MCP servers dict (always include entailment)
         mcp_servers_dict = {

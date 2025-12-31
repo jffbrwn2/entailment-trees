@@ -200,12 +200,14 @@ class HypergraphManager:
         """
         Update an existing claim.
 
+        If text is changed, all connected implications are marked as unevaluated.
+
         Args:
             claim_id: ID of claim to update
-            **updates: Fields to update (score, reasoning, evidence, etc.)
+            **updates: Fields to update (text, uncertainties, tags - NOT reasoning/score)
 
         Returns:
-            Dict with 'validation' results
+            Dict with 'validation' results and 'invalidated_implications' list
         """
         hypergraph = self.load_hypergraph()
 
@@ -219,6 +221,9 @@ class HypergraphManager:
         if not claim:
             raise ValueError(f"Claim '{claim_id}' not found")
 
+        # Check if text is being changed
+        text_changed = 'text' in updates and updates['text'] != claim.get('text')
+
         # Update fields
         for key, value in updates.items():
             if value is not None:
@@ -227,8 +232,21 @@ class HypergraphManager:
         # Update modified timestamp
         claim['modified_at'] = datetime.now().isoformat()
 
+        # If text changed, mark connected implications as unevaluated
+        invalidated_implications = []
+        if text_changed:
+            for impl in hypergraph.get('implications', []):
+                if claim_id in impl.get('premises', []) or impl.get('conclusion') == claim_id:
+                    impl['entailment_status'] = None
+                    impl['last_checked'] = None
+                    impl['entailment_explanation'] = None
+                    invalidated_implications.append(impl['id'])
+
         validation = self._save_hypergraph(hypergraph)
-        return {'validation': validation}
+        return {
+            'validation': validation,
+            'invalidated_implications': invalidated_implications
+        }
 
     def add_implication(self, implication: Implication) -> Dict[str, Any]:
         """
@@ -282,13 +300,16 @@ class HypergraphManager:
 
     def delete_claim(self, claim_id: str) -> Dict[str, Any]:
         """
-        Delete a claim and its related implications.
+        Delete a claim and update related implications.
+
+        - If claim is a CONCLUSION of an implication → delete the implication
+        - If claim is a PREMISE of an implication → remove from premises, mark unevaluated
 
         Args:
             claim_id: ID of the claim to delete
 
         Returns:
-            Dict with 'deleted_claim' and 'deleted_implications' lists
+            Dict with 'deleted_claim', 'deleted_implications', and 'updated_implications'
 
         Raises:
             ValueError: If claim doesn't exist or is the hypothesis
@@ -311,14 +332,28 @@ class HypergraphManager:
                 break
         hypergraph['claims'] = [c for c in hypergraph['claims'] if c['id'] != claim_id]
 
-        # Remove implications where this claim is premise or conclusion
+        # Handle implications:
+        # - Delete if claim is conclusion
+        # - Update (remove premise, mark unevaluated) if claim is premise
         deleted_implications = []
+        updated_implications = []
         remaining_implications = []
+
         for impl in hypergraph.get('implications', []):
-            if claim_id in impl.get('premises', []) or impl.get('conclusion') == claim_id:
+            if impl.get('conclusion') == claim_id:
+                # Claim is conclusion → delete entire implication
                 deleted_implications.append(impl)
+            elif claim_id in impl.get('premises', []):
+                # Claim is premise → remove from premises and mark unevaluated
+                impl['premises'] = [p for p in impl['premises'] if p != claim_id]
+                impl['entailment_status'] = None
+                impl['last_checked'] = None
+                impl['entailment_explanation'] = None
+                updated_implications.append(impl['id'])
+                remaining_implications.append(impl)
             else:
                 remaining_implications.append(impl)
+
         hypergraph['implications'] = remaining_implications
 
         validation = self._save_hypergraph(hypergraph)
@@ -326,6 +361,7 @@ class HypergraphManager:
         return {
             'deleted_claim': deleted_claim,
             'deleted_implications': deleted_implications,
+            'updated_implications': updated_implications,
             'validation': validation
         }
 
@@ -338,6 +374,42 @@ class HypergraphManager:
         """Get all implications."""
         hypergraph = self.load_hypergraph()
         return hypergraph['implications']
+
+    def delete_implication(self, implication_id: str) -> Dict[str, Any]:
+        """
+        Delete an implication from the hypergraph.
+
+        Args:
+            implication_id: ID of the implication to delete
+
+        Returns:
+            Dict with 'deleted_implication' and 'validation' results
+
+        Raises:
+            ValueError: If implication doesn't exist
+        """
+        hypergraph = self.load_hypergraph()
+
+        # Find and remove the implication
+        deleted_implication = None
+        remaining_implications = []
+
+        for impl in hypergraph.get('implications', []):
+            if impl['id'] == implication_id:
+                deleted_implication = impl
+            else:
+                remaining_implications.append(impl)
+
+        if deleted_implication is None:
+            raise ValueError(f"Implication '{implication_id}' not found")
+
+        hypergraph['implications'] = remaining_implications
+        validation = self._save_hypergraph(hypergraph)
+
+        return {
+            'deleted_implication': deleted_implication,
+            'validation': validation
+        }
 
     def validate(self) -> Tuple[List[str], List[str]]:
         """
@@ -724,3 +796,56 @@ python -m http.server 8765
                 claim['cost'] = costs[claim_id]
 
         self._save_hypergraph(hypergraph)
+
+    def get_summary_view(self) -> Dict[str, Any]:
+        """
+        Return hypergraph with minimal claim fields for navigation.
+
+        This returns a truncated view suitable for understanding tree structure
+        without overwhelming context. Evidence details are omitted.
+
+        For each claim, keeps: id, text, cost, reasoning
+        Removes: score, tags, evidence, uncertainties, timestamps
+
+        Returns:
+            Dict with metadata, truncated claims, and full implications
+        """
+        hypergraph = self.load_hypergraph()
+
+        # Truncate claims - keep only essential navigation fields
+        truncated_claims = []
+        for claim in hypergraph.get('claims', []):
+            truncated_claim = {
+                'id': claim.get('id'),
+                'text': claim.get('text'),
+                'cost': claim.get('cost')
+            }
+            truncated_claims.append(truncated_claim)
+
+        return {
+            'metadata': hypergraph.get('metadata', {}),
+            'claims': truncated_claims,
+            'implications': hypergraph.get('implications', [])
+        }
+
+    def get_claim_evidence(self, claim_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get full evidence details for a specific claim.
+
+        Args:
+            claim_id: ID of the claim (e.g., "c1", "hypothesis")
+
+        Returns:
+            Dict with claim id, text, and evidence array, or None if not found
+        """
+        hypergraph = self.load_hypergraph()
+
+        for claim in hypergraph.get('claims', []):
+            if claim.get('id') == claim_id:
+                return {
+                    'id': claim.get('id'),
+                    'text': claim.get('text'),
+                    'evidence': claim.get('evidence', [])
+                }
+
+        return None
