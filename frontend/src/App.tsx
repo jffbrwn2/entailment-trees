@@ -411,11 +411,17 @@ function App() {
                   autoModePaused={autoMode.paused}
                   autoTurnCount={autoMode.turnCount}
                   autoMaxTurns={autoMode.maxTurns}
+                  // State-only setters for WebSocket sync
                   onAutoStart={autoMode.setStarted}
                   onAutoPause={autoMode.setPaused}
                   onAutoResume={autoMode.setResumed}
                   onAutoStop={autoMode.setStopped}
                   onAutoTurnUpdate={autoMode.setTurnCount}
+                  // API-calling functions for button actions
+                  onAutoStartAction={() => currentApproach && autoMode.start()}
+                  onAutoPauseAction={autoMode.pause}
+                  onAutoResumeAction={autoMode.resume}
+                  onAutoStopAction={autoMode.stop}
                 />
               </div>
             </Split>

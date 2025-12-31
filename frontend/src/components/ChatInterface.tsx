@@ -39,11 +39,17 @@ interface Props {
   autoModePaused?: boolean
   autoTurnCount?: number
   autoMaxTurns?: number
+  // State-only setters for WebSocket sync
   onAutoStart?: () => void
   onAutoPause?: () => void
   onAutoResume?: () => void
   onAutoStop?: () => void
   onAutoTurnUpdate?: (turn: number) => void
+  // API-calling functions for button actions
+  onAutoStartAction?: () => void
+  onAutoPauseAction?: () => void
+  onAutoResumeAction?: () => void
+  onAutoStopAction?: () => void
 }
 
 interface SuggestionButton {
@@ -95,6 +101,10 @@ function ChatInterface({
   onAutoResume,
   onAutoStop,
   onAutoTurnUpdate,
+  onAutoStartAction,
+  onAutoPauseAction,
+  onAutoResumeAction,
+  onAutoStopAction,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -801,10 +811,10 @@ function ChatInterface({
           paused={autoModePaused}
           turnCount={autoTurnCount}
           maxTurns={autoMaxTurns}
-          onStart={onAutoStart || (() => {})}
-          onPause={onAutoPause || (() => {})}
-          onResume={onAutoResume || (() => {})}
-          onStop={onAutoStop || (() => {})}
+          onStart={onAutoStartAction || (() => {})}
+          onPause={onAutoPauseAction || (() => {})}
+          onResume={onAutoResumeAction || (() => {})}
+          onStop={onAutoStopAction || (() => {})}
         />
       )}
 
