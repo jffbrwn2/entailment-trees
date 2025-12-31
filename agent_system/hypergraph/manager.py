@@ -719,7 +719,8 @@ python -m http.server 8765
 
         def calculate_node(claim_id):
             if claim_id in visited:
-                return costs[claim_id]
+                # Return just the total cost for aggregation, not the full dict
+                return costs[claim_id]['cost']
 
             visited.add(claim_id)
 
