@@ -141,9 +141,10 @@ async def get_hypergraph(folder: str) -> dict:
     with open(hypergraph_path) as f:
         hypergraph = json.load(f)
 
-    # Always compute costs before serving
+    # Always compute costs and warnings before serving
     mgr = HypergraphManager(orchestrator.config.approaches_dir / folder)
     mgr.apply_costs_to_claims(hypergraph)
+    hypergraph['warnings'] = mgr.compute_warnings(hypergraph)
 
     return hypergraph
 

@@ -32,48 +32,29 @@ function parseErrorReference(error: string, hypergraph: Hypergraph): { type: 'cl
   return null
 }
 
-// Compute warnings for failed entailments and leaf nodes without evidence/testability
-function computeWarnings(hypergraph: Hypergraph): Warning[] {
-  const warnings: Warning[] = []
+// Parse warning string to extract reference (warnings come from API as strings like "c1: Leaf node without evidence")
+function parseWarningReference(warning: string, hypergraph: Hypergraph): SelectedItem | null {
+  const match = warning.match(/^([ci]\d+):/)
+  if (!match) return null
 
-  // Find claims that are conclusions of implications
-  const conclusions = new Set(hypergraph.implications.map(impl => impl.conclusion))
-
-  // Check for leaf nodes without evidence or testability
-  for (const claim of hypergraph.claims) {
-    const isLeaf = !conclusions.has(claim.id)
-    if (isLeaf) {
-      if (!claim.evidence || claim.evidence.length === 0) {
-        warnings.push({
-          message: `${claim.id}: Leaf node without evidence`,
-          ref: { type: 'claim', id: claim.id }
-        })
-      } else if (claim.testability === undefined || claim.testability === null) {
-        // Has evidence but testability not evaluated
-        warnings.push({
-          message: `${claim.id}: Testability not evaluated`,
-          ref: { type: 'claim', id: claim.id }
-        })
-      }
-    }
+  const id = match[1]
+  if (id.startsWith('c')) {
+    const claim = hypergraph.claims.find(c => c.id === id)
+    if (claim) return { type: 'claim', id }
+  } else if (id.startsWith('i')) {
+    const impl = hypergraph.implications.find(i => i.id === id)
+    if (impl) return { type: 'implication', id }
   }
+  return null
+}
 
-  // Check for failed or unchecked entailments
-  for (const impl of hypergraph.implications) {
-    if (impl.entailment_status === 'failed') {
-      warnings.push({
-        message: `${impl.id}: Entailment failed`,
-        ref: { type: 'implication', id: impl.id }
-      })
-    } else if (!impl.entailment_status) {
-      warnings.push({
-        message: `${impl.id}: Entailment not checked`,
-        ref: { type: 'implication', id: impl.id }
-      })
-    }
-  }
-
-  return warnings
+// Convert API warnings (strings) to Warning objects with refs
+function parseWarnings(hypergraph: Hypergraph): Warning[] {
+  const apiWarnings = hypergraph.warnings || []
+  return apiWarnings.map(warning => ({
+    message: warning,
+    ref: parseWarningReference(warning, hypergraph)
+  }))
 }
 
 function ValidationIndicator({ hypergraph, onSelect, onSendMessage }: {
@@ -81,7 +62,7 @@ function ValidationIndicator({ hypergraph, onSelect, onSendMessage }: {
   onSelect: (item: SelectedItem | null) => void
   onSendMessage?: (message: string) => void
 }) {
-  const warnings = useMemo(() => computeWarnings(hypergraph), [hypergraph])
+  const warnings = useMemo(() => parseWarnings(hypergraph), [hypergraph])
   const errors = hypergraph.metadata?.validation?.errors || []
   const hasErrors = errors.length > 0
   const hasWarnings = warnings.length > 0

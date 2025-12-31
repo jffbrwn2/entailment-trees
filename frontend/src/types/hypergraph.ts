@@ -53,6 +53,7 @@ export interface Hypergraph {
   }
   claims: Claim[]
   implications: Implication[]
+  warnings?: string[]
 }
 
 export interface SelectedItem {

@@ -841,6 +841,52 @@ python -m http.server 8765
         self.apply_costs_to_claims(hypergraph)
         self._save_hypergraph(hypergraph)
 
+    def compute_warnings(self, hypergraph: Optional[Dict[str, Any]] = None) -> List[str]:
+        """
+        Compute warnings for the hypergraph.
+
+        Checks for:
+        - Leaf nodes without evidence
+        - Leaf nodes with evidence but missing testability evaluation
+        - Failed entailments
+        - Unchecked entailments
+
+        Args:
+            hypergraph: Optional hypergraph dict. If None, loads from disk.
+
+        Returns:
+            List of warning strings
+        """
+        if hypergraph is None:
+            hypergraph = self.load_hypergraph()
+
+        warnings = []
+
+        # Find claims that are conclusions of implications (non-leaf nodes)
+        conclusions = set(impl.get('conclusion') for impl in hypergraph.get('implications', []))
+
+        # Check leaf nodes for missing evidence or testability
+        for claim in hypergraph.get('claims', []):
+            claim_id = claim.get('id')
+            is_leaf = claim_id not in conclusions
+            if is_leaf:
+                evidence = claim.get('evidence', [])
+                if not evidence:
+                    warnings.append(f"{claim_id}: Leaf node without evidence")
+                elif claim.get('testability') is None:
+                    warnings.append(f"{claim_id}: Testability not evaluated")
+
+        # Check implications for entailment status
+        for impl in hypergraph.get('implications', []):
+            impl_id = impl.get('id')
+            status = impl.get('entailment_status')
+            if status == 'failed':
+                warnings.append(f"{impl_id}: Entailment failed")
+            elif not status:
+                warnings.append(f"{impl_id}: Entailment not checked")
+
+        return warnings
+
     def get_summary_view(self) -> Dict[str, Any]:
         """
         Return hypergraph with minimal claim fields for navigation.
@@ -852,7 +898,7 @@ python -m http.server 8765
         Removes: score, tags, evidence, uncertainties, timestamps, testability details
 
         Returns:
-            Dict with metadata, truncated claims, and full implications
+            Dict with metadata, truncated claims, implications, and warnings
         """
         hypergraph = self.load_hypergraph()
 
@@ -871,7 +917,8 @@ python -m http.server 8765
         return {
             'metadata': hypergraph.get('metadata', {}),
             'claims': truncated_claims,
-            'implications': hypergraph.get('implications', [])
+            'implications': hypergraph.get('implications', []),
+            'warnings': self.compute_warnings(hypergraph)
         }
 
     def get_claim_evidence(self, claim_id: str) -> Optional[Dict[str, Any]]:
