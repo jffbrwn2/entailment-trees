@@ -13,4 +13,5 @@ export type {
   LinkData,
   D3HypergraphViewerProps,
   Approach,
+  ScoreMode,
 } from '../../types/hypergraph'

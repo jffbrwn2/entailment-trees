@@ -234,10 +234,12 @@ function D3HypergraphViewer({
             <label>View:</label>
             <select
               value={scoreMode}
-              onChange={(e) => onScoreModeChange(e.target.value as 'score' | 'propagated')}
+              onChange={(e) => onScoreModeChange(e.target.value as 'score' | 'evidence_cost' | 'experimental_cost' | 'cost')}
             >
               <option value="score">Score</option>
-              <option value="propagated">Cost</option>
+              <option value="evidence_cost">Evidence Cost</option>
+              <option value="experimental_cost">Experimental Cost</option>
+              <option value="cost">Total Cost</option>
             </select>
           </div>
           <div className="toolbar-item">

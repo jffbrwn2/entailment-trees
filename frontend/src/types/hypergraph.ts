@@ -94,10 +94,12 @@ export interface LinkData {
   implId: string
 }
 
+export type ScoreMode = 'score' | 'evidence_cost' | 'experimental_cost' | 'cost'
+
 export interface D3HypergraphViewerProps {
   hypergraph: Hypergraph | null
-  scoreMode: 'score' | 'propagated'
-  onScoreModeChange: (mode: 'score' | 'propagated') => void
+  scoreMode: ScoreMode
+  onScoreModeChange: (mode: ScoreMode) => void
   onSelect: (item: SelectedItem | null) => void
   selectedItem: SelectedItem | null
   resetKey?: number

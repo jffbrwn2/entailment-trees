@@ -785,45 +785,74 @@ python -m http.server 8765
             impl_type = impl_info['type']
             entailment_status = impl_info['entailment_status']
 
-            # Recursively calculate children (returns total cost)
-            children_costs = []
+            # Recursively calculate children (returns total cost, but we need full cost data)
             for premise_id in premise_ids:
-                child_cost = calculate_node(premise_id)
-                children_costs.append(child_cost)
+                calculate_node(premise_id)
+
+            # Get full cost data for children
+            children_data = [costs.get(p, {}) for p in premise_ids]
 
             # Aggregate based on type, handling None (unevaluated) children
             if impl_type == 'AND':
-                # AND: sum of children costs
-                # If any child is None, we can't compute the AND result
-                if any(c is None for c in children_costs):
-                    node_cost = None
+                # AND: sum of all children's costs (need all to be evaluated)
+                evidence_costs = [d.get('evidence_epistemic_cost') for d in children_data]
+                experimental_costs = [d.get('experimental_epistemic_cost') for d in children_data]
+
+                if any(c is None for c in evidence_costs):
+                    evidence_cost = None
                 else:
-                    node_cost = sum(children_costs)
+                    evidence_cost = sum(evidence_costs)
+
+                if any(c is None for c in experimental_costs):
+                    experimental_cost = None
+                else:
+                    experimental_cost = sum(experimental_costs)
+
             elif impl_type == 'OR':
-                # OR: min of children costs (best/most likely premise wins)
-                # Filter out None values - we only need ONE evaluated path
-                evaluated_costs = [c for c in children_costs if c is not None]
-                if not evaluated_costs:
-                    # All children are unevaluated
-                    node_cost = None
+                # OR: use the best (minimum total cost) child's costs
+                # Filter to children with evaluated total cost
+                evaluated_children = [
+                    d for d in children_data
+                    if d.get('cost') is not None
+                ]
+                if not evaluated_children:
+                    evidence_cost = None
+                    experimental_cost = None
                 else:
-                    node_cost = min(evaluated_costs)
+                    # Find child with minimum total cost
+                    best_child = min(evaluated_children, key=lambda d: d.get('cost', float('inf')))
+                    evidence_cost = best_child.get('evidence_epistemic_cost')
+                    experimental_cost = best_child.get('experimental_epistemic_cost')
             else:
                 # Unknown type, treat as AND
-                if any(c is None for c in children_costs):
-                    node_cost = None
+                evidence_costs = [d.get('evidence_epistemic_cost') for d in children_data]
+                experimental_costs = [d.get('experimental_epistemic_cost') for d in children_data]
+
+                if any(c is None for c in evidence_costs):
+                    evidence_cost = None
                 else:
-                    node_cost = sum(children_costs)
+                    evidence_cost = sum(evidence_costs)
+
+                if any(c is None for c in experimental_costs):
+                    experimental_cost = None
+                else:
+                    experimental_cost = sum(experimental_costs)
+
+            # Calculate total cost
+            if evidence_cost is None or experimental_cost is None:
+                node_cost = None
+            else:
+                node_cost = evidence_cost + experimental_cost
 
             # Apply entailment penalty: if implication is invalid, truth cannot propagate
             if entailment_status == 'failed' and node_cost is not None:
                 node_cost = float('inf')
+                evidence_cost = float('inf')
+                experimental_cost = float('inf')
 
-            # Non-leaf nodes don't have their own evidence/testability costs
-            # Their costs are derived from children
             costs[claim_id] = {
-                'evidence_epistemic_cost': None,
-                'experimental_epistemic_cost': None,
+                'evidence_epistemic_cost': evidence_cost,
+                'experimental_epistemic_cost': experimental_cost,
                 'cost': node_cost
             }
             return node_cost

@@ -1,13 +1,13 @@
 import { useEffect, useRef, useCallback } from 'react'
 import * as d3 from 'd3'
-import type { Hypergraph, Claim, NodeData, LinkData, SelectedItem } from './types'
+import type { Hypergraph, Claim, NodeData, LinkData, SelectedItem, ScoreMode } from './types'
 import { getStructuralSignature, getScoreColor, getEffectiveScore, createCurvePath, computeEvidenceBacked } from './utils'
 
 interface UseD3GraphParams {
   hypergraph: Hypergraph | null
   svgRef: React.RefObject<SVGSVGElement>
   containerRef: React.RefObject<HTMLDivElement>
-  scoreMode: 'score' | 'propagated'
+  scoreMode: ScoreMode
   selectedItem: SelectedItem | null
   collapsedNodes: Set<string>
   setCollapsedNodes: React.Dispatch<React.SetStateAction<Set<string>>>
