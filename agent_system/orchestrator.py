@@ -285,13 +285,28 @@ class AgentOrchestrator:
         Generate system prompt with hypergraph instructions for Claude Code.
 
         This teaches Claude Code how to work with hypergraphs.
+        Dynamically includes user notes if any exist.
         """
         if not self.current_session:
             raise RuntimeError("No active session. Call start_approach() first.")
 
         template = get_system_prompt_template()
         # Use replace instead of format to avoid conflicts with JSON examples in template
-        return template.replace("{approach_name}", self.current_session.approach_name)
+        prompt = template.replace("{approach_name}", self.current_session.approach_name)
+
+        # Add notes section if there are any notes
+        if self.hypergraph_mgr:
+            notes = self.hypergraph_mgr.get_notes_for_context()
+            if notes:
+                notes_section = "\n\n## User Notes\n\nThe user has added notes to the following claims/implications. Pay attention to these:\n\n"
+                for n in notes:
+                    notes_section += f"- **{n['id']}**: {n['note']}"
+                    if n.get('content_changed'):
+                        notes_section += " _(note: content has changed since this note was written)_"
+                    notes_section += "\n"
+                prompt += notes_section
+
+        return prompt
 
     def validate_hypergraph(self) -> Dict[str, Any]:
         """

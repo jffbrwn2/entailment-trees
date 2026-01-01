@@ -28,9 +28,13 @@ Current hypothesis: {hypothesis}
 Current entailment tree (summary - use read_claim_evidence tool for evidence details):
 {hypergraph}
 
+User notes on claims/implications (pay attention to these!):
+{notes}
+
 Guidelines:
 - Work through claims systematically, one at a time
 - Prioritize high-impact claims (look at cost values)
+- Pay attention to user notes - they contain important context and feedback
 - Give Claude clear, specific instructions
 - When blocked, suggest OR pathways (alternatives)
 - For claims with infinite experimental_epistemic_cost, ask Claude to either:
@@ -72,9 +76,21 @@ async def get_auto_agent_response(
     Uses OpenRouter if available, otherwise falls back to Anthropic.
     """
     client = get_auto_agent_client()
+
+    # Extract notes from hypergraph summary and format for display
+    notes = hypergraph.get("notes", [])
+    if notes:
+        notes_text = "\n".join(
+            f"- {n['id']}: {n['note']}" + (" [content changed]" if n.get('content_changed') else "")
+            for n in notes
+        )
+    else:
+        notes_text = "(No notes yet)"
+
     system_prompt = AUTO_AGENT_SYSTEM_PROMPT.format(
         hypothesis=hypothesis,
-        hypergraph=json.dumps(hypergraph, indent=2)
+        hypergraph=json.dumps(hypergraph, indent=2),
+        notes=notes_text
     )
 
     messages = [{"role": "system", "content": system_prompt}] + conversation_history

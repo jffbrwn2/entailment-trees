@@ -948,7 +948,8 @@ python -m http.server 8765
             'metadata': hypergraph.get('metadata', {}),
             'claims': truncated_claims,
             'implications': hypergraph.get('implications', []),
-            'warnings': self.compute_warnings(hypergraph)
+            'warnings': self.compute_warnings(hypergraph),
+            'notes': self.get_notes_for_context()
         }
 
     def get_claim_evidence(self, claim_id: str) -> Optional[Dict[str, Any]]:
@@ -972,3 +973,60 @@ python -m http.server 8765
                 }
 
         return None
+
+    def load_notes(self) -> Dict[str, Any]:
+        """
+        Load notes from notes.json file.
+
+        Returns:
+            Dict mapping claim/implication IDs to note data, or empty dict if no notes file
+        """
+        notes_path = self.approach_dir / "notes.json"
+        if notes_path.exists():
+            with open(notes_path) as f:
+                data = json.load(f)
+                return data.get("notes", {})
+        return {}
+
+    def get_notes_for_context(self) -> List[Dict[str, Any]]:
+        """
+        Get notes formatted for inclusion in agent context.
+
+        Enriches notes with status (item_exists, content_changed) and returns
+        a list suitable for display to agents.
+
+        Returns:
+            List of note dicts with id, text, original_content, content_changed
+        """
+        notes = self.load_notes()
+        if not notes:
+            return []
+
+        hypergraph = self.load_hypergraph()
+        enriched_notes = []
+
+        for item_id, note_data in notes.items():
+            # Check if item still exists and if content changed
+            current_content = None
+            for claim in hypergraph.get("claims", []):
+                if claim.get("id") == item_id:
+                    current_content = claim.get("text", "")
+                    break
+
+            if current_content is None:
+                for impl in hypergraph.get("implications", []):
+                    if impl.get("id") == item_id:
+                        current_content = f"({', '.join(impl['premises'])}) → {impl['conclusion']}"
+                        break
+
+            item_exists = current_content is not None
+            content_changed = item_exists and current_content != note_data.get("original_content", "")
+
+            if item_exists:  # Only include notes for items that still exist
+                enriched_notes.append({
+                    "id": item_id,
+                    "note": note_data.get("text", ""),
+                    "content_changed": content_changed
+                })
+
+        return enriched_notes
