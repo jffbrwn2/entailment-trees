@@ -338,3 +338,138 @@
 .entailment-suggestions p {
   margin: 0.25rem 0;
 }
+
+/* Note styles */
+.note-section {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.note-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.note-label {
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.note-warning {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  background: rgba(210, 153, 34, 0.2);
+  color: var(--warning);
+  border-radius: 3px;
+}
+
+.note-content {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  margin-bottom: 0.5rem;
+}
+
+.note-textarea {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--text-primary);
+  resize: vertical;
+  min-height: 60px;
+}
+
+.note-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.note-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.note-save-btn,
+.note-edit-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.35rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.note-save-btn:hover:not(:disabled),
+.note-edit-btn:hover {
+  background: var(--accent-hover, #4a9eff);
+}
+
+.note-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.note-cancel-btn,
+.note-delete-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.note-cancel-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.note-delete-btn:hover {
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.note-delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-note-btn {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+  margin: 0.75rem 0;
+}
+
+.add-note-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--accent);
+  border-color: var(--accent);
+}

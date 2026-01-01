@@ -71,3 +71,18 @@ class GenerateHypothesisRequest(BaseModel):
     gap_name: Optional[str] = None
     gap_description: Optional[str] = None
     mode: str = "capability_gap"  # "capability_gap" or "gap_only"
+
+
+class NoteRequest(BaseModel):
+    """Request to create or update a note on a claim or implication."""
+    text: str
+    original_content: str  # The text/formula of the claim/implication at time of commenting
+
+
+class Note(BaseModel):
+    """A note attached to a claim or implication."""
+    text: str
+    original_content: str
+    created_at: str
+    item_exists: bool = True  # Whether the claim/implication still exists
+    content_changed: bool = False  # Whether the content has changed since commenting

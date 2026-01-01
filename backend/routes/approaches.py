@@ -2,6 +2,7 @@
 
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 
 import anthropic
@@ -10,7 +11,7 @@ from fastapi import APIRouter, HTTPException
 from agent_system import HypergraphManager
 from agent_system.hypergraph.typecheck import read_source_lines
 
-from backend.models import CreateApproachRequest, ApproachInfo, GenerateNameRequest
+from backend.models import CreateApproachRequest, ApproachInfo, GenerateNameRequest, NoteRequest, Note
 from backend.services import get_orchestrator, notify_hypergraph_update
 
 router = APIRouter(prefix="/api", tags=["approaches"])
@@ -277,3 +278,144 @@ async def get_source_code(folder: str, source: str, lines: str) -> dict:
         raise HTTPException(status_code=400, detail=f"Could not read lines {lines} from {source}")
 
     return {"code": code}
+
+
+def _load_notes(approach_dir: Path) -> dict:
+    """Load notes.json from approach directory."""
+    notes_path = approach_dir / "notes.json"
+    if notes_path.exists():
+        with open(notes_path) as f:
+            return json.load(f)
+    return {"notes": {}}
+
+
+def _save_notes(approach_dir: Path, data: dict) -> None:
+    """Save notes.json to approach directory."""
+    notes_path = approach_dir / "notes.json"
+    with open(notes_path, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def _get_current_content(hypergraph: dict, item_id: str) -> tuple[str | None, str]:
+    """Get the current content of a claim or implication.
+
+    Returns (content, item_type) where item_type is 'claim' or 'implication'.
+    Returns (None, '') if not found.
+    """
+    # Check claims first
+    for claim in hypergraph.get("claims", []):
+        if claim["id"] == item_id:
+            return claim.get("text", ""), "claim"
+
+    # Check implications
+    for impl in hypergraph.get("implications", []):
+        if impl["id"] == item_id:
+            formula = f"({', '.join(impl['premises'])}) → {impl['conclusion']}"
+            return formula, "implication"
+
+    return None, ""
+
+
+def _enrich_notes_with_status(notes_data: dict, hypergraph: dict) -> dict[str, Note]:
+    """Add item_exists and content_changed flags to each note."""
+    enriched = {}
+    for item_id, note_data in notes_data.get("notes", {}).items():
+        current_content, _ = _get_current_content(hypergraph, item_id)
+        item_exists = current_content is not None
+        content_changed = item_exists and current_content != note_data.get("original_content", "")
+
+        enriched[item_id] = Note(
+            text=note_data["text"],
+            original_content=note_data["original_content"],
+            created_at=note_data["created_at"],
+            item_exists=item_exists,
+            content_changed=content_changed,
+        )
+    return enriched
+
+
+@router.get("/approaches/{folder}/notes")
+async def get_notes(folder: str) -> dict[str, Note]:
+    """Get all notes for an approach with enriched status."""
+    orchestrator = get_orchestrator()
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    approach_dir = orchestrator.config.approaches_dir / folder
+    if not approach_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
+
+    hypergraph_path = approach_dir / "hypergraph.json"
+    if not hypergraph_path.exists():
+        return {}
+
+    with open(hypergraph_path) as f:
+        hypergraph = json.load(f)
+
+    notes_data = _load_notes(approach_dir)
+    return _enrich_notes_with_status(notes_data, hypergraph)
+
+
+@router.post("/approaches/{folder}/notes/{item_id}")
+async def create_or_update_note(folder: str, item_id: str, request: NoteRequest) -> Note:
+    """Create or update a note for a claim or implication."""
+    orchestrator = get_orchestrator()
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    approach_dir = orchestrator.config.approaches_dir / folder
+    if not approach_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
+
+    hypergraph_path = approach_dir / "hypergraph.json"
+    if not hypergraph_path.exists():
+        raise HTTPException(status_code=404, detail="Hypergraph not found")
+
+    with open(hypergraph_path) as f:
+        hypergraph = json.load(f)
+
+    # Verify the item exists
+    current_content, item_type = _get_current_content(hypergraph, item_id)
+    if current_content is None:
+        raise HTTPException(status_code=404, detail=f"Item '{item_id}' not found in hypergraph")
+
+    notes_data = _load_notes(approach_dir)
+
+    # Create or update the note
+    notes_data["notes"][item_id] = {
+        "text": request.text,
+        "original_content": request.original_content,
+        "created_at": datetime.now().isoformat(),
+    }
+
+    _save_notes(approach_dir, notes_data)
+
+    return Note(
+        text=request.text,
+        original_content=request.original_content,
+        created_at=notes_data["notes"][item_id]["created_at"],
+        item_exists=True,
+        content_changed=current_content != request.original_content,
+    )
+
+
+@router.delete("/approaches/{folder}/notes/{item_id}")
+async def delete_note(folder: str, item_id: str) -> dict:
+    """Delete a note."""
+    orchestrator = get_orchestrator()
+    if not orchestrator:
+        raise HTTPException(status_code=503, detail="Orchestrator not initialized")
+
+    approach_dir = orchestrator.config.approaches_dir / folder
+    if not approach_dir.exists():
+        raise HTTPException(status_code=404, detail=f"Approach '{folder}' not found")
+
+    notes_data = _load_notes(approach_dir)
+
+    if item_id not in notes_data.get("notes", {}):
+        raise HTTPException(status_code=404, detail=f"Note for '{item_id}' not found")
+
+    del notes_data["notes"][item_id]
+    _save_notes(approach_dir, notes_data)
+
+    return {"success": True, "deleted": item_id}

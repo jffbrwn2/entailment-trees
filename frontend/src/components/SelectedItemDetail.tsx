@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import type { Claim, Implication, SelectedItem, Evidence } from '../types/hypergraph'
-import { api } from '../services/api'
+import { api, Note } from '../services/api'
 import './SelectedItemDetail.css'
 
 interface Props {
@@ -10,7 +10,9 @@ interface Props {
   implications: Implication[]
   scoreMode: 'score' | 'propagated'
   folder: string | null
+  notes: Record<string, Note>
   onClose: () => void
+  onNoteUpdate: () => void
 }
 
 // Parse XML tags from entailment explanation
@@ -131,7 +133,123 @@ function SimulationEvidence({
   )
 }
 
-function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, folder, onClose }: Props) {
+// Component for displaying and editing notes
+function NoteEditor({
+  itemId,
+  folder,
+  existingNote,
+  originalContent,
+  onUpdate,
+}: {
+  itemId: string
+  folder: string | null
+  existingNote: Note | null
+  originalContent: string
+  onUpdate: () => void
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [noteText, setNoteText] = useState(existingNote?.text || '')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setNoteText(existingNote?.text || '')
+    setIsEditing(false)
+  }, [itemId, existingNote?.text])
+
+  const handleSave = async () => {
+    if (!folder || !noteText.trim()) return
+
+    setSaving(true)
+    try {
+      await api.approaches.createNote(folder, itemId, noteText.trim(), originalContent)
+      setIsEditing(false)
+      onUpdate()
+    } catch (err) {
+      console.error('Failed to save note:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!folder) return
+
+    setSaving(true)
+    try {
+      await api.approaches.deleteNote(folder, itemId)
+      setNoteText('')
+      setIsEditing(false)
+      onUpdate()
+    } catch (err) {
+      console.error('Failed to delete note:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (existingNote && !isEditing) {
+    return (
+      <div className="note-section">
+        <div className="note-header">
+          <span className="note-label">Note</span>
+          {existingNote.content_changed && (
+            <span className="note-warning" title="The content has changed since this note was written">
+              Content changed
+            </span>
+          )}
+        </div>
+        <div className="note-content">{existingNote.text}</div>
+        <div className="note-actions">
+          <button className="note-edit-btn" onClick={() => setIsEditing(true)}>Edit</button>
+          <button className="note-delete-btn" onClick={handleDelete} disabled={saving}>Delete</button>
+        </div>
+      </div>
+    )
+  }
+
+  if (isEditing || existingNote) {
+    return (
+      <div className="note-section">
+        <div className="note-header">
+          <span className="note-label">{existingNote ? 'Edit Note' : 'Add Note'}</span>
+        </div>
+        <textarea
+          className="note-textarea"
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          placeholder="Write a note..."
+          rows={3}
+        />
+        <div className="note-actions">
+          <button
+            className="note-save-btn"
+            onClick={handleSave}
+            disabled={saving || !noteText.trim()}
+          >
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+          <button
+            className="note-cancel-btn"
+            onClick={() => {
+              setNoteText(existingNote?.text || '')
+              setIsEditing(false)
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <button className="add-note-btn" onClick={() => setIsEditing(true)}>
+      + Add Note
+    </button>
+  )
+}
+
+function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, folder, notes, onClose, onNoteUpdate }: Props) {
   if (!selectedItem) {
     return (
       <div className="detail-panel detail-empty">
@@ -144,6 +262,8 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, fol
     const claim = claims.find(c => c.id === selectedItem.id)
     if (!claim) return null
 
+    const existingNote = notes[claim.id] || null
+
     return (
       <div className="detail-panel">
         <div className="detail-header">
@@ -153,21 +273,13 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, fol
 
         <div className="detail-text">{claim.text}</div>
 
-        <div className="detail-scores">
-          {scoreMode === 'score' ? (
-            <span className="detail-score" style={{ background: `${getScoreColor(claim.score)}33`, color: getScoreColor(claim.score) }}>
-              Score: {claim.score !== null ? `${claim.score.toFixed(1)}/10` : 'Not evaluated'}
-            </span>
-          ) : (
-            <span className="detail-score" style={{ background: `${getScoreColor(getEffectiveScore(claim, scoreMode))}33`, color: getScoreColor(getEffectiveScore(claim, scoreMode)) }}>
-              Cost: {claim.cost === null || claim.cost === "Infinity"
-                ? '∞ (P = 0)'
-                : typeof claim.cost === 'number'
-                  ? `${claim.cost.toFixed(3)} (P = ${Math.pow(2, -claim.cost).toFixed(3)})`
-                  : claim.cost ?? 'Not computed'}
-            </span>
-          )}
-        </div>
+        <NoteEditor
+          itemId={claim.id}
+          folder={folder}
+          existingNote={existingNote}
+          originalContent={claim.text}
+          onUpdate={onNoteUpdate}
+        />
 
         {claim.tags && claim.tags.length > 0 && (
           <div className="detail-tags">
@@ -177,12 +289,29 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, fol
           </div>
         )}
 
-        {claim.reasoning && (
+        {(claim.reasoning || claim.score !== null || claim.cost !== undefined) && (
           <div className="detail-section">
-            <div className="detail-section-title">Reasoning</div>
-            <div className="detail-section-content">
-              <ReactMarkdown>{claim.reasoning}</ReactMarkdown>
+            <div className="detail-section-title">Score Reasoning</div>
+            <div className="detail-scores">
+              {scoreMode === 'score' ? (
+                <span className="detail-score" style={{ background: `${getScoreColor(claim.score)}33`, color: getScoreColor(claim.score) }}>
+                  Score: {claim.score !== null ? `${claim.score.toFixed(1)}/10` : 'Not evaluated'}
+                </span>
+              ) : (
+                <span className="detail-score" style={{ background: `${getScoreColor(getEffectiveScore(claim, scoreMode))}33`, color: getScoreColor(getEffectiveScore(claim, scoreMode)) }}>
+                  Cost: {claim.cost === null || claim.cost === "Infinity"
+                    ? '∞ (P = 0)'
+                    : typeof claim.cost === 'number'
+                      ? `${claim.cost.toFixed(3)} (P = ${Math.pow(2, -claim.cost).toFixed(3)})`
+                      : claim.cost ?? 'Not computed'}
+                </span>
+              )}
             </div>
+            {claim.reasoning && (
+              <div className="detail-section-content">
+                <ReactMarkdown>{claim.reasoning}</ReactMarkdown>
+              </div>
+            )}
           </div>
         )}
 
@@ -243,6 +372,7 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, fol
     if (!impl) return null
 
     const formula = `(${impl.premises.join(', ')}) → ${impl.conclusion}`
+    const existingNote = notes[impl.id] || null
 
     return (
       <div className="detail-panel">
@@ -253,6 +383,14 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, fol
 
         <div className="detail-formula">{formula}</div>
 
+        <NoteEditor
+          itemId={impl.id}
+          folder={folder}
+          existingNote={existingNote}
+          originalContent={formula}
+          onUpdate={onNoteUpdate}
+        />
+
         {impl.entailment_status && (
           <div className="detail-scores">
             <span className={`entailment-status ${impl.entailment_status}`}>
@@ -262,7 +400,7 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, fol
         )}
 
         <div className="detail-section">
-          <div className="detail-section-title">Reasoning</div>
+          <div className="detail-section-title">Implication Reasoning</div>
           <div className="detail-section-content">
             <ReactMarkdown>{impl.reasoning}</ReactMarkdown>
           </div>

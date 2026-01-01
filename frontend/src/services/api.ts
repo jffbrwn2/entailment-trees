@@ -61,6 +61,15 @@ export interface ConfigStatus {
   openrouter_key_set: boolean
 }
 
+// Note types
+export interface Note {
+  text: string
+  original_content: string
+  created_at: string
+  item_exists: boolean
+  content_changed: boolean
+}
+
 /**
  * API methods organized by domain
  */
@@ -92,6 +101,21 @@ export const api = {
       fetchJson<{ code: string }>(
         `${API_BASE}/approaches/${folder}/source-code?source=${encodeURIComponent(source)}&lines=${encodeURIComponent(lines)}`
       ),
+
+    // Notes
+    getNotes: (folder: string) =>
+      fetchJson<Record<string, Note>>(`${API_BASE}/approaches/${folder}/notes`),
+
+    createNote: (folder: string, itemId: string, text: string, originalContent: string) =>
+      postJson<Note>(`${API_BASE}/approaches/${folder}/notes/${itemId}`, {
+        text,
+        original_content: originalContent,
+      }),
+
+    deleteNote: (folder: string, itemId: string) =>
+      fetch(`${API_BASE}/approaches/${folder}/notes/${itemId}`, {
+        method: 'DELETE',
+      }),
   },
 
   // Conversations

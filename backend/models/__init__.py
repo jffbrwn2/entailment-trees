@@ -11,6 +11,8 @@ from .requests import (
     UpdateSettingsRequest,
     SetApiKeysRequest,
     GenerateHypothesisRequest,
+    NoteRequest,
+    Note,
 )
 
 __all__ = [
@@ -24,4 +26,6 @@ __all__ = [
     "UpdateSettingsRequest",
     "SetApiKeysRequest",
     "GenerateHypothesisRequest",
+    "NoteRequest",
+    "Note",
 ]

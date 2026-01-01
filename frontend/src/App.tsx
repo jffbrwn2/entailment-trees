@@ -10,6 +10,7 @@ import SettingsModal from './components/SettingsModal'
 import ExploreModal, { GapMapSource } from './components/ExploreModal'
 import { useSettings, useAutoMode } from './hooks'
 import type { Approach, Hypergraph, SelectedItem } from './types/hypergraph'
+import type { Note } from './services/api'
 import './App.css'
 
 // Re-export Approach for backward compatibility with components that import from App
@@ -31,6 +32,7 @@ function App() {
   const [showExplore, setShowExplore] = useState(false)
   const [exploreHypothesis, setExploreHypothesis] = useState<string | null>(null)
   const [exploreSource, setExploreSource] = useState<GapMapSource | null>(null)
+  const [notes, setNotes] = useState<Record<string, Note>>({})
 
   // Use custom hooks for settings and auto mode
   const { settings, updateSettings } = useSettings()
@@ -52,10 +54,11 @@ function App() {
     }
   }, [loading, approaches.length])
 
-  // Fetch hypergraph when approach changes
+  // Fetch hypergraph and notes when approach changes
   useEffect(() => {
     if (currentApproach) {
       fetchHypergraph(currentApproach.folder)
+      fetchNotes(currentApproach.folder)
       // Set up WebSocket for live updates
       const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const ws = new WebSocket(`${wsProtocol}//${window.location.host}/ws/hypergraph/${currentApproach.folder}`)
@@ -80,6 +83,7 @@ function App() {
             updateTimeout = setTimeout(() => {
               console.log('[WS] Fetching updated hypergraph (debounced)')
               fetchHypergraph(currentApproach.folder)
+              fetchNotes(currentApproach.folder)
               updateTimeout = null
             }, 600)
           }
@@ -94,6 +98,7 @@ function App() {
       }
     } else {
       setHypergraph(null)
+      setNotes({})
       setSelectedItem(null)
     }
   }, [currentApproach])
@@ -121,6 +126,18 @@ function App() {
       }
     } catch (error) {
       console.error('Failed to fetch hypergraph:', error)
+    }
+  }
+
+  const fetchNotes = async (folder: string) => {
+    try {
+      const response = await fetch(`/api/approaches/${folder}/notes`)
+      if (response.ok) {
+        const data = await response.json()
+        setNotes(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch notes:', error)
     }
   }
 
@@ -179,6 +196,12 @@ function App() {
   const handleCloseDetail = useCallback(() => {
     setSelectedItem(null)
   }, [])
+
+  const handleNoteUpdate = useCallback(() => {
+    if (currentApproach) {
+      fetchNotes(currentApproach.folder)
+    }
+  }, [currentApproach])
 
   const handleCleanup = async () => {
     if (!currentApproach) return
@@ -397,7 +420,9 @@ function App() {
                     implications={hypergraph.implications}
                     scoreMode={scoreMode}
                     folder={currentApproach?.folder || null}
+                    notes={notes}
                     onClose={handleCloseDetail}
+                    onNoteUpdate={handleNoteUpdate}
                   />
                 )}
               </div>
