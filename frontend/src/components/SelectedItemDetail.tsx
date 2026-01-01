@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
-import type { Claim, Implication, SelectedItem, Evidence } from '../types/hypergraph'
+
+import type { Claim, Implication, SelectedItem, Evidence, ScoreMode } from '../types/hypergraph'
 import { api, Note } from '../services/api'
+
 import './SelectedItemDetail.css'
 
 interface Props {
   selectedItem: SelectedItem | null
   claims: Claim[]
   implications: Implication[]
-  scoreMode: 'score' | 'propagated'
+  scoreMode: ScoreMode
   folder: string | null
   notes: Record<string, Note>
   onClose: () => void
@@ -60,21 +62,32 @@ function getScoreColor(score: number | null): string {
   }
 }
 
-function getEffectiveScore(claim: Claim, scoreMode: 'score' | 'propagated'): number | null {
-  if (scoreMode === 'propagated') {
-    // null or "Infinity" means failed entailment or error, show as 0
-    if (claim.cost === null || claim.cost === "Infinity") {
-      return 0
-    }
-    // "-Infinity" would mean perfect certainty (shouldn't happen in practice)
-    if (claim.cost === "-Infinity") {
-      return 10
-    }
-    if (claim.cost !== undefined && typeof claim.cost === 'number') {
-      return Math.pow(2, -claim.cost) * 10
-    }
+function costToScore(costValue: number | string | null | undefined): number | null {
+  if (costValue === null || costValue === undefined || costValue === "Infinity") {
+    return 0
   }
-  return claim.score
+  if (costValue === "-Infinity") {
+    return 10
+  }
+  if (typeof costValue === 'number') {
+    return Math.pow(2, -costValue) * 10
+  }
+  return null
+}
+
+function getEffectiveScore(claim: Claim, scoreMode: ScoreMode): number | null {
+  switch (scoreMode) {
+    case 'score':
+      return claim.score
+    case 'evidence_cost':
+      return costToScore(claim.evidence_epistemic_cost)
+    case 'experimental_cost':
+      return costToScore(claim.experimental_epistemic_cost)
+    case 'cost':
+      return costToScore(claim.cost)
+    default:
+      return claim.score
+  }
 }
 
 // Component for simulation evidence with on-demand code loading
@@ -280,6 +293,53 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, fol
           originalContent={claim.text}
           onUpdate={onNoteUpdate}
         />
+
+        <div className="detail-scores">
+          <span className="detail-score" style={{ background: `${getScoreColor(getEffectiveScore(claim, scoreMode))}33`, color: getScoreColor(getEffectiveScore(claim, scoreMode)) }}>
+            {scoreMode === 'score' && (
+              <>Score: {claim.score !== null ? `${claim.score.toFixed(1)}/10` : 'Not evaluated'}</>
+            )}
+            {scoreMode === 'evidence_cost' && (
+              <>Evidence Cost: {claim.evidence_epistemic_cost === null || claim.evidence_epistemic_cost === "Infinity"
+                ? '∞'
+                : typeof claim.evidence_epistemic_cost === 'number'
+                  ? claim.evidence_epistemic_cost.toFixed(3)
+                  : '—'}</>
+            )}
+            {scoreMode === 'experimental_cost' && (
+              <>Experimental Cost: {claim.experimental_epistemic_cost === null || claim.experimental_epistemic_cost === "Infinity"
+                ? '∞'
+                : typeof claim.experimental_epistemic_cost === 'number'
+                  ? claim.experimental_epistemic_cost.toFixed(3)
+                  : '—'}</>
+            )}
+            {scoreMode === 'cost' && (
+              <>Total Cost: {claim.cost === null || claim.cost === "Infinity"
+                ? '∞'
+                : typeof claim.cost === 'number'
+                  ? claim.cost.toFixed(3)
+                  : '—'}</>
+            )}
+          </span>
+          {scoreMode !== 'score' && (
+            <div className="detail-cost-breakdown">
+              <span className="cost-component">
+                Evidence: {claim.evidence_epistemic_cost === null || claim.evidence_epistemic_cost === "Infinity"
+                  ? '∞'
+                  : typeof claim.evidence_epistemic_cost === 'number'
+                    ? claim.evidence_epistemic_cost.toFixed(3)
+                    : '—'}
+              </span>
+              <span className="cost-component">
+                Experimental: {claim.experimental_epistemic_cost === null || claim.experimental_epistemic_cost === "Infinity"
+                  ? '∞'
+                  : typeof claim.experimental_epistemic_cost === 'number'
+                    ? claim.experimental_epistemic_cost.toFixed(3)
+                    : '—'}
+              </span>
+            </div>
+          )}
+        </div>
 
         {claim.tags && claim.tags.length > 0 && (
           <div className="detail-tags">

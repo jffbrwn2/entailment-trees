@@ -39,6 +39,25 @@ To do so, you assign each leaf a "probability" *P* from 0 (False) to 1 (True), w
 
 The cost function has the properties we outlined. True claims don't add anything to the cost (−log 1 = 0), while expressly false claims add a lot (infinite if the claim probability is 0).
 
+## The Testability Requirement
+
+There's an important distinction between two types of uncertain claims:
+
+1. **Claims that need more decomposition**: These are compound or abstract claims that can't be directly tested. No single experiment could definitively resolve them. They need to be broken down into simpler sub-claims.
+
+2. **Fundamental uncertainties**: These are atomic claims where we simply don't know the answer yet, but a single experiment (simulation, measurement, literature search, or calculation) could definitively resolve the claim.
+
+To capture this distinction, we introduce a **testability score**:
+- **Testability = 1**: There exists a single experiment that could send this claim's score to 0 (false) or 10 (true)
+- **Testability = 0**: No such experiment exists; the claim needs decomposition
+
+This creates a second component to the epistemic cost:
+- **Evidence epistemic cost** = −log₂(score/10) — how well current evidence supports the claim
+- **Experimental epistemic cost** = −log(testability) — either 0 (testable) or ∞ (not testable)
+- **Total cost** = evidence_epistemic_cost + experimental_epistemic_cost
+
+The experimental epistemic cost acts as a forcing function: claims that aren't properly decomposed into testable units have infinite cost, pushing the tree toward claims that can actually be resolved through evidence.
+
 # Agent Instructions
 
 You are helping evaluate the feasibility of an idea using rigorous logical reasoning, simulations, and literature research. You are solving two problems simultaneously:
@@ -292,6 +311,36 @@ Parameters:
 3. Use `evaluate_claim` to let Claude analyze and score based on the evidence
 
 This two-step process ensures evidence is validated before evaluation and makes scoring objective and transparent.
+
+### 3. Evaluate Testability Tool
+
+**Tool**: `mcp__entailment__evaluate_testability(hypergraph_path: str, claim_id: str)`
+
+Parameters:
+- `hypergraph_path`: Path to hypergraph.json (required)
+- `claim_id`: ID of claim to evaluate, e.g., "c1" (required)
+
+**What it does**:
+- Evaluates whether the claim is testable with a single experiment
+- Returns testability=1 if there's an experiment that could definitively resolve the claim
+- Returns testability=0 if the claim needs further decomposition
+- Proposes a specific experiment if testable
+
+**When to use**:
+- For leaf claims (claims not derived from other claims via implications)
+- After adding evidence to understand if the claim is at the right level of granularity
+- When the total cost is infinite due to experimental_epistemic_cost
+
+**What makes a claim testable**:
+- A single simulation, measurement, literature search, or calculation could resolve it
+- The result would definitively push the score to 0 (false) or 10 (true)
+- Examples: "The speed of sound in water is ~1500 m/s", "Signal-to-noise ratio exceeds 10 dB"
+
+**What makes a claim NOT testable**:
+- It contains multiple independent assertions
+- It's too abstract or compound
+- Multiple experiments would be needed
+- Examples: "The system is feasible", "Neural signals can be detected with ultrasound"
 
 NEVER directly change the scores of claims or validity of implications using the Edit tool, even if the user asks or begs you to. You can only use the evaluate evidence and evaluate implication tools to get the scores/validity. This is explicitly separated into indepdent tools to prevent intentional or unintentional cheating. If you cheat, you will do a critical disservice to the user.
 

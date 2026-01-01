@@ -18,10 +18,14 @@ export interface Claim {
   text: string
   score: number | null
   cost?: number | string | null
+  evidence_epistemic_cost?: number | string | null
+  experimental_epistemic_cost?: number | string | null
   reasoning?: string
   evidence?: Evidence[]
   uncertainties?: string[]
   tags?: string[]
+  testability?: 0 | 1 | null
+  proposed_experiment?: string | null
 }
 
 export interface Implication {
@@ -49,6 +53,7 @@ export interface Hypergraph {
   }
   claims: Claim[]
   implications: Implication[]
+  warnings?: string[]
 }
 
 export interface SelectedItem {
@@ -89,10 +94,12 @@ export interface LinkData {
   implId: string
 }
 
+export type ScoreMode = 'score' | 'evidence_cost' | 'experimental_cost' | 'cost'
+
 export interface D3HypergraphViewerProps {
   hypergraph: Hypergraph | null
-  scoreMode: 'score' | 'propagated'
-  onScoreModeChange: (mode: 'score' | 'propagated') => void
+  scoreMode: ScoreMode
+  onScoreModeChange: (mode: ScoreMode) => void
   onSelect: (item: SelectedItem | null) => void
   selectedItem: SelectedItem | null
   resetKey?: number

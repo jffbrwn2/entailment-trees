@@ -81,12 +81,29 @@ export function computeEvidenceBacked(hypergraph: Hypergraph): Map<string, boole
 }
 
 /**
+ * Convert a cost value to a score (0-10) for visualization.
+ * Lower cost = higher score.
+ */
+function costToScore(costValue: number | string | null | undefined): number | null {
+  if (costValue === null || costValue === undefined || costValue === "Infinity") {
+    return 0
+  }
+  if (costValue === "-Infinity") {
+    return 10
+  }
+  if (typeof costValue === 'number') {
+    return Math.pow(2, -costValue) * 10
+  }
+  return null
+}
+
+/**
  * Get the effective score for a claim based on scoreMode.
  * If isEvidenceBacked is false, returns null (unevaluated/gray).
  */
 export function getEffectiveScore(
   claim: Claim,
-  scoreMode: 'score' | 'propagated',
+  scoreMode: 'score' | 'evidence_cost' | 'experimental_cost' | 'cost',
   isEvidenceBacked: boolean = true
 ): number | null {
   // Claims not backed by evidence are unevaluated (gray)
@@ -94,21 +111,22 @@ export function getEffectiveScore(
     return null
   }
 
-  if (scoreMode === 'propagated') {
-    // null or "Infinity" means failed entailment or error, show as 0
-    if (claim.cost === null || claim.cost === "Infinity") {
-      return 0
-    }
-    // "-Infinity" would mean perfect certainty (shouldn't happen in practice)
-    if (claim.cost === "-Infinity") {
-      return 10
-    }
-    // undefined means not computed, fall back to raw score
-    if (claim.cost !== undefined && typeof claim.cost === 'number') {
-      return Math.pow(2, -claim.cost) * 10
-    }
+  switch (scoreMode) {
+    case 'score':
+      return claim.score
+
+    case 'evidence_cost':
+      return costToScore(claim.evidence_epistemic_cost)
+
+    case 'experimental_cost':
+      return costToScore(claim.experimental_epistemic_cost)
+
+    case 'cost':
+      return costToScore(claim.cost)
+
+    default:
+      return claim.score
   }
-  return claim.score
 }
 
 /**

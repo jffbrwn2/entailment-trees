@@ -358,3 +358,191 @@ def evaluate_claim_skill(
 
     except Exception as e:
         return f"❌ Error evaluating claim: {e}"
+
+
+def _evaluate_testability_with_llm(claim_text: str, evidence_list: list) -> tuple[int, str, str, str]:
+    """
+    Use an LLM to evaluate whether a claim is testable with a single experiment.
+
+    A claim is testable (score=1) if there exists a single experiment that could
+    definitively resolve the claim by sending its score to either 0 (false) or 10 (true).
+
+    A claim is not testable (score=0) if it needs further decomposition into
+    sub-claims before it can be tested.
+
+    Args:
+        claim_text: The claim being evaluated for testability
+        evidence_list: Existing evidence on the claim for context
+
+    Returns:
+        Tuple of (testability_score, experiment_description, reasoning, model_used)
+        testability_score is 0 or 1
+        experiment_description is the proposed experiment (empty string if not testable)
+    """
+    # Get evaluator model from runtime settings
+    settings = get_settings()
+    model = settings.evaluator_model or DEFAULT_CONFIG.evaluation_model
+
+    # Determine which client to use based on model ID
+    use_openrouter = _is_openrouter_model(model)
+
+    if use_openrouter:
+        from ..clients.openrouter import OpenRouterClient
+        try:
+            client = OpenRouterClient()
+        except ValueError as e:
+            raise ValueError(f"OpenRouter API key required for model '{model}': {e}")
+    else:
+        from ..config.api_keys import get_api_key
+        api_key = get_api_key("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY not set (via environment variable or session)")
+        client = Anthropic(api_key=api_key)
+
+    # Format evidence for context
+    evidence_text = json.dumps(evidence_list, indent=2) if evidence_list else "No evidence yet"
+
+    # TODO: Improve this prompt with better examples and clearer criteria
+    prompt = f"""Evaluate whether the following claim is TESTABLE with a single experiment.
+
+Claim: "{claim_text}"
+
+Existing evidence (for context):
+{evidence_text}
+
+A claim is TESTABLE if there exists a single, concrete experiment (simulation, measurement,
+literature search, or calculation) that could definitively resolve the claim's truth value.
+
+Consider:
+- If evidence already exists, is there ONE more experiment that could definitively confirm or refute the claim?
+- If no evidence exists, can the claim be tested directly, or does it need to be broken down first?
+
+Respond in this exact format:
+TESTABLE: [YES or NO]
+EXPERIMENT: [If YES, describe the single experiment that would resolve this claim. If NO, leave empty]
+REASONING: [Explain why this claim is or is not testable as a single unit]"""
+
+    # Call the appropriate API
+    if use_openrouter:
+        response_text = client.chat_sync(
+            messages=[{"role": "user", "content": prompt}],
+            model=model
+        )
+    else:
+        response = client.messages.create(
+            model=model,
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        response_text = response.content[0].text
+
+    # Extract testability and reasoning
+    try:
+        lines = response_text.strip().split('\n')
+        testable_line = next(line for line in lines if line.startswith('TESTABLE:'))
+        is_testable = testable_line.split(':')[1].strip().upper() == 'YES'
+
+        # Extract experiment description
+        experiment = ""
+        if 'EXPERIMENT:' in response_text:
+            experiment_start = response_text.index('EXPERIMENT:') + len('EXPERIMENT:')
+            experiment_end = response_text.index('REASONING:') if 'REASONING:' in response_text else len(response_text)
+            experiment = response_text[experiment_start:experiment_end].strip()
+
+        # Extract reasoning
+        reasoning = ""
+        if 'REASONING:' in response_text:
+            reasoning_start = response_text.index('REASONING:') + len('REASONING:')
+            reasoning = response_text[reasoning_start:].strip()
+
+        testability_score = 1 if is_testable else 0
+        return testability_score, experiment, reasoning, model
+
+    except Exception as e:
+        raise ValueError(f"Failed to parse LLM response: {e}\nResponse: {response_text}")
+
+
+def evaluate_testability_skill(
+    hypergraph_path: str,
+    claim_id: str
+) -> str:
+    """
+    Evaluate whether a claim is testable with a single experiment.
+
+    This tool determines if there exists a single experiment that could definitively
+    resolve the claim (send its score to 0 or 10). This helps distinguish between:
+
+    1. Claims that need more decomposition (not testable as a unit)
+    2. Claims that are fundamental uncertainties waiting for evidence (testable)
+
+    The testability score affects the epistemic cost:
+    - testability=1 → experimental_epistemic_cost = 0 (no penalty)
+    - testability=0 → experimental_epistemic_cost = infinity (must decompose further)
+
+    Args:
+        hypergraph_path: Path to hypergraph.json file (can be relative to approach dir)
+        claim_id: ID of claim to evaluate (e.g., "c1")
+
+    Returns:
+        Confirmation message with testability result and proposed experiment, or error
+    """
+    try:
+        # Resolve path (handles relative paths against approach directory)
+        path = resolve_path(hypergraph_path)
+        if not path.exists():
+            return f"❌ Hypergraph not found: {hypergraph_path} (resolved to {path})"
+
+        # Load hypergraph
+        with open(path) as f:
+            hypergraph = json.load(f)
+
+        # Find the claim
+        claim = None
+        for c in hypergraph.get('claims', []):
+            if c['id'] == claim_id:
+                claim = c
+                break
+
+        if not claim:
+            return f"❌ Claim '{claim_id}' not found in hypergraph"
+
+        # Get existing evidence for context
+        evidence_list = claim.get('evidence', [])
+
+        # Use LLM to evaluate testability
+        try:
+            testability, experiment, reasoning, model_used = _evaluate_testability_with_llm(
+                claim_text=claim['text'],
+                evidence_list=evidence_list
+            )
+        except Exception as e:
+            return f"❌ Error evaluating testability: {e}"
+
+        # Update claim with testability info
+        claim['testability'] = testability
+        claim['proposed_experiment'] = experiment if experiment else None
+        claim['testability_reasoning'] = reasoning
+        claim['testability_evaluated_by'] = model_used
+        claim['modified_at'] = datetime.now().isoformat()
+
+        # Update last_updated timestamp
+        hypergraph['metadata']['last_updated'] = datetime.now().strftime("%Y-%m-%d")
+
+        # Save hypergraph
+        with open(path, 'w') as f:
+            json.dump(hypergraph, f, indent=2)
+
+        # Format result
+        if testability == 1:
+            result = f"✓ Claim {claim_id} is TESTABLE (by {model_used})\n"
+            result += f"Proposed experiment: {experiment}\n"
+            result += f"Reasoning: {reasoning}"
+        else:
+            result = f"⚠️ Claim {claim_id} is NOT TESTABLE - needs decomposition (by {model_used})\n"
+            result += f"Reasoning: {reasoning}\n"
+            result += "Consider breaking this claim into more specific sub-claims."
+
+        return result
+
+    except Exception as e:
+        return f"❌ Error evaluating testability: {e}"

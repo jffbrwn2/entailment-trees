@@ -9,7 +9,7 @@ import TutorialModal from './components/TutorialModal'
 import SettingsModal from './components/SettingsModal'
 import ExploreModal, { GapMapSource } from './components/ExploreModal'
 import { useSettings, useAutoMode } from './hooks'
-import type { Approach, Hypergraph, SelectedItem } from './types/hypergraph'
+import type { Approach, Hypergraph, SelectedItem, ScoreMode } from './types/hypergraph'
 import type { Note } from './services/api'
 import './App.css'
 
@@ -22,7 +22,7 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [hypergraph, setHypergraph] = useState<Hypergraph | null>(null)
   const [selectedItem, setSelectedItem] = useState<SelectedItem | null>(null)
-  const [scoreMode, setScoreMode] = useState<'score' | 'propagated'>('propagated')
+  const [scoreMode, setScoreMode] = useState<ScoreMode>('evidence_cost')
   const [resetKey, setResetKey] = useState(0)
   const [showTutorial, setShowTutorial] = useState(false)
   const [showWelcomeModal, setShowWelcomeModal] = useState(false)

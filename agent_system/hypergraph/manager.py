@@ -113,18 +113,7 @@ class HypergraphManager:
         hypergraph['metadata']['last_updated'] = datetime.now().strftime("%Y-%m-%d")
 
         # Always compute and update costs before saving
-        costs = self.calculate_costs(hypergraph)
-        for claim in hypergraph.get('claims', []):
-            claim_id = claim['id']
-            if claim_id in costs:
-                value = costs[claim_id]
-                # Store Infinity as string for valid JSON
-                if value == float('inf'):
-                    claim['cost'] = "Infinity"
-                elif value == float('-inf'):
-                    claim['cost'] = "-Infinity"
-                else:
-                    claim['cost'] = value
+        self.apply_costs_to_claims(hypergraph)
 
         # Save to history before overwriting
         if self.hypergraph_path.exists():
@@ -647,11 +636,45 @@ python -m http.server 8765
 
         return historical_hypergraph
 
-    def calculate_costs(self, hypergraph: Optional[Dict[str, Any]] = None) -> Dict[str, float]:
+    @staticmethod
+    def _serialize_cost(value: Optional[float]) -> Any:
+        """Serialize a cost value for JSON (handles Infinity)."""
+        if value is None:
+            return None
+        elif value == float('inf'):
+            return "Infinity"
+        elif value == float('-inf'):
+            return "-Infinity"
+        else:
+            return value
+
+    def apply_costs_to_claims(self, hypergraph: Dict[str, Any]) -> None:
+        """
+        Calculate and apply all cost components to claims in-place.
+
+        Modifies the hypergraph dict directly, adding to each claim:
+        - evidence_epistemic_cost: -log2(score/10) from evidence
+        - experimental_epistemic_cost: 0 if testable, Infinity if not
+        - cost: total (sum of both components)
+        """
+        costs = self.calculate_costs(hypergraph)
+        for claim in hypergraph.get('claims', []):
+            claim_id = claim['id']
+            if claim_id in costs:
+                cost_data = costs[claim_id]
+                claim['evidence_epistemic_cost'] = self._serialize_cost(cost_data['evidence_epistemic_cost'])
+                claim['experimental_epistemic_cost'] = self._serialize_cost(cost_data['experimental_epistemic_cost'])
+                claim['cost'] = self._serialize_cost(cost_data['cost'])
+
+    def calculate_costs(self, hypergraph: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Optional[float]]]:
         """
         Calculate cost scores for all claims.
 
-        For leaf nodes WITH evidence: cost = -log2(score/10)
+        Cost has two components for leaf nodes:
+        - evidence_epistemic_cost = -log2(score/10) based on evidence strength
+        - experimental_epistemic_cost = 0 if testability=1, infinity if testability=0 or not evaluated
+        - total cost = evidence_epistemic_cost + experimental_epistemic_cost
+
         For leaf nodes WITHOUT evidence: cost = None (not yet evaluated)
         For AND nodes: cost = sum(children_cost) + entailment_penalty
                        If any child is None, result is None
@@ -666,7 +689,7 @@ python -m http.server 8765
             hypergraph: Optional hypergraph dict. If None, loads from disk.
 
         Returns:
-            Dict mapping claim_id -> cost value (None for unevaluated claims)
+            Dict mapping claim_id -> {evidence_epistemic_cost, experimental_epistemic_cost, cost}
         """
         import math
 
@@ -696,7 +719,8 @@ python -m http.server 8765
 
         def calculate_node(claim_id):
             if claim_id in visited:
-                return costs[claim_id]
+                # Return just the total cost for aggregation, not the full dict
+                return costs[claim_id]['cost']
 
             visited.add(claim_id)
 
@@ -709,29 +733,51 @@ python -m http.server 8765
 
             if not claim:
                 # Claim not found, return default
-                costs[claim_id] = float('inf')
+                costs[claim_id] = {
+                    'evidence_epistemic_cost': float('inf'),
+                    'experimental_epistemic_cost': float('inf'),
+                    'cost': float('inf')
+                }
                 return float('inf')
 
             score = claim.get('score')
             evidence = claim.get('evidence', [])
+            testability = claim.get('testability')  # 0, 1, or None (not evaluated)
 
             # Check if this is a leaf node (not a conclusion of any implication)
             if claim_id not in conclusion_to_implication:
                 # Leaf node: only compute cost if it has evidence
                 if not evidence:
                     # No evidence = not yet evaluated
-                    costs[claim_id] = None
+                    costs[claim_id] = {
+                        'evidence_epistemic_cost': None,
+                        'experimental_epistemic_cost': None,
+                        'cost': None
+                    }
                     return None
 
-                # Has evidence: -log2(score/10)
+                # Evidence epistemic cost: -log2(score/10)
                 effective_score = score if score is not None else 5
-                # Score <= 0 means definitely false = infinite cost
                 if effective_score <= 0:
-                    node_cost = float('inf')
+                    evidence_cost = float('inf')
                 else:
-                    node_cost = -math.log2(effective_score / 10.0)
-                costs[claim_id] = node_cost
-                return node_cost
+                    evidence_cost = -math.log2(effective_score / 10.0)
+
+                # Experimental epistemic cost: 0 if testable, infinity if not
+                # testability=1 means there's an experiment that could resolve this
+                if testability == 1:
+                    experimental_cost = 0.0
+                else:
+                    # Not testable or not yet evaluated = infinite cost
+                    experimental_cost = float('inf')
+
+                total_cost = evidence_cost + experimental_cost
+                costs[claim_id] = {
+                    'evidence_epistemic_cost': evidence_cost,
+                    'experimental_epistemic_cost': experimental_cost,
+                    'cost': total_cost
+                }
+                return total_cost
 
             # Non-leaf node: get children and aggregate
             impl_info = conclusion_to_implication[claim_id]
@@ -739,41 +785,76 @@ python -m http.server 8765
             impl_type = impl_info['type']
             entailment_status = impl_info['entailment_status']
 
-            # Recursively calculate children
-            children_costs = []
+            # Recursively calculate children (returns total cost, but we need full cost data)
             for premise_id in premise_ids:
-                child_cost = calculate_node(premise_id)
-                children_costs.append(child_cost)
+                calculate_node(premise_id)
+
+            # Get full cost data for children
+            children_data = [costs.get(p, {}) for p in premise_ids]
 
             # Aggregate based on type, handling None (unevaluated) children
             if impl_type == 'AND':
-                # AND: sum of children costs
-                # If any child is None, we can't compute the AND result
-                if any(c is None for c in children_costs):
-                    node_cost = None
+                # AND: sum of all children's costs (need all to be evaluated)
+                evidence_costs = [d.get('evidence_epistemic_cost') for d in children_data]
+                experimental_costs = [d.get('experimental_epistemic_cost') for d in children_data]
+
+                if any(c is None for c in evidence_costs):
+                    evidence_cost = None
                 else:
-                    node_cost = sum(children_costs)
+                    evidence_cost = sum(evidence_costs)
+
+                if any(c is None for c in experimental_costs):
+                    experimental_cost = None
+                else:
+                    experimental_cost = sum(experimental_costs)
+
             elif impl_type == 'OR':
-                # OR: min of children costs (best/most likely premise wins)
-                # Filter out None values - we only need ONE evaluated path
-                evaluated_costs = [c for c in children_costs if c is not None]
-                if not evaluated_costs:
-                    # All children are unevaluated
-                    node_cost = None
+                # OR: use the best (minimum total cost) child's costs
+                # Filter to children with evaluated total cost
+                evaluated_children = [
+                    d for d in children_data
+                    if d.get('cost') is not None
+                ]
+                if not evaluated_children:
+                    evidence_cost = None
+                    experimental_cost = None
                 else:
-                    node_cost = min(evaluated_costs)
+                    # Find child with minimum total cost
+                    best_child = min(evaluated_children, key=lambda d: d.get('cost', float('inf')))
+                    evidence_cost = best_child.get('evidence_epistemic_cost')
+                    experimental_cost = best_child.get('experimental_epistemic_cost')
             else:
                 # Unknown type, treat as AND
-                if any(c is None for c in children_costs):
-                    node_cost = None
+                evidence_costs = [d.get('evidence_epistemic_cost') for d in children_data]
+                experimental_costs = [d.get('experimental_epistemic_cost') for d in children_data]
+
+                if any(c is None for c in evidence_costs):
+                    evidence_cost = None
                 else:
-                    node_cost = sum(children_costs)
+                    evidence_cost = sum(evidence_costs)
+
+                if any(c is None for c in experimental_costs):
+                    experimental_cost = None
+                else:
+                    experimental_cost = sum(experimental_costs)
+
+            # Calculate total cost
+            if evidence_cost is None or experimental_cost is None:
+                node_cost = None
+            else:
+                node_cost = evidence_cost + experimental_cost
 
             # Apply entailment penalty: if implication is invalid, truth cannot propagate
             if entailment_status == 'failed' and node_cost is not None:
                 node_cost = float('inf')
+                evidence_cost = float('inf')
+                experimental_cost = float('inf')
 
-            costs[claim_id] = node_cost
+            costs[claim_id] = {
+                'evidence_epistemic_cost': evidence_cost,
+                'experimental_epistemic_cost': experimental_cost,
+                'cost': node_cost
+            }
             return node_cost
 
         # Calculate for all claims
@@ -784,18 +865,57 @@ python -m http.server 8765
 
     def update_costs(self) -> None:
         """
-        Calculate and update cost field for all claims.
+        Calculate and update all cost fields for all claims.
         """
-        costs = self.calculate_costs()
         hypergraph = self.load_hypergraph()
-
-        # Update each claim with its cost
-        for claim in hypergraph['claims']:
-            claim_id = claim['id']
-            if claim_id in costs:
-                claim['cost'] = costs[claim_id]
-
+        self.apply_costs_to_claims(hypergraph)
         self._save_hypergraph(hypergraph)
+
+    def compute_warnings(self, hypergraph: Optional[Dict[str, Any]] = None) -> List[str]:
+        """
+        Compute warnings for the hypergraph.
+
+        Checks for:
+        - Leaf nodes without evidence
+        - Leaf nodes with evidence but missing testability evaluation
+        - Failed entailments
+        - Unchecked entailments
+
+        Args:
+            hypergraph: Optional hypergraph dict. If None, loads from disk.
+
+        Returns:
+            List of warning strings
+        """
+        if hypergraph is None:
+            hypergraph = self.load_hypergraph()
+
+        warnings = []
+
+        # Find claims that are conclusions of implications (non-leaf nodes)
+        conclusions = set(impl.get('conclusion') for impl in hypergraph.get('implications', []))
+
+        # Check leaf nodes for missing evidence or testability
+        for claim in hypergraph.get('claims', []):
+            claim_id = claim.get('id')
+            is_leaf = claim_id not in conclusions
+            if is_leaf:
+                evidence = claim.get('evidence', [])
+                if not evidence:
+                    warnings.append(f"{claim_id}: Leaf node without evidence")
+                elif claim.get('testability') is None:
+                    warnings.append(f"{claim_id}: Testability not evaluated")
+
+        # Check implications for entailment status
+        for impl in hypergraph.get('implications', []):
+            impl_id = impl.get('id')
+            status = impl.get('entailment_status')
+            if status == 'failed':
+                warnings.append(f"{impl_id}: Entailment failed")
+            elif not status:
+                warnings.append(f"{impl_id}: Entailment not checked")
+
+        return warnings
 
     def get_summary_view(self) -> Dict[str, Any]:
         """
@@ -804,11 +924,11 @@ python -m http.server 8765
         This returns a truncated view suitable for understanding tree structure
         without overwhelming context. Evidence details are omitted.
 
-        For each claim, keeps: id, text, cost, reasoning
-        Removes: score, tags, evidence, uncertainties, timestamps
+        For each claim, keeps: id, text, cost components
+        Removes: score, tags, evidence, uncertainties, timestamps, testability details
 
         Returns:
-            Dict with metadata, truncated claims, and full implications
+            Dict with metadata, truncated claims, implications, and warnings
         """
         hypergraph = self.load_hypergraph()
 
@@ -818,6 +938,8 @@ python -m http.server 8765
             truncated_claim = {
                 'id': claim.get('id'),
                 'text': claim.get('text'),
+                'evidence_epistemic_cost': claim.get('evidence_epistemic_cost'),
+                'experimental_epistemic_cost': claim.get('experimental_epistemic_cost'),
                 'cost': claim.get('cost')
             }
             truncated_claims.append(truncated_claim)
@@ -825,7 +947,8 @@ python -m http.server 8765
         return {
             'metadata': hypergraph.get('metadata', {}),
             'claims': truncated_claims,
-            'implications': hypergraph.get('implications', [])
+            'implications': hypergraph.get('implications', []),
+            'warnings': self.compute_warnings(hypergraph)
         }
 
     def get_claim_evidence(self, claim_id: str) -> Optional[Dict[str, Any]]:
