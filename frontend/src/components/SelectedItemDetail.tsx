@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 
-import type { Claim, Implication, SelectedItem, Evidence, ScoreMode } from '../types/hypergraph'
+import type { Claim, Implication, SelectedItem, Evidence } from '../types/hypergraph'
 import { api, Note } from '../services/api'
 
 import './SelectedItemDetail.css'
@@ -10,7 +10,6 @@ interface Props {
   selectedItem: SelectedItem | null
   claims: Claim[]
   implications: Implication[]
-  scoreMode: ScoreMode
   folder: string | null
   notes: Record<string, Note>
   onClose: () => void
@@ -37,56 +36,6 @@ function parseEntailmentExplanation(explanation: string): {
     redundantPremises: extractTag(explanation, 'redundant_premises'),
     degeneratePremises: extractTag(explanation, 'degenerate_premises'),
     suggestions: extractTag(explanation, 'suggestions'),
-  }
-}
-
-function getScoreColor(score: number | null): string {
-  if (score === null) {
-    const isLightMode = document.documentElement.getAttribute('data-theme') === 'light'
-    return isLightMode ? 'rgb(200, 200, 200)' : 'rgb(128, 128, 128)'
-  }
-  const clampedScore = Math.max(0, Math.min(10, score))
-  // Muted color palette: coral red -> amber -> teal green
-  if (clampedScore <= 5) {
-    const t = clampedScore / 5
-    const r = Math.round(180 - (180 - 170) * t)
-    const g = Math.round(85 + (135 - 85) * t)
-    const b = Math.round(80 + (75 - 80) * t)
-    return `rgb(${r}, ${g}, ${b})`
-  } else {
-    const t = (clampedScore - 5) / 5
-    const r = Math.round(170 - (170 - 75) * t)
-    const g = Math.round(135 + (145 - 135) * t)
-    const b = Math.round(75 + (110 - 75) * t)
-    return `rgb(${r}, ${g}, ${b})`
-  }
-}
-
-function costToScore(costValue: number | string | null | undefined): number | null {
-  if (costValue === null || costValue === undefined || costValue === "Infinity") {
-    return 0
-  }
-  if (costValue === "-Infinity") {
-    return 10
-  }
-  if (typeof costValue === 'number') {
-    return Math.pow(2, -costValue) * 10
-  }
-  return null
-}
-
-function getEffectiveScore(claim: Claim, scoreMode: ScoreMode): number | null {
-  switch (scoreMode) {
-    case 'score':
-      return claim.score
-    case 'evidence_cost':
-      return costToScore(claim.evidence_epistemic_cost)
-    case 'experimental_cost':
-      return costToScore(claim.experimental_epistemic_cost)
-    case 'cost':
-      return costToScore(claim.cost)
-    default:
-      return claim.score
   }
 }
 
@@ -262,7 +211,7 @@ function NoteEditor({
   )
 }
 
-function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, folder, notes, onClose, onNoteUpdate }: Props) {
+function SelectedItemDetail({ selectedItem, claims, implications, folder, notes, onClose, onNoteUpdate }: Props) {
   if (!selectedItem) {
     return (
       <div className="detail-panel detail-empty">
@@ -294,53 +243,6 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, fol
           onUpdate={onNoteUpdate}
         />
 
-        <div className="detail-scores">
-          <span className="detail-score" style={{ background: `${getScoreColor(getEffectiveScore(claim, scoreMode))}33`, color: getScoreColor(getEffectiveScore(claim, scoreMode)) }}>
-            {scoreMode === 'score' && (
-              <>Score: {claim.score !== null ? `${claim.score.toFixed(1)}/10` : 'Not evaluated'}</>
-            )}
-            {scoreMode === 'evidence_cost' && (
-              <>Evidence Cost: {claim.evidence_epistemic_cost === null || claim.evidence_epistemic_cost === "Infinity"
-                ? '∞'
-                : typeof claim.evidence_epistemic_cost === 'number'
-                  ? claim.evidence_epistemic_cost.toFixed(3)
-                  : '—'}</>
-            )}
-            {scoreMode === 'experimental_cost' && (
-              <>Experimental Cost: {claim.experimental_epistemic_cost === null || claim.experimental_epistemic_cost === "Infinity"
-                ? '∞'
-                : typeof claim.experimental_epistemic_cost === 'number'
-                  ? claim.experimental_epistemic_cost.toFixed(3)
-                  : '—'}</>
-            )}
-            {scoreMode === 'cost' && (
-              <>Total Cost: {claim.cost === null || claim.cost === "Infinity"
-                ? '∞'
-                : typeof claim.cost === 'number'
-                  ? claim.cost.toFixed(3)
-                  : '—'}</>
-            )}
-          </span>
-          {scoreMode !== 'score' && (
-            <div className="detail-cost-breakdown">
-              <span className="cost-component">
-                Evidence: {claim.evidence_epistemic_cost === null || claim.evidence_epistemic_cost === "Infinity"
-                  ? '∞'
-                  : typeof claim.evidence_epistemic_cost === 'number'
-                    ? claim.evidence_epistemic_cost.toFixed(3)
-                    : '—'}
-              </span>
-              <span className="cost-component">
-                Experimental: {claim.experimental_epistemic_cost === null || claim.experimental_epistemic_cost === "Infinity"
-                  ? '∞'
-                  : typeof claim.experimental_epistemic_cost === 'number'
-                    ? claim.experimental_epistemic_cost.toFixed(3)
-                    : '—'}
-              </span>
-            </div>
-          )}
-        </div>
-
         {claim.tags && claim.tags.length > 0 && (
           <div className="detail-tags">
             {claim.tags.map(tag => (
@@ -349,29 +251,44 @@ function SelectedItemDetail({ selectedItem, claims, implications, scoreMode, fol
           </div>
         )}
 
-        {(claim.reasoning || claim.score !== null || claim.cost !== undefined) && (
+        {(claim.cost !== undefined || claim.evidence_epistemic_cost !== undefined) && (
           <div className="detail-section">
-            <div className="detail-section-title">Score Reasoning</div>
-            <div className="detail-scores">
-              {scoreMode === 'score' ? (
-                <span className="detail-score" style={{ background: `${getScoreColor(claim.score)}33`, color: getScoreColor(claim.score) }}>
-                  Score: {claim.score !== null ? `${claim.score.toFixed(1)}/10` : 'Not evaluated'}
-                </span>
-              ) : (
-                <span className="detail-score" style={{ background: `${getScoreColor(getEffectiveScore(claim, scoreMode))}33`, color: getScoreColor(getEffectiveScore(claim, scoreMode)) }}>
-                  Cost: {claim.cost === null || claim.cost === "Infinity"
-                    ? '∞ (P = 0)'
-                    : typeof claim.cost === 'number'
-                      ? `${claim.cost.toFixed(3)} (P = ${Math.pow(2, -claim.cost).toFixed(3)})`
-                      : claim.cost ?? 'Not computed'}
-                </span>
-              )}
-            </div>
-            {claim.reasoning && (
-              <div className="detail-section-content">
-                <ReactMarkdown>{claim.reasoning}</ReactMarkdown>
+            <div className="detail-section-title">Cost</div>
+            <div className="detail-section-content cost-breakdown">
+              <div className="cost-line">
+                <strong>Total:</strong>{' '}
+                {claim.cost === null || claim.cost === "Infinity"
+                  ? '∞ (P = 0)'
+                  : typeof claim.cost === 'number'
+                    ? `${claim.cost.toFixed(3)} (P = ${Math.pow(2, -claim.cost).toFixed(3)})`
+                    : '—'}
               </div>
-            )}
+              <div className="cost-line">
+                <span className="cost-label">Evidence Epistemic Cost:</span>{' '}
+                {claim.evidence_epistemic_cost === null || claim.evidence_epistemic_cost === "Infinity"
+                  ? '∞'
+                  : typeof claim.evidence_epistemic_cost === 'number'
+                    ? claim.evidence_epistemic_cost.toFixed(3)
+                    : '—'}
+              </div>
+              <div className="cost-line">
+                <span className="cost-label">Experimental Epistemic Cost:</span>{' '}
+                {claim.experimental_epistemic_cost === null || claim.experimental_epistemic_cost === "Infinity"
+                  ? '∞'
+                  : typeof claim.experimental_epistemic_cost === 'number'
+                    ? claim.experimental_epistemic_cost.toFixed(3)
+                    : '—'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {claim.reasoning && (
+          <div className="detail-section">
+            <div className="detail-section-title">Evidence Reasoning</div>
+            <div className="detail-section-content">
+              <ReactMarkdown>{claim.reasoning}</ReactMarkdown>
+            </div>
           </div>
         )}
 

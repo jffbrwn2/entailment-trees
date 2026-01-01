@@ -418,7 +418,6 @@ function App() {
                     selectedItem={selectedItem}
                     claims={hypergraph.claims}
                     implications={hypergraph.implications}
-                    scoreMode={scoreMode}
                     folder={currentApproach?.folder || null}
                     notes={notes}
                     onClose={handleCloseDetail}

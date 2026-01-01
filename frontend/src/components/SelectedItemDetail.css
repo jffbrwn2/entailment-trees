@@ -81,6 +81,14 @@
   padding-left: 0.25rem;
 }
 
+.cost-line {
+  margin-bottom: 0.25rem;
+}
+
+.cost-label {
+  color: var(--text-secondary);
+}
+
 
 .detail-propagated {
   display: inline-block;
