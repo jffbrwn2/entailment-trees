@@ -855,8 +855,7 @@ if EDISON_AVAILABLE:
         description="Search scientific literature and get cited answers to research questions. "
                     "Uses Edison's PaperQA2 to query scientific databases asynchronously. "
                     "Submits task and returns task ID. Use check_edison_task to get results. "
-                    "Tasks are logged in references/edison_tasks.json. "
-                    "Perfect for gathering evidence for entailment tree claims.",
+                    "Tasks are logged in references/edison_tasks.json. ",
         input_schema={
             "query": str,
         }
@@ -928,7 +927,144 @@ if EDISON_AVAILABLE:
 
             return {"content": [{"type": "text", "text": result_text}]}
         except Exception as e:
-            return {"content": [{"type": "text", "text": f"❌ Edison precedent search failed: {str(e)}"}]}
+            return {"content": [{"type": "text", "text": f"Edison precedent search failed: {str(e)}"}]}
+
+    @tool(
+        name="exhaustive_search",
+        description="Exhaustively search scientific literature by generating N orthogonal queries. "
+                    "Uses an LLM to generate systematic, diverse queries that explore different "
+                    "phrasings, subspaces, and angles of the research question. "
+                    "All queries are submitted to Edison in parallel. "
+                    "IMPORTANT: Results typically take 10-20 minutes to return. "
+                    "Use check_edison_task with each returned task_id to retrieve results later. "
+                    "Tasks are logged in references/edison_tasks.json.",
+        input_schema={
+            "question": str,
+            "num_queries": {"type": "integer", "default": 5},
+        }
+    )
+    async def edison_exhaustive_search(args: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Exhaustively search literature by generating and submitting multiple orthogonal queries.
+
+        Args:
+            args: Dictionary with keys:
+                - question: The research question to exhaustively explore
+                - num_queries: Number of queries to generate (default: 5)
+                
+        Returns:
+            Tool response with generated queries and their task IDs
+        """
+        from .openrouter import OpenRouterClient, OpenRouterError
+
+        question = args.get("question", "")
+        num_queries = args.get("num_queries", 5)
+        model = "google/gemini-3-pro-preview"
+
+        if not question:
+            return {"content": [{"type": "text", "text": "Error: question is required"}]}
+
+        try:
+            # Get approach directory from module state
+            approach_path = _get_approach_dir()
+
+            # Step 1: Generate orthogonal queries using OpenRouter
+            openrouter = OpenRouterClient()
+
+            generation_prompt = f"""You are a research librarian generating search queries for an exhaustive literature review.
+
+Given this research question:
+"{question}"
+
+Generate exactly {num_queries} different search queries that:
+1. Are ORTHOGONAL - each explores a different angle, subspace, or framing
+2. Use DIFFERENT TERMINOLOGY - synonyms, related concepts, field-specific jargon
+3. Are SYSTEMATIC - together they cover the conceptual space comprehensively
+4. Include both BROAD and NARROW queries
+5. Consider different DISCIPLINES that might address this question
+
+Return ONLY a JSON array of strings, no other text. Example format:
+["query 1", "query 2", "query 3"]
+
+Generate {num_queries} queries now:"""
+
+            response = await openrouter.chat(
+                messages=[{"role": "user", "content": generation_prompt}],
+                model=model,
+            )
+
+            # Parse the JSON array from response
+            # Handle potential markdown code blocks
+            response_text = response.strip()
+            if response_text.startswith("```"):
+                # Remove markdown code block
+                lines = response_text.split("\n")
+                response_text = "\n".join(lines[1:-1] if lines[-1].startswith("```") else lines[1:])
+                response_text = response_text.strip()
+
+            try:
+                queries = json.loads(response_text)
+                if not isinstance(queries, list):
+                    raise ValueError("Response is not a list")
+            except (json.JSONDecodeError, ValueError) as e:
+                return {"content": [{"type": "text", "text": f"Failed to parse generated queries: {e}\nRaw response: {response_text[:500]}"}]}
+
+            # Step 2: Submit all queries to Edison in parallel
+            client = _get_edison_client()
+
+            async def submit_query(query: str) -> tuple[str, str]:
+                """Submit a single query and return (query, task_id)."""
+                task_data = {"name": JobNames.LITERATURE, "query": query}
+                task_id = await client.acreate_task(task_data)
+                # Log to approach's references folder
+                _log_edison_task(str(approach_path), task_id, "literature_exhaustive", query)
+                return (query, task_id)
+
+            # Submit all queries in parallel
+            results = await asyncio.gather(*[submit_query(q) for q in queries], return_exceptions=True)
+
+            # Process results
+            successful_submissions = []
+            failed_submissions = []
+
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    failed_submissions.append((queries[i], str(result)))
+                else:
+                    successful_submissions.append(result)
+
+            # Build response
+            result_text = (
+                f"✓ Exhaustive literature search submitted\n\n"
+                f"**Original question:** {question}\n"
+                f"**Model used:** {model}\n"
+                f"**Queries generated:** {len(queries)}\n"
+                f"**Successfully submitted:** {len(successful_submissions)}\n\n"
+            )
+
+            if successful_submissions:
+                result_text += "**Submitted queries and task IDs:**\n\n"
+                for query, task_id in successful_submissions:
+                    result_text += f"- `{task_id}`: {query}\n"
+
+            if failed_submissions:
+                result_text += f"\n**Failed submissions ({len(failed_submissions)}):**\n"
+                for query, error in failed_submissions:
+                    result_text += f"- {query[:50]}...: {error}\n"
+
+            result_text += (
+                f"\n---\n"
+                f"⏳ **Results will take 10-20 minutes to return.**\n"
+                f"Use `check_edison_task(task_id=\"...\")` for each task to retrieve results.\n"
+                f"All tasks logged in `references/edison_tasks.json`."
+            )
+
+            return {"content": [{"type": "text", "text": result_text}]}
+
+        except OpenRouterError as e:
+            return {"content": [{"type": "text", "text": f"OpenRouter query generation failed: {str(e)}"}]}
+        except Exception as e:
+            return {"content": [{"type": "text", "text": f"Exhaustive search failed: {str(e)}"}]}
 
     @tool(
         name="check_edison_task",
@@ -977,7 +1113,7 @@ if EDISON_AVAILABLE:
     edison_server = create_sdk_mcp_server(
         name="edison",
         version="1.0.0",
-        tools=[edison_literature_search, edison_precedent_search, check_edison_task]
+        tools=[edison_literature_search, edison_precedent_search, edison_exhaustive_search, check_edison_task]
     )
 else:
     edison_server = None
@@ -1548,6 +1684,7 @@ class ClaudeCodeClient:
         if EDISON_AVAILABLE and edison_server and runtime_settings.edison_tools_enabled:
             allowed.append("mcp__edison__literature_search")
             allowed.append("mcp__edison__precedent_search")
+            allowed.append("mcp__edison__exhaustive_search")
             allowed.append("mcp__edison__check_edison_task")
             mcp_servers_dict["edison"] = edison_server
 
